@@ -71,8 +71,9 @@ class RetrievalContext(Contract):
     constraints: Constraints = Field(default_factory=Constraints)
 
     def skill_status(self, name: str) -> SkillStatus:
-        return next((s.status for s in self.skills if s.name.casefold() == name.casefold()),
-                    "unknown")
+        return next(
+            (s.status for s in self.skills if s.name.casefold() == name.casefold()), "unknown"
+        )
 
 
 class Clarification(Contract):
