@@ -132,3 +132,14 @@ concurrent/sequential request isolation, oversized and chunked requests,
 malformed input, dependency/provider failures, no file I/O during chat and
 content-safe responses/logging. Tests use fake extractors, recommendation services
 and HTTP transports. They verify plumbing and policy without real student data.
+
+## Project ownership
+
+- **Karthik:** stateless chat API, request/response contracts, and orchestration.
+- **Abishek:** knowledge graph and USC source data.
+- **Peri:** recommendation service, matching, and evidence.
+- **Frontend:** onboarding, conversation UX, suggested replies, recommendation cards, source disclosures, and recoverable errors.
+
+## Frontend
+
+See [`frontend/README.md`](frontend/README.md) for setup, adapter configuration, privacy behavior, and frontend checks.
