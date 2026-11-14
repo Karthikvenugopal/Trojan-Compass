@@ -1,0 +1,28 @@
+{
+  "context": {
+    "interests": [
+      {
+        "value": "robotics",
+        "evidence": [
+          {
+            "message_index": 0,
+            "quote": "I am interested in robotics."
+          }
+        ]
+      }
+    ],
+    "skills": [],
+    "experiences": [],
+    "completed_courses": [],
+    "program": null,
+    "goals": [],
+    "target": null,
+    "constraints": {
+      "time_window": null,
+      "modality": null,
+      "additional_preferences": []
+    }
+  },
+  "user_query": "I am interested in robotics.",
+  "limit": 3
+}

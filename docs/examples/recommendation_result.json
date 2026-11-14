@@ -1,0 +1,16 @@
+{
+  "recommendations": [],
+  "clarification": {
+    "text": "Would you prefer courses or events?",
+    "options": [
+      "Courses",
+      "Events",
+      "I’m not sure"
+    ],
+    "requested_fields": [
+      "constraints.additional_preferences"
+    ],
+    "reason": "Choose the resource kind to retrieve."
+  },
+  "limitations": []
+}
