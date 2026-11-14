@@ -1,0 +1,5 @@
+{
+  "sources": [{"id":"src-example","url":"https://example.edu/official-page","title":"Official page title","checked_at":"2026-11-14","excerpt":"Supporting text copied from the page","valid_from":null,"valid_until":null}],
+  "nodes": [{"id":"usc-course-unique-id","kind":"Course","name":"Course name","status":"unknown","attributes":{"course_code":"CSCI 103L"}}],
+  "relationships": [{"id":"edge-unique-id","kind":"TEACHES","source_id":"usc-course-unique-id","target_id":"skill-stable-id","source_record_id":"src-example","excerpt":"Exact supporting excerpt","fact_type":"explicit"}]
+}

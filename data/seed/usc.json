@@ -1,0 +1,30 @@
+{
+  "sources": [
+    {"id":"src-usc-cs-courses","url":"https://www.cs.usc.edu/academic-programs/courses/","title":"USC Computer Science courses","checked_at":"2026-11-14","excerpt":"CSCI 103L: Object Oriented Programming; CSCI 104L: Data Structures."},
+    {"id":"src-bls-software-developers","url":"https://www.bls.gov/ooh/computer-and-information-technology/software-developers.htm","title":"BLS Occupational Outlook Handbook: Software Developers","checked_at":"2026-11-14","excerpt":"Developers must have a strong background in computer programming."},
+    {"id":"src-viterbi-expo","url":"https://viterbicareers.usc.edu/careerexpo/","title":"USC Viterbi Career & Internship Expo","checked_at":"2026-11-14","excerpt":"Meet recruiters actively hiring; explore less familiar employers; practice your 30-second elevator pitch; connect with employers.","valid_from":"2027-02-08","valid_until":"2027-02-10"}
+  ],
+  "nodes": [
+    {"id":"usc-course-csci-103l","kind":"Course","name":"CSCI 103L: Object Oriented Programming","attributes":{"course_code":"CSCI 103L"}},
+    {"id":"usc-course-csci-104l","kind":"Course","name":"CSCI 104L: Data Structures","attributes":{"course_code":"CSCI 104L"}},
+    {"id":"skill-object-oriented-programming","kind":"Skill","name":"Object-oriented programming"},
+    {"id":"skill-programming","kind":"Skill","name":"Computer programming"},
+    {"id":"skill-data-structures","kind":"Skill","name":"Data structures"},
+    {"id":"role-software-developer","kind":"GeneralRole","name":"Software developer"},
+    {"id":"req-role-software-developer-programming","kind":"Requirement","name":"Strong computer programming background","attributes":{"requirement_type":"required"}},
+    {"id":"topic-career-networking","kind":"Topic","name":"Career networking"},
+    {"id":"skill-elevator-pitch","kind":"Skill","name":"Professional elevator pitch"},
+    {"id":"usc-event-viterbi-career-expo","kind":"Event","name":"Viterbi Career & Internship Expo","status":"active"},
+    {"id":"usc-occurrence-viterbi-career-expo-2027","kind":"EventOccurrence","name":"Viterbi Career & Internship Expo (February 2027)","status":"active","attributes":{"start_date":"2027-02-08","end_date":"2027-02-10","registration_url":"https://viterbicareers.usc.edu/careerexpo/","date_precision":"multi-day; sessions and fair occur on different dates"}}
+  ],
+  "relationships": [
+    {"id":"edge-csci103l-teaches-oop","kind":"TEACHES","source_id":"usc-course-csci-103l","target_id":"skill-object-oriented-programming","source_record_id":"src-usc-cs-courses","excerpt":"CSCI 103L: Object Oriented Programming."},
+    {"id":"edge-csci103l-teaches-programming","kind":"TEACHES","source_id":"usc-course-csci-103l","target_id":"skill-programming","source_record_id":"src-usc-cs-courses","excerpt":"CSCI 103L: Object Oriented Programming.","fact_type":"inferred"},
+    {"id":"edge-csci104l-teaches-data-structures","kind":"TEACHES","source_id":"usc-course-csci-104l","target_id":"skill-data-structures","source_record_id":"src-usc-cs-courses","excerpt":"CSCI 104L: Data Structures."},
+    {"id":"edge-software-developer-has-programming-requirement","kind":"HAS_REQUIREMENT","source_id":"role-software-developer","target_id":"req-role-software-developer-programming","source_record_id":"src-bls-software-developers","excerpt":"Developers must have a strong background in computer programming.","requirement_type":"required"},
+    {"id":"edge-software-developer-programming-about","kind":"ABOUT","source_id":"req-role-software-developer-programming","target_id":"skill-programming","source_record_id":"src-bls-software-developers","excerpt":"Developers must have a strong background in computer programming."},
+    {"id":"edge-expo-covers-networking","kind":"COVERS","source_id":"usc-event-viterbi-career-expo","target_id":"topic-career-networking","source_record_id":"src-viterbi-expo","excerpt":"Connect with employers."},
+    {"id":"edge-expo-practices-elevator-pitch","kind":"PRACTICES","source_id":"usc-event-viterbi-career-expo","target_id":"skill-elevator-pitch","source_record_id":"src-viterbi-expo","excerpt":"Practice your 30-second elevator pitch."},
+    {"id":"edge-expo-has-occurrence-2027","kind":"HAS_OCCURRENCE","source_id":"usc-event-viterbi-career-expo","target_id":"usc-occurrence-viterbi-career-expo-2027","source_record_id":"src-viterbi-expo","excerpt":"Spring 2027: Recruiting Sessions February 8-9; Viterbi Career & Internship Fair February 10."}
+  ]
+}
