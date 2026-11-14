@@ -579,3 +579,19 @@ async def test_invalid_retrieval_output_fails_without_fabricated_fallback() -> N
                 )
             ),
         ).chat(ChatRequest(messages=[student("Synthetic query")]))
+
+
+@pytest.mark.asyncio
+async def test_maximum_length_clarification_with_provisional_results() -> None:
+    question = clarification().model_copy(update={"text": "Q" * 4000})
+    response = await ChatService(
+        FakeExtractor(),
+        FakeRecommendations(
+            RecommendationResult(
+                recommendations=[resource()],
+                clarification=question,
+            )
+        ),
+    ).chat(ChatRequest(messages=[student("Synthetic query")]))
+    assert response.message == question.text
+    assert response.recommendations

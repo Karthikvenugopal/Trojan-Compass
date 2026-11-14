@@ -89,7 +89,7 @@ class ChatService:
                 if recommendations:
                     message = "Here are campus options with supporting sources below."
                     if question:
-                        message += " " + question.text
+                        message = question.text
                 elif question:
                     message = question.text
                 else:
