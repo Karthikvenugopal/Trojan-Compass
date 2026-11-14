@@ -51,6 +51,8 @@ class Explainer:
         reasons += [
             f"Tagged with {topic}, which you said interests you." for topic in candidate.topics[:1]
         ]
+        if not reasons and candidate.broad:
+            reasons.append(_broad_reason(action))
 
         return Recommendation(
             id=action.id,
@@ -76,6 +78,8 @@ class Explainer:
             course=CourseDetails(term=_term(action), modality=action.course.modality)
             if action.course
             else None,
+            modality=action.course.modality if action.course else None,
+            status=_status(action),
         )
 
     def _match_reason(self, match: SkillMatch) -> str:
@@ -168,7 +172,32 @@ class Explainer:
                 ),
                 f"{RELATION_VERBS[match.link.relation]} {title}",
             ]
-        return [f"Interest: {topics[0]}", f"topic of {title}"] if topics else [title]
+        if topics:
+            return [f"Interest: {topics[0]}", f"topic of {title}"]
+        return ["Broad starting point", _broad_step(action), title]
+
+
+def _broad_step(action: CampusAction) -> str:
+    return (
+        "introductory course with no listed prerequisites"
+        if action.course
+        else "upcoming campus event"
+    )
+
+
+def _broad_reason(action: CampusAction) -> str:
+    return (
+        f"A general starting point: an {_broad_step(action)}. It isn't matched to your "
+        "background yet."
+    )
+
+
+def _status(action: CampusAction) -> str | None:
+    """Short machine-friendly status: the event's recorded status or the best listed term."""
+    if action.event is not None:
+        return action.event.status
+    term = _term(action)
+    return term.split("(", 1)[1].rstrip(")") if term else "offering unconfirmed"
 
 
 def _requirement_steps(

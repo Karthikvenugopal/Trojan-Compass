@@ -9,7 +9,7 @@ Rules:
 
 from dataclasses import dataclass, field
 
-from trojan_compass.contracts import SkillStatus, StudentProfile
+from trojan_compass.contracts import RetrievalContext, SkillStatus
 
 from .destination import Direction, DirectionResolution
 from .graph import CampusAction, Destination, GraphRepository, Requirement, SkillNode
@@ -61,9 +61,17 @@ class Preparation:
         return {a.skill.id: a for a in self.assessments}
 
 
-def skill_status(profile: StudentProfile, skill: SkillNode) -> SkillStatus:
-    """Status the student stated for this skill (name or alias), else unknown."""
-    for stated in profile.skills:
+def completed_course_names(context: RetrievalContext) -> list[str]:
+    return [course.value for course in context.completed_courses]
+
+
+def skill_status(context: RetrievalContext, skill: SkillNode) -> SkillStatus:
+    """Status the student stated for this skill, matching graph aliases, else unknown.
+
+    ``RetrievalContext.skill_status`` matches exact names only; the graph knows aliases
+    (e.g. "DSA" for Data structures), so matching happens here.
+    """
+    for stated in context.skills:
         if skill.matches(stated.name):
             return stated.status
     return "unknown"
@@ -76,7 +84,7 @@ class PreparationAnalyzer:
     async def analyze(
         self,
         resolution: DirectionResolution,
-        profile: StudentProfile,
+        context: RetrievalContext,
         completed_courses: list[CampusAction],
     ) -> Preparation:
         scoped: dict[str, list[ScopedRequirement]] = {}
@@ -105,12 +113,12 @@ class PreparationAnalyzer:
                 )
             )
             assessments.append(
-                SkillAssessment(skill, tuple(requirements), skill_status(profile, skill), exposure)
+                SkillAssessment(skill, tuple(requirements), skill_status(context, skill), exposure)
             )
 
-        completed_codes = frozenset(normalize_code(c) for c in profile.completed_courses) | {
-            normalize_code(c.course.code) for c in completed_courses if c.course
-        }
+        completed_codes = frozenset(
+            normalize_code(name) for name in completed_course_names(context)
+        ) | {normalize_code(c.course.code) for c in completed_courses if c.course}
         return Preparation(tuple(assessments), completed_codes, tuple(limitations))
 
     async def _collect(

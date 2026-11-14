@@ -189,6 +189,10 @@ class GraphRepository(Protocol):
 
     async def actions_for_topics(self, topics: Sequence[str]) -> list[CampusAction]: ...
 
+    async def browse_actions(self, limit: int) -> list[CampusAction]:
+        """Unfiltered shared actions; the engine picks broad starting points from them."""
+        ...
+
     async def find_courses(self, references: Sequence[str]) -> list[CampusAction]:
         """Courses matching a course code or exact title."""
         ...

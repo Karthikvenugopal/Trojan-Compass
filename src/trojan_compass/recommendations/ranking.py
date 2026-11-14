@@ -26,6 +26,7 @@ class RankingPolicy:
     team_specific_bonus: int = 2  # a team-specific need is more specific than the baseline
     bridge: int = 3  # unblocks a course the student needs but can't take yet
     interest_topic: int = 1  # tagged with a stated interest only, no requirement path
+    broad_start: int = 1  # general starting point when the student has no direction yet
     max_skills_counted: int = 3  # stop actions that list many skills from winning on volume
 
     # Learning benefit, from the student's own statements. Unknown earns less than a
@@ -102,11 +103,12 @@ class Ranker:
         relevance = sum(relevance_terms[: p.max_skills_counted])
         relevance += p.bridge * min(len(candidate.bridges), 1)
         relevance += p.interest_topic * min(len(candidate.topics), 1)
+        relevance += p.broad_start if candidate.broad else 0
 
         benefits = [self._benefit(m) for m in candidate.matches]
         if candidate.bridges:
             benefits.append(p.not_yet_learned)  # bridges exist only for stated gaps
-        if candidate.topics and not benefits:
+        if (candidate.topics or candidate.broad) and not benefits:
             benefits.append(p.unknown)
         benefit = max(benefits, default=0)
 
@@ -129,7 +131,7 @@ class Ranker:
 
     def has_benefit(self, candidate: Candidate) -> bool:
         """Drop actions that only cover skills the student already knows at this depth."""
-        return bool(candidate.bridges or candidate.topics) or any(
+        return bool(candidate.bridges or candidate.topics or candidate.broad) or any(
             self._benefit(m) > 0 for m in candidate.matches
         )
 

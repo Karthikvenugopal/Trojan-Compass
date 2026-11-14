@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from trojan_compass.contracts import StudentProfile
+from trojan_compass.contracts import RetrievalContext
 
 from .clock import Clock
 from .graph import CampusAction, CourseInfo, EventInfo, SkillNode
@@ -44,18 +44,18 @@ class FeasibilityChecker:
         self._clock = clock
 
     def check(
-        self, action: CampusAction, profile: StudentProfile, completed_codes: frozenset[str]
+        self, action: CampusAction, context: RetrievalContext, completed_codes: frozenset[str]
     ) -> Feasibility:
         if not action.sources:
             # Unsourced records are never shown: the student couldn't verify them.
             return Feasibility("unknown", False, excluded="no source is recorded for it")
         if action.course is not None:
-            return self._course(action.course, profile, completed_codes)
+            return self._course(action.course, context, completed_codes)
         assert action.event is not None  # guaranteed by CampusAction validation
         return self._event(action.event)
 
     def _course(
-        self, course: CourseInfo, profile: StudentProfile, completed_codes: frozenset[str]
+        self, course: CourseInfo, context: RetrievalContext, completed_codes: frozenset[str]
     ) -> Feasibility:
         access: list[str] = []
         unknowns: list[str] = []
@@ -68,7 +68,7 @@ class FeasibilityChecker:
             if prereq.course_code and normalize_code(prereq.course_code) in completed_codes:
                 access.append(f"Prerequisite met: you completed {prereq.course_code}.")
                 continue
-            status = skill_status(profile, prereq.skill) if prereq.skill else "unknown"
+            status = skill_status(context, prereq.skill) if prereq.skill else "unknown"
             if status == "known":
                 access.append(f"Prerequisite: {prereq.description} (you said you know this).")
             elif status == "learning":
@@ -127,13 +127,13 @@ class FeasibilityChecker:
                 elif offering.status == "unknown":
                     unknowns.append(f"Enrollment status for {offering.term} isn't listed.")
 
-        mismatch = _modality_mismatch(course.modality, profile.constraints.modality)
+        preferred = context.constraints.modality.value if context.constraints.modality else None
+        mismatch = _modality_mismatch(course.modality, preferred)
         if course.modality:
             access.append(f"Format: {course.modality}.")
         if mismatch:
             unknowns.append(
-                f"Listed as {course.modality}, which may not match your preference "
-                f"({profile.constraints.modality})."
+                f"Listed as {course.modality}, which may not match your preference ({preferred})."
             )
 
         readiness: Readiness = "ready"

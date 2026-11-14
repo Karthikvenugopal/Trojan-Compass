@@ -14,15 +14,15 @@ from trojan_compass.contracts import (
     Clarification,
     RecommendationRequest,
     RecommendationResult,
-    StudentProfile,
+    RetrievalContext,
 )
 
 from .clock import Clock, SystemClock
-from .destination import DestinationResolver, slug
+from .destination import NOT_SURE, DestinationResolver
 from .explain import Explainer, display_title
 from .feasibility import Feasibility, FeasibilityChecker
 from .graph import GraphRepository
-from .preparation import Preparation, PreparationAnalyzer
+from .preparation import Preparation, PreparationAnalyzer, completed_course_names
 from .ranking import ActionKind, Ranker, RankingPolicy, Scored
 from .retrieval import ActionRetriever, Bridge, Candidate
 
@@ -59,21 +59,20 @@ class RecommendationEngine:
         self._explainer = Explainer()
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
-        profile = request.profile
-        resolution = await self._resolver.resolve(profile)
-        completed = (
-            await self._repository.find_courses(profile.completed_courses)
-            if profile.completed_courses
-            else []
-        )
-        preparation = await self._analyzer.analyze(resolution, profile, completed)
+        context = request.context
+        resolution = await self._resolver.resolve(context)
+        course_names = completed_course_names(context)
+        completed = await self._repository.find_courses(course_names) if course_names else []
+        preparation = await self._analyzer.analyze(resolution, context, completed)
         candidates = await self._retriever.retrieve(preparation, resolution.topics)
+        if resolution.broad:
+            candidates += await self._retriever.retrieve_broad()
 
-        evaluated, excluded = self._evaluate(candidates, profile, preparation)
+        evaluated, excluded = self._evaluate(candidates, context, preparation)
         bridges = self._bridges(excluded)
         if bridges:
             extra, extra_excluded = self._evaluate(
-                await self._retriever.retrieve_bridges(bridges), profile, preparation
+                await self._retriever.retrieve_bridges(bridges), context, preparation
             )
             _merge(evaluated, extra)
             excluded += extra_excluded
@@ -96,6 +95,11 @@ class RecommendationEngine:
                 "I couldn't find a sourced campus action that fits right now. I'd rather say "
                 "so than suggest something unverified."
             )
+        if resolution.broad and selected:
+            limitations.append(
+                "These are general starting points, not matched to your background yet. "
+                "Tell me what you enjoy and I can make them specific."
+            )
         if selected:
             limitations.append(
                 "Details come from campus sources as last checked. Confirm dates, seats and "
@@ -109,13 +113,13 @@ class RecommendationEngine:
         )
 
     def _evaluate(
-        self, candidates: list[Candidate], profile: StudentProfile, preparation: Preparation
+        self, candidates: list[Candidate], context: RetrievalContext, preparation: Preparation
     ) -> tuple[dict[str, tuple[Candidate, Feasibility]], list[tuple[Candidate, Feasibility]]]:
         evaluated: dict[str, tuple[Candidate, Feasibility]] = {}
         excluded: list[tuple[Candidate, Feasibility]] = []
         for candidate in candidates:
             feasibility = self._feasibility.check(
-                candidate.action, profile, preparation.completed_codes
+                candidate.action, context, preparation.completed_codes
             )
             evaluated[candidate.action.id] = (candidate, feasibility)
             if feasibility.excluded is not None:
@@ -169,7 +173,7 @@ def _skill_clarification(preparation: Preparation, scored: list[Scored]) -> Clar
     for item in ranked:
         for skill in item.feasibility.unknown_prerequisite_skills:
             if skill.id in unknown_core:
-                return _ask(unknown_core[skill.id].skill.name, skill.id)
+                return _ask(unknown_core[skill.id].skill.name)
 
     for skill_id, assessment in unknown_core.items():
         levels = {
@@ -179,15 +183,22 @@ def _skill_clarification(preparation: Preparation, scored: list[Scored]) -> Clar
             if m.assessment.skill.id == skill_id and m.link.relation == "teaches"
         }
         if "intro" in levels and levels & {"intermediate", "advanced"}:
-            return _ask(assessment.skill.name, skill_id)
+            return _ask(assessment.skill.name)
     return None
 
 
-def _ask(skill_name: str, skill_id: str) -> Clarification:
+def _ask(skill_name: str) -> Clarification:
+    # Path is "skills.<canonical graph name, casefolded>". The chat AskBackPolicy compares
+    # that segment with the extracted skill name, so a slug like "data-structures" would
+    # never register as answered.
     return Clarification(
-        id=f"skill-level:{skill_id}",
         text=f"How comfortable are you with {skill_name}?",
-        options=["I'm comfortable with it", "I'm still learning it", "I haven't learned it yet"],
-        requested_fields=[f"skills.{slug(skill_name)}"],
+        options=[
+            "I'm comfortable with it",
+            "I'm still learning it",
+            "I haven't learned it yet",
+            NOT_SURE,
+        ],
+        requested_fields=[f"skills.{skill_name.casefold()}"],
         reason="Your answer decides between an introductory option and a more advanced one.",
     )

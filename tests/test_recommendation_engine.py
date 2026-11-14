@@ -1,4 +1,7 @@
-"""Behavioral tests for the recommendation engine against the synthetic graph fixture."""
+"""Behavioral tests for the recommendation engine against the synthetic graph fixture.
+
+Student context uses the v2 ``RetrievalContext`` shape with synthetic quotations.
+"""
 
 import asyncio
 import logging
@@ -11,7 +14,7 @@ from trojan_compass.contracts import (
     RecommendationRequest,
     RecommendationResult,
     RecommendationService,
-    StudentProfile,
+    RetrievalContext,
 )
 from trojan_compass.recommendations import FixedClock, RecommendationEngine
 from trojan_compass.recommendations.destination import DestinationResolver
@@ -30,20 +33,46 @@ def make_engine(
     return RecommendationEngine(repo or synthetic_repository(), clock=FixedClock(now))
 
 
-def skill(name: str, status: str) -> dict[str, str]:
-    return {"name": name, "status": status, "supporting_statement": f"Student: {name} {status}."}
+def evidence(quote: str) -> list[dict[str, Any]]:
+    return [{"message_index": 0, "quote": quote}]
+
+
+def supported(value: str) -> dict[str, Any]:
+    return {"value": value, "evidence": evidence(f"Synthetic statement about {value}.")}
+
+
+def skill(name: str, status: str) -> dict[str, Any]:
+    return {"name": name, "status": status, "evidence": evidence(f"Synthetic: {name} {status}.")}
 
 
 def target(kind: str, name: str, company: str | None = None) -> dict[str, Any]:
-    return {"kind": kind, "name": name, "company_name": company}
+    return {
+        "kind": kind,
+        "name": name,
+        "company_name": company,
+        "evidence": evidence(f"Synthetic: I want {name}."),
+    }
+
+
+def context(**fields: Any) -> dict[str, Any]:
+    """Plain strings for list-of-SupportedText fields are wrapped with synthetic evidence."""
+    for key in ("interests", "completed_courses", "goals", "experiences"):
+        if key in fields:
+            fields[key] = [supported(v) for v in fields[key]]
+    return fields
 
 
 def make_request(
-    query: str = "What should I do next?", limit: int = 3, **profile: Any
+    query: str = "What should I do next?", limit: int = 3, **fields: Any
 ) -> RecommendationRequest:
     return RecommendationRequest.model_validate(
-        {"profile": profile, "user_query": query, "limit": limit}
+        {"context": context(**fields), "user_query": query, "limit": limit}
     )
+
+
+def offers_not_sure(result: RecommendationResult) -> bool:
+    assert result.clarification is not None
+    return any("not sure" in option.casefold() for option in result.clarification.options)
 
 
 async def run(
@@ -86,10 +115,11 @@ async def test_role_alias_resolves() -> None:
 async def test_ambiguous_team_asks_once_and_still_explores_interests() -> None:
     result = await run(make_request(target=target("team", "Platform"), interests=["robotics"]))
     assert result.clarification is not None
-    assert result.clarification.id == "target-ambiguous:platform"
+    assert result.clarification.requested_fields == ["target"]
     assert set(result.clarification.options) == {
         "Platform team at Nimbus Robotics (team)",
         "Platform team at Orbit Cloud (team)",
+        "I'm not sure",
     }
     assert result.recommendations, "ambiguity must not block interest-grounded results"
 
@@ -100,7 +130,7 @@ async def test_company_name_disambiguates_team() -> None:
             target=target("team", "Platform", "Orbit Cloud"), completed_courses=["SYN 201"]
         )
     )
-    assert result.clarification is None or not result.clarification.id.startswith("target")
+    assert result.clarification is None or result.clarification.requested_fields != ["target"]
     dist = by_id(result, "course-syn450")
     assert "Platform team at Orbit Cloud (team-specific)" in dist.evidence_path
     assert "Prerequisite met: you completed SYN 201." in dist.prerequisites_or_access
@@ -109,16 +139,20 @@ async def test_company_name_disambiguates_team() -> None:
 async def test_company_with_several_roles_asks_and_gives_provisional_results() -> None:
     result = await run(make_request(target=target("company", "Nimbus")))
     assert result.clarification is not None
-    assert result.clarification.id == "company-role:nimbus-robotics"
-    assert "Not sure yet" in result.clarification.options
+    assert result.clarification.text == "What kind of work at Nimbus Robotics interests you most?"
+    assert result.clarification.requested_fields == ["target"]
+    assert offers_not_sure(result)
     assert result.recommendations
 
 
 async def test_unknown_target_is_not_invented() -> None:
     result = await run(make_request(target=target("company", "Zeta Corp")))
-    assert result.recommendations == []
     assert any("isn't in the career graph" in note for note in result.limitations)
-    assert result.clarification is not None and result.clarification.id == "interests-needed"
+    assert result.clarification is not None
+    assert result.clarification.requested_fields == ["interests"]
+    # Only clearly labeled broad starting points; nothing claims to serve "Zeta Corp".
+    assert all(r.evidence_path[0] == "Broad starting point" for r in result.recommendations)
+    assert "Zeta" not in " ".join(r for rec in result.recommendations for r in rec.why_relevant)
 
 
 async def test_beginner_with_interest_gets_grounded_actions_without_job_title() -> None:
@@ -128,21 +162,34 @@ async def test_beginner_with_interest_gets_grounded_actions_without_job_title() 
     # One direction, so no direction question; the only question is the one that changes
     # which course fits (Python is an unconfirmed prerequisite of Robot Control).
     assert result.clarification is not None
-    assert result.clarification.id == "skill-level:skill-python"
+    assert result.clarification.requested_fields == ["skills.python"]
 
 
 async def test_interest_with_several_directions_offers_choice_and_results() -> None:
     result = await run(make_request(interests=["self-driving cars"]))
-    assert result.clarification is not None and result.clarification.id == "direction-choice"
-    assert "Keep exploring" in result.clarification.options
+    assert result.clarification is not None
+    assert result.clarification.text.startswith("Your interests connect to a few directions")
+    assert offers_not_sure(result)
     assert result.recommendations
 
 
-async def test_no_context_returns_one_approachable_question() -> None:
+async def test_no_context_asks_once_and_still_offers_broad_starting_points() -> None:
     result = await run(make_request())
-    assert result.recommendations == []
     assert result.clarification is not None
     assert "No job title needed" in result.clarification.text
+    assert result.clarification.requested_fields == ["interests"]
+    # Answering "I'm not sure" must not gate results: broad options come with the question.
+    assert result.recommendations
+    for rec in result.recommendations:
+        assert rec.evidence_path[0] == "Broad starting point"
+        assert "isn't matched to your background yet" in rec.why_relevant[0]
+    assert any("general starting points" in note for note in result.limitations)
+
+
+async def test_broad_starting_points_skip_courses_with_prerequisites() -> None:
+    result = await run(make_request(limit=10))
+    courses = [r for r in result.recommendations if r.kind == "course"]
+    assert [c.id for c in courses] == ["course-syn101"]
 
 
 # --- Preparation ---------------------------------------------------------------------------
@@ -155,18 +202,18 @@ async def test_unmentioned_skill_is_unknown_not_missing() -> None:
     assert "missing" not in joined
     # Python is core, unmentioned, and an unconfirmed prerequisite of SYN 201: worth asking.
     assert result.clarification is not None
-    assert result.clarification.id == "skill-level:skill-python"
     assert result.clarification.requested_fields == ["skills.python"]
+    assert offers_not_sure(result)
 
 
 async def test_completed_course_is_exposure_not_mastery() -> None:
     repo = synthetic_repository()
-    profile = StudentProfile.model_validate(
-        {"target": target("role", "Software Engineer"), "completed_courses": ["SYN 201"]}
+    ctx = RetrievalContext.model_validate(
+        context(target=target("role", "Software Engineer"), completed_courses=["SYN 201"])
     )
-    resolution = await DestinationResolver(repo).resolve(profile)
-    completed = await repo.find_courses(profile.completed_courses)
-    prep = await PreparationAnalyzer(repo).analyze(resolution, profile, completed)
+    resolution = await DestinationResolver(repo).resolve(ctx)
+    completed = await repo.find_courses([c.value for c in ctx.completed_courses])
+    prep = await PreparationAnalyzer(repo).analyze(resolution, ctx, completed)
     ds = prep.by_skill()["skill-ds"]
     assert ds.status == "unknown"
     assert ds.exposure == ("SYN 201",)

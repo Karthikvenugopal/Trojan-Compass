@@ -2,112 +2,114 @@
 
 Owner: Peri. Package: `src/trojan_compass/recommendations/`.
 
-The engine turns one request's student context into a short list of courses and events.
+The engine turns one request's `RetrievalContext` into a short list of courses and events.
 Each item is sourced, checked for feasibility, and comes with a reason, sources and an
-evidence path. It consumes Karthik's contracts from `trojan_compass.contracts` and doesn't
+evidence path. It consumes the **v2** contracts in `trojan_compass.contracts` and doesn't
 redefine any of them.
 
-## Wiring (Karthik)
+## Wiring
 
 ```python
+from trojan_compass.api import configured_extractor, create_app
 from trojan_compass.recommendations import RecommendationEngine
 
 engine = RecommendationEngine(repository=graph_adapter)   # optional: clock=, policy=
-app = create_app(recommendations=engine)
+app = create_app(mode="production", extractor=configured_extractor(), recommendations=engine)
 ```
 
-- Signature: `async def recommend(request: RecommendationRequest) -> RecommendationResult`.
-  This matches the async proposal in `docs/INTEGRATION.md`. The engine is native async, so
-  no `asyncio.to_thread` is needed.
-- The prompt calls the per-request input `RetrievalContext`. The current contracts carry it
-  as `RecommendationRequest.profile` plus `user_query`, so the engine uses those and
-  doesn't add a duplicate model. If a separate `RetrievalContext` contract lands, only
-  `service.py` needs a one-line change.
-- One engine instance can be shared across requests and sessions (see Data handling below).
-- Clarification paths use the agreed format: `target`, `interests`, `skills.<slug>`.
+- `async def recommend(request: RecommendationRequest) -> RecommendationResult`. This
+  matches the v2 `RecommendationService` protocol and is native async.
+- Reads `request.context` (`RetrievalContext`): `interests[].value`, `skills[]`
+  (name/status), `completed_courses[].value`, `target`, `constraints.modality.value`.
+  Evidence quotes are never copied into output, logs or the graph.
+- Clarifications request exactly one field, using the canonical paths `target`,
+  `interests` or `skills.<name>`, and always include an "I'm not sure" option.
+- Recommendations also fill v2's `modality` and `status` fields. `status` is the event's
+  recorded status, or the best listed course term (`enrollment open`, `scheduled`,
+  `offering unconfirmed`).
+- One engine instance can be shared across requests. The no-persistence rule is covered
+  below.
 
-## Graph boundary (Abishek)
-
-`graph.py` defines the proposed `GraphRepository` protocol and the typed, read-only models
-it returns: `Destination`, `Requirement`, `CampusAction`, `CourseInfo`, `EventInfo`,
-`SkillNode` and `DirectionSuggestion`. The adapter converts query results into these
-models. Cypher/SPARQL, driver records and node handles stay inside the adapter.
-
-| Method | Returns |
-| --- | --- |
-| `find_destinations(name, kind?, company?)` | name/alias matches, case-insensitive |
-| `get_destination(id)` | one destination or `None` |
-| `suggest_directions(interests, limit)` | destinations linked to interests via topics |
-| `requirements_for(destination_id)` | requirements declared on that node only (no inheritance) |
-| `actions_for_skills(skill_ids)` / `actions_for_topics(topics)` | courses and events |
-| `find_courses(codes_or_titles)` | courses, used to read completed coursework |
-
-Data rules the engine relies on:
-- Every `Requirement` must have at least one source.
-- All datetimes need a UTC offset.
-- `offered_terms=None` means unknown; `[]` means no upcoming offering is listed.
-- `eligibility=None` means not published.
-- Teams point to their general role through `base_role_id`.
-
-`InMemoryGraphRepository` (in `fake_repository.py`) stands in for the real graph until the
-adapter is ready. `synthetic_graph.py` holds clearly fake fixture data: SYN course codes,
-fictional companies and example.org URLs. None of it should be shown as real USC data.
-
-## Frontend notes (Riddhi)
-
-Each `Recommendation` fills `why_relevant`, `benefits`, `prerequisites_or_access`,
-`unknowns`, `sources` and `evidence_path`. `evidence_path` reads as a chain, for example
-`Perception team at Nimbus Robotics (team-specific) → requires Computer vision → practiced at
-Computer Vision Workshop`. There are no scores or match percentages to display.
-`limitations` explains anything that was skipped, such as "Skipped Robotics Build Night:
-the organizer cancelled it."
+`tests/test_recommendation_integration.py` runs the engine through the real
+`ChatService`, `AskBackPolicy` and `POST /api/chat`, plus the published
+`docs/examples/recommendation_request.json`. Only the extractor is stubbed.
 
 ## Pipeline
 
 | Step | Module | Key rules |
 | --- | --- | --- |
-| Resolve direction | `destination.py` | Company, role and team targets plus aliases. An ambiguous name gets one question while interests still produce provisional results. With no target, interests map to grounded directions, and with no interests the engine asks one plain question. No job title is required. |
-| Analyze preparation | `preparation.py` | Statuses are known, learning, not_yet_learned and unknown. **Unknown is never a gap.** Completed courses count as *exposure* only. Team-specific and role-baseline requirements are kept separate. |
-| Retrieve | `retrieval.py` | Requirement skill → course/event, interest topic → course/event, and prerequisite bridges (a blocked course → an action that teaches its missing prerequisite). |
-| Feasibility | `feasibility.py` | Cancelled, postponed, past and registration-closed events are excluded. Courses are excluded only on recorded evidence: a prerequisite the student said they haven't learned, no listed offering, or every listed term closed. Anything else unknown is labeled, never assumed. Dates come from an injectable `Clock`. |
-| Rank | `ranking.py` | Small integer weights in `RankingPolicy`: relevance + learning benefit + readiness + feasibility + freshness + requested kind. Courses and events are mixed only when the other kind scores within a set margin. Scores are never returned. |
+| Resolve direction | `destination.py` | Company, role and team targets plus aliases. An ambiguous name gets one question while interests still produce provisional results. With no target, interests map to grounded directions. With no target and no interests, the engine asks one plain question **and** returns broad, clearly labeled starting points, so an "I'm not sure" reply never blocks results. |
+| Analyze preparation | `preparation.py` | Statuses are known, learning, not_yet_learned and unknown, matched through graph aliases. **Unknown is never a gap.** Completed courses count as *exposure* only. Team-specific and role-baseline requirements are kept separate. |
+| Retrieve | `retrieval.py` | Requirement skill → course/event, interest topic → course/event, prerequisite bridges (a blocked course → an action that teaches its missing prerequisite), and broad starters (intro courses with no listed prerequisites, plus events). |
+| Feasibility | `feasibility.py` | Cancelled, postponed, past and registration-closed events are excluded. Courses are excluded only on recorded evidence. Anything else unknown is labeled, never assumed. Dates come from an injectable `Clock`. |
+| Rank | `ranking.py` | Small integer weights in `RankingPolicy`: relevance + learning benefit + readiness + feasibility + freshness + requested kind. Scores are never returned. |
 | Explain | `explain.py` | Courses *teach*. Events offer practice, exposure or networking and state that attendance isn't proficiency and networking isn't a job guarantee. |
 
 ## Data handling
 
-- The engine keeps only collaborators and configuration on the instance. Student-derived
-  data lives only in local variables during `recommend`.
-- No caches, persistence, logging or graph writes. A test checks that the engine's
-  attributes are unchanged after concurrent requests and that nothing is logged.
-- Every request is computed from scratch, so a corrected skill or an updated graph record
-  shows up on the next call.
+The instance holds only collaborators and configuration. Student-derived data lives in
+local variables during `recommend` and is released when the call returns. There are no
+caches, persistence, logging or graph writes. Tests check that engine state is unchanged
+after concurrent requests and that nothing is logged. Every request is computed from
+scratch.
 
 ## How results change (each has a test)
 
 | Change | Result |
 | --- | --- |
-| Student says Python is known instead of not yet learned | The intro Python course drops out: it would teach nothing new. |
+| Student says Python is known instead of not yet learned | The intro Python course drops out. |
 | Goal changes from SWE to Robotics Engineer | A different set, with evidence paths through the new role. |
 | An event record becomes cancelled | The event is removed and the limitations say why. |
 | A prerequisite is known to be unmet | The blocked course is skipped with a reason, and the course that teaches the prerequisite is shown with the path `requirement → blocked course → prerequisite → this course`. |
 
+## Integration mismatches to resolve
+
+### Abishek: `GraphRepository` (`feat/knowledge-graph-ingestion`, not on master yet)
+
+The engine depends on the typed protocol in `recommendations/graph.py`. Abishek's
+`trojan_compass.graph.GraphRepository` has a different shape. Once his branch merges,
+the plan is a thin adapter **in this package** that wraps his repository; his code stays
+unchanged.
+
+| Gap | Abishek's branch | Engine needs |
+| --- | --- | --- |
+| Sync vs async | Sync methods | Async. The adapter will call his methods through `asyncio.to_thread`, as INTEGRATION.md specifies. |
+| Cancelled/postponed actions | `find_actions` filters them out (Neo4j also filters past `end_date`) | **Return them with `status`.** Otherwise the engine can't explain "skipped: cancelled", which is a demo-acceptance case. |
+| Course/event details | Untyped `GraphRecord.attributes` dict | Agreed keys for prerequisites (course codes and skills), restrictions, offered terms with status, modality, event start/end with offset, eligibility, registration required/url/deadline. |
+| Action → skill relation | Only `evidence_paths` and tags | Skill id plus relation (`teaches`/`practices`/`exposes`/`networking`) and level. Without these, "courses teach, events expose" can't be stated reliably. |
+| Destination aliases and links | `Destination(id, kind, name, company_id)`; substring name match | Aliases ("SWE"), team → base role, company → roles. |
+| Interest → direction | Not present | `suggest_directions(interests)`, or a topic → destination edge. |
+| Completed-course lookup | Not present | `find_courses(codes_or_titles)` to read exposure and prerequisites. |
+| Vocabulary | `required`/`preferred`; `active` status; `checked_at: date` | `core`/`preferred`; `scheduled`; `datetime`. The adapter can map these. |
+
+### Karthik: chat backend (merged)
+
+- **Skill paths and aliases.** `AskBackPolicy` treats `skills.<x>` as answered only
+  when an extracted skill name equals `<x>` exactly, ignoring case. The engine sends the
+  casefolded graph name (`skills.python`, `skills.data structures`). If the extractor
+  writes an alias ("DSA"), the policy may not see the question as answered. A suggested
+  fix on his side is to let the extractor normalize to graph names.
+- **`RetrievalContext.skill_status`** matches exact names only. The engine doesn't use
+  it; it matches through graph aliases itself.
+- **`Recommendation.status`** is free text. The values listed under Wiring need
+  confirming with Riddhi before the UI styles them.
+- **`ChatResponse`** has no separate clarification object. The question comes through as
+  `message` plus `suggested_replies`, which works with the engine as is.
+
 ## Limitations
 
-- The fixture data is synthetic. Real USC courses and events depend on Abishek's adapter.
-- Course restrictions (major, D-clearance) are shown and labeled unknown, not evaluated
-  against `program`.
-- `constraints.time_window` is free text and isn't parsed yet. Course modality is compared
-  with `constraints.modality` by exact text.
+- The fixture data is synthetic (SYN course codes, fictional companies, example.org).
+  Real USC data depends on Abishek's adapter.
+- Course restrictions (major, D-clearance) are shown and labeled unknown, not evaluated.
+- `constraints.time_window` isn't parsed. Course modality is compared with
+  `constraints.modality` by exact text.
 - `user_query` is only used to detect a request for courses or events.
 
-## Checks run
+## Checks run (same commands as CI)
 
 ```
-ruff check src/trojan_compass/recommendations tests   # passes
-ruff format --check src/trojan_compass/recommendations tests
-mypy                                                   # strict, no issues (15 files)
-pytest                                                 # 33 passed
+pytest -q                      # 75 passed (36 chat + 39 recommendation)
+mypy src tests                 # strict, no issues (20 files)
+ruff check src tests           # passes
+ruff format --check src tests  # passes
 ```
-
-`ruff check src` also reports one E501 line in `contracts/__init__.py`. That line is
-Karthik's and was left untouched.

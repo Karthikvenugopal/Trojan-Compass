@@ -30,6 +30,8 @@ class Candidate:
     matches: list[SkillMatch] = field(default_factory=list)
     topics: list[str] = field(default_factory=list)
     bridges: list[Bridge] = field(default_factory=list)
+    # A general starting point for a student with no stated direction or interest.
+    broad: bool = False
 
 
 class ActionRetriever:
@@ -58,6 +60,22 @@ class ActionRetriever:
                     candidates.setdefault(action.id, Candidate(action)).topics.extend(hits)
 
         return list(candidates.values())
+
+    async def retrieve_broad(self, browse_limit: int = 50) -> list[Candidate]:
+        """Starting points that need no background: introductory courses with no listed
+        prerequisites, and events. Feasibility and ranking still apply afterwards."""
+        candidates = []
+        for action in await self._repository.browse_actions(browse_limit):
+            introductory = (
+                action.course is not None
+                and not action.course.prerequisites
+                and any(
+                    link.relation == "teaches" and link.level == "intro" for link in action.skills
+                )
+            )
+            if introductory or action.event is not None:
+                candidates.append(Candidate(action, broad=True))
+        return candidates
 
     async def retrieve_bridges(self, bridges: list[Bridge]) -> list[Candidate]:
         """One hop back from a blocked course to actions that teach its missing prerequisite."""

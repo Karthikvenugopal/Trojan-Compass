@@ -96,6 +96,9 @@ class InMemoryGraphRepository:
         wanted = {t.casefold() for t in topics}
         return [a for a in self.actions if wanted & {t.casefold() for t in a.topics}]
 
+    async def browse_actions(self, limit: int) -> list[CampusAction]:
+        return list(self.actions[:limit])
+
     async def find_courses(self, references: Sequence[str]) -> list[CampusAction]:
         wanted = {_norm(r) for r in references}
         return [
