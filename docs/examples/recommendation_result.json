@@ -1,0 +1,46 @@
+{
+  "recommendations": [
+    {
+      "id": "synthetic-course",
+      "kind": "course",
+      "title": "Fixture: programming course",
+      "summary": "Synthetic example, not a real USC offering.",
+      "why_relevant": [
+        "Synthetic topic connects to the sample student interest."
+      ],
+      "benefits": [
+        "Explore programming in the fixture scenario."
+      ],
+      "prerequisites_or_access": [
+        "Eligibility is not verified."
+      ],
+      "unknowns": [
+        "Enrollment and schedule are not verified."
+      ],
+      "action_url": "https://example.invalid/fixture",
+      "sources": [
+        {
+          "url": "https://example.invalid/fixture",
+          "title": "Synthetic fixture source",
+          "checked_at": null
+        }
+      ],
+      "evidence_path": [
+        "fixture interest",
+        "fixture topic",
+        "fixture course"
+      ],
+      "event": null,
+      "course": {
+        "term": "Synthetic term",
+        "modality": null
+      },
+      "modality": null,
+      "status": "fixture"
+    }
+  ],
+  "clarification": null,
+  "limitations": [
+    "Synthetic contract example; not real campus data."
+  ]
+}

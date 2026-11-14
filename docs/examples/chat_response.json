@@ -1,0 +1,10 @@
+{
+  "message": "Would you prefer courses or events?",
+  "suggested_replies": [
+    "Courses",
+    "Events",
+    "I’m not sure"
+  ],
+  "recommendations": [],
+  "limitations": []
+}

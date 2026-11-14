@@ -1,0 +1,1237 @@
+{
+  "ChatRequest": {
+    "$defs": {
+      "ChatMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "messages": {
+        "items": {
+          "$ref": "#/$defs/ChatMessage"
+        },
+        "maxItems": 64,
+        "minItems": 1,
+        "title": "Messages",
+        "type": "array"
+      }
+    },
+    "required": [
+      "messages"
+    ],
+    "title": "ChatRequest",
+    "type": "object"
+  },
+  "RetrievalContext": {
+    "$defs": {
+      "Constraints": {
+        "additionalProperties": false,
+        "properties": {
+          "time_window": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SupportedText"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "modality": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SupportedText"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "additional_preferences": {
+            "items": {
+              "$ref": "#/$defs/SupportedText"
+            },
+            "title": "Additional Preferences",
+            "type": "array"
+          }
+        },
+        "title": "Constraints",
+        "type": "object"
+      },
+      "Skill": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "unknown",
+            "enum": [
+              "known",
+              "learning",
+              "not_yet_learned",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "evidence"
+        ],
+        "title": "Skill",
+        "type": "object"
+      },
+      "StudentStatement": {
+        "additionalProperties": false,
+        "properties": {
+          "message_index": {
+            "minimum": 0,
+            "title": "Message Index",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_index",
+          "quote"
+        ],
+        "title": "StudentStatement",
+        "type": "object"
+      },
+      "SupportedText": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "value",
+          "evidence"
+        ],
+        "title": "SupportedText",
+        "type": "object"
+      },
+      "Target": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "company",
+              "role",
+              "team"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Company Name"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "evidence"
+        ],
+        "title": "Target",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "interests": {
+        "items": {
+          "$ref": "#/$defs/SupportedText"
+        },
+        "title": "Interests",
+        "type": "array"
+      },
+      "skills": {
+        "items": {
+          "$ref": "#/$defs/Skill"
+        },
+        "title": "Skills",
+        "type": "array"
+      },
+      "experiences": {
+        "items": {
+          "$ref": "#/$defs/SupportedText"
+        },
+        "title": "Experiences",
+        "type": "array"
+      },
+      "completed_courses": {
+        "items": {
+          "$ref": "#/$defs/SupportedText"
+        },
+        "title": "Completed Courses",
+        "type": "array"
+      },
+      "program": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SupportedText"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "goals": {
+        "items": {
+          "$ref": "#/$defs/SupportedText"
+        },
+        "title": "Goals",
+        "type": "array"
+      },
+      "target": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Target"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "constraints": {
+        "$ref": "#/$defs/Constraints"
+      }
+    },
+    "title": "RetrievalContext",
+    "type": "object"
+  },
+  "RecommendationRequest": {
+    "$defs": {
+      "Constraints": {
+        "additionalProperties": false,
+        "properties": {
+          "time_window": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SupportedText"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "modality": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SupportedText"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "additional_preferences": {
+            "items": {
+              "$ref": "#/$defs/SupportedText"
+            },
+            "title": "Additional Preferences",
+            "type": "array"
+          }
+        },
+        "title": "Constraints",
+        "type": "object"
+      },
+      "RetrievalContext": {
+        "additionalProperties": false,
+        "properties": {
+          "interests": {
+            "items": {
+              "$ref": "#/$defs/SupportedText"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/$defs/Skill"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "experiences": {
+            "items": {
+              "$ref": "#/$defs/SupportedText"
+            },
+            "title": "Experiences",
+            "type": "array"
+          },
+          "completed_courses": {
+            "items": {
+              "$ref": "#/$defs/SupportedText"
+            },
+            "title": "Completed Courses",
+            "type": "array"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SupportedText"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/$defs/SupportedText"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Target"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "constraints": {
+            "$ref": "#/$defs/Constraints"
+          }
+        },
+        "title": "RetrievalContext",
+        "type": "object"
+      },
+      "Skill": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "unknown",
+            "enum": [
+              "known",
+              "learning",
+              "not_yet_learned",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "evidence"
+        ],
+        "title": "Skill",
+        "type": "object"
+      },
+      "StudentStatement": {
+        "additionalProperties": false,
+        "properties": {
+          "message_index": {
+            "minimum": 0,
+            "title": "Message Index",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_index",
+          "quote"
+        ],
+        "title": "StudentStatement",
+        "type": "object"
+      },
+      "SupportedText": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "value",
+          "evidence"
+        ],
+        "title": "SupportedText",
+        "type": "object"
+      },
+      "Target": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "company",
+              "role",
+              "team"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Company Name"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "evidence"
+        ],
+        "title": "Target",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "context": {
+        "$ref": "#/$defs/RetrievalContext"
+      },
+      "user_query": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "User Query",
+        "type": "string"
+      },
+      "limit": {
+        "default": 3,
+        "maximum": 10,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "context",
+      "user_query"
+    ],
+    "title": "RecommendationRequest",
+    "type": "object"
+  },
+  "RecommendationResult": {
+    "$defs": {
+      "Clarification": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Options",
+            "type": "array"
+          },
+          "requested_fields": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "title": "Requested Fields",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "requested_fields",
+          "reason"
+        ],
+        "title": "Clarification",
+        "type": "object"
+      },
+      "CourseDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "term": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Term"
+          },
+          "modality": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modality"
+          }
+        },
+        "title": "CourseDetails",
+        "type": "object"
+      },
+      "EventSchedule": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timezone"
+          }
+        },
+        "title": "EventSchedule",
+        "type": "object"
+      },
+      "Recommendation": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "course",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "why_relevant": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Why Relevant",
+            "type": "array"
+          },
+          "benefits": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Benefits",
+            "type": "array"
+          },
+          "prerequisites_or_access": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Prerequisites Or Access",
+            "type": "array"
+          },
+          "unknowns": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Unknowns",
+            "type": "array"
+          },
+          "action_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Action Url"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/Source"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "evidence_path": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Evidence Path",
+            "type": "array"
+          },
+          "event": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EventSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CourseDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "modality": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modality"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "summary",
+          "sources",
+          "evidence_path"
+        ],
+        "title": "Recommendation",
+        "type": "object"
+      },
+      "Source": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Checked At"
+          }
+        },
+        "required": [
+          "url",
+          "title"
+        ],
+        "title": "Source",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "recommendations": {
+        "items": {
+          "$ref": "#/$defs/Recommendation"
+        },
+        "title": "Recommendations",
+        "type": "array"
+      },
+      "clarification": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Clarification"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "limitations": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": "Limitations",
+        "type": "array"
+      }
+    },
+    "title": "RecommendationResult",
+    "type": "object"
+  },
+  "ChatResponse": {
+    "$defs": {
+      "CourseDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "term": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Term"
+          },
+          "modality": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modality"
+          }
+        },
+        "title": "CourseDetails",
+        "type": "object"
+      },
+      "EventSchedule": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timezone"
+          }
+        },
+        "title": "EventSchedule",
+        "type": "object"
+      },
+      "Recommendation": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "course",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "why_relevant": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Why Relevant",
+            "type": "array"
+          },
+          "benefits": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Benefits",
+            "type": "array"
+          },
+          "prerequisites_or_access": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Prerequisites Or Access",
+            "type": "array"
+          },
+          "unknowns": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Unknowns",
+            "type": "array"
+          },
+          "action_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Action Url"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/Source"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "evidence_path": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Evidence Path",
+            "type": "array"
+          },
+          "event": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EventSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CourseDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "modality": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modality"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "summary",
+          "sources",
+          "evidence_path"
+        ],
+        "title": "Recommendation",
+        "type": "object"
+      },
+      "Source": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Checked At"
+          }
+        },
+        "required": [
+          "url",
+          "title"
+        ],
+        "title": "Source",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "message": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Message",
+        "type": "string"
+      },
+      "suggested_replies": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": "Suggested Replies",
+        "type": "array"
+      },
+      "recommendations": {
+        "items": {
+          "$ref": "#/$defs/Recommendation"
+        },
+        "title": "Recommendations",
+        "type": "array"
+      },
+      "limitations": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": "Limitations",
+        "type": "array"
+      }
+    },
+    "required": [
+      "message"
+    ],
+    "title": "ChatResponse",
+    "type": "object"
+  }
+}
