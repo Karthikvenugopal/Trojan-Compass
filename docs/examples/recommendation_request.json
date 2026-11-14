@@ -1,0 +1,12 @@
+{
+  "profile": {
+    "interests": ["robotics"],
+    "skills": [{"name": "Python", "status": "learning", "supporting_statement": "I am learning Python."}],
+    "experiences": [], "completed_courses": [], "program": null,
+    "goals": ["Explore robotics careers"],
+    "target": {"kind": "role", "name": "Robotics engineer", "company_name": null},
+    "constraints": {"time_window": null, "modality": null, "additional_preferences": []}
+  },
+  "user_query": "What could I try next?",
+  "limit": 3
+}

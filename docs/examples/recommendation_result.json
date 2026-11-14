@@ -1,0 +1,16 @@
+{
+  "recommendations": [{
+    "id": "synthetic-course-1", "kind": "course", "title": "Example robotics foundations",
+    "summary": "Synthetic integration fixture; not a real campus offering.",
+    "why_relevant": ["Connects robotics interests to introductory practice."],
+    "benefits": ["Practice basic robot programming"],
+    "prerequisites_or_access": ["Check enrollment eligibility"],
+    "unknowns": ["Availability has not been verified"],
+    "action_url": "https://example.org/courses/robotics",
+    "sources": [{"url": "https://example.org/catalog", "title": "Synthetic catalog", "checked_at": null}],
+    "evidence_path": ["Robotics engineer", "robot programming", "Example robotics foundations"],
+    "event": null, "course": {"term": null, "modality": null}
+  }],
+  "clarification": null,
+  "limitations": ["Synthetic integration fixture only."]
+}
