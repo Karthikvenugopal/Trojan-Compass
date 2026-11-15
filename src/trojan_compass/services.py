@@ -1,6 +1,7 @@
 """Dependency-injected orchestration; services retain dependencies, never student state."""
 
 import asyncio
+import re
 
 from trojan_compass.contracts import (
     ChatMessage,
@@ -25,6 +26,35 @@ class ChatUnavailable(Exception):
 
 class AskBackPolicy:
     """Defer discovery to graph retrieval; filter questions already answered by context."""
+
+    def prioritize_discovery(
+        self, question: Clarification, context: RetrievalContext, query: str
+    ) -> bool:
+        """A vague opening gets a question before broad cards, not a questionnaire.
+
+        Explicit browsing requests and supported background can use provisional
+        results immediately. Repeat questions are already removed by choose(),
+        so an unsure answer can progress to broad options on the next request.
+        """
+        return (
+            question.requested_fields == ["interests"]
+            and not any(
+                (
+                    context.interests,
+                    context.target,
+                    context.skills,
+                    context.experiences,
+                    context.completed_courses,
+                    context.goals,
+                )
+            )
+            and not re.search(
+                r"\b(courses?|class(?:es)?|events?|workshops?|meetups?|talks?|"
+                r"panels?|hackathons?|starting points?|options|recommendations)\b",
+                query,
+                re.IGNORECASE,
+            )
+        )
 
     def choose(
         self,
@@ -83,6 +113,23 @@ class ChatService:
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
                 )
                 question = self._policy.choose(result.clarification, context, request.messages)
+                if (
+                    result.recommendations
+                    and question is not None
+                    and self._policy.prioritize_discovery(
+                        question, context, retrieval_request.user_query
+                    )
+                ):
+                    # The graph's broad candidates are not personal matches. Keep
+                    # discovery focused until the student responds or asks to browse.
+                    options = list(question.options) or [
+                        "Building things",
+                        "Understanding people",
+                        "Solving problems",
+                    ]
+                    if not any("sure" in option.casefold() for option in options):
+                        options = options[:5] + ["I’m not sure — show broad starting points"]
+                    return ChatResponse(message=question.text, suggested_replies=options)
                 recommendations = result.recommendations[: retrieval_request.limit]
                 limitations = list(result.limitations)
                 if result.clarification and question is None:

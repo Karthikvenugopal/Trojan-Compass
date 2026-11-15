@@ -476,7 +476,7 @@ async def test_cap_results_and_preserve_provisional_clarification() -> None:
         limitations=["Fixture limitation"],
     )
     response = await ChatService(FakeExtractor(), FakeRecommendations(result)).chat(
-        ChatRequest(messages=[student("Synthetic query")]),
+        ChatRequest(messages=[student("Show me campus options")]),
     )
     assert len(response.recommendations) == 3
     assert clarification().text in response.message
@@ -592,6 +592,6 @@ async def test_maximum_length_clarification_with_provisional_results() -> None:
                 clarification=question,
             )
         ),
-    ).chat(ChatRequest(messages=[student("Synthetic query")]))
+    ).chat(ChatRequest(messages=[student("Show me campus options")]))
     assert response.message == question.text
     assert response.recommendations

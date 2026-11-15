@@ -112,7 +112,7 @@ def test_campus_full_path_reextracts_corrections_without_persisting() -> None:
         )
         broad = ChatResponse.model_validate(third.json())
         assert broad.suggested_replies
-        assert any(r.kind == "event" for r in broad.recommendations)
+        assert broad.recommendations == []
         assert third.headers["cache-control"] == "no-store"
         assert "set-cookie" not in third.headers
 
@@ -163,7 +163,7 @@ def test_environment_factory_uses_real_campus_path(monkeypatch: pytest.MonkeyPat
             "/api/chat",
             json={
                 "messages": [
-                    {"role": "user", "content": "Help me get started"},
+                    {"role": "user", "content": "Show me campus events"},
                 ]
             },
         )
@@ -277,7 +277,7 @@ def test_owned_database_adapter_closes_and_never_imports_during_chat(
             "/api/chat",
             json={
                 "messages": [
-                    {"role": "user", "content": "Help me get started"},
+                    {"role": "user", "content": "Show me campus events"},
                 ]
             },
         )
