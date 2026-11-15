@@ -64,37 +64,41 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Start the backend first; Vite must never accept requests before its API is ready.
+compass_wait_ready() {
+  "$compass_python" - "$1" "$2" <<'PYTHON'
+import sys
+import time
+import httpx
+name, url = sys.argv[1:]
+with httpx.Client(trust_env=False, timeout=0.5) as client:
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        try:
+            response = client.get(url)
+            if response.status_code == 200:
+                if name != 'backend' or response.json().get('status') == 'ok':
+                    break
+        except (httpx.HTTPError, ValueError):
+            pass
+        time.sleep(0.25)
+    else:
+        print(f'The {name} did not become ready. No working site is being advertised. '
+              'Check the startup error above.', file=sys.stderr)
+        raise SystemExit(1)
+PYTHON
+}
+
 PYTHONPATH="$compass_root/src${PYTHONPATH:+:$PYTHONPATH}" \
   "$compass_python" -m uvicorn trojan_compass.api:app_from_environment \
   --factory --env-file "$compass_root/.env" --host 127.0.0.1 --port 8000 --no-access-log &
 compass_backend_pid=$!
+compass_wait_ready backend http://127.0.0.1:8000/health
+
 (cd frontend && export VITE_USE_MOCK_API=false && \
   exec node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort) &
 compass_frontend_pid=$!
-
-# Never advertise a working site until both actual HTTP listeners respond.
-"$compass_python" - <<'PY'
-import sys
-import time
-import httpx
-with httpx.Client(trust_env=False, timeout=0.5) as client:
-    for name, url in (('backend', 'http://127.0.0.1:8000/health'),
-                      ('frontend', 'http://127.0.0.1:5173')):
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline:
-            try:
-                response = client.get(url)
-                if response.status_code == 200:
-                    if name != 'backend' or response.json().get('status') == 'ok':
-                        break
-            except (httpx.HTTPError, ValueError):
-                pass
-            time.sleep(0.25)
-        else:
-            print(f'The {name} did not become ready. No working site is being advertised. '
-                  'Check the startup error above.', file=sys.stderr)
-            raise SystemExit(1)
-PY
+compass_wait_ready frontend http://127.0.0.1:5173
 
 echo 'Trojan Compass is ready: http://127.0.0.1:5173'
 echo 'Backend health passed. Keep this terminal open; Ctrl+C stops both servers.'
