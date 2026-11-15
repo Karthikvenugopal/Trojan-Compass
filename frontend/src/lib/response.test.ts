@@ -49,3 +49,9 @@ it.each([
     ] },
   })).toThrow('unreadable response');
 });
+
+it.each([[{ code: 'PSYC 100', title: 'Psychology', sources: [] }],
+  [{ code: 'PSYC 100', title: 'Psychology', sources: [{ url: 'javascript:alert(1)', title: 'Bad', checked_at: null }] }],
+  [null]])('rejects malformed course-history choices', course_history_options => {
+  expect(() => decodeResponse({ message: 'Synthetic', suggested_replies: [], recommendations: [], limitations: [], course_history_options })).toThrow();
+});

@@ -80,43 +80,31 @@ jobs:
               })
               assert preflight.status_code == 200
               assert preflight.headers['access-control-allow-origin'] == origin
-              direct = client.post('http://127.0.0.1:8000/api/chat', headers={'Origin': origin},
-                  json={'messages': [{'role': 'user', 'content': 'Show a programming course. I have no experience.'}]})
-              assert direct.status_code == 200
-              assert direct.headers['access-control-allow-origin'] == origin
-              reply = client.post('http://127.0.0.1:5173/api/chat', json={
-                  'messages': [{'role': 'user', 'content': 'Show a programming course. I have no experience.'}],
-              })
-              assert reply.status_code == 200
-              assert reply.json()['recommendations']
-              assert reply.headers['cache-control'] == 'no-store'
               first = client.post('http://127.0.0.1:5173/api/chat', json={
                   'messages': [{'role': 'user', 'content': 'Hi'}],
               }).json()
+              required = ['direction', 'study_stage', 'program', 'work_experience', 'completed_courses']
               assert first['recommendations'] == []
-              assert first['information']['missing_fields'] == ['direction', 'background']
-              corrected = client.post('http://127.0.0.1:5173/api/chat', json={
-                  'messages': [
-                      {'role': 'user', 'content': 'Hi'},
-                      {'role': 'assistant', 'content': first['message']},
-                      {'role': 'user', 'content': 'Update my direction: programming.',
-                       'edit': {'field': 'direction', 'status': 'provided', 'value': 'programming'}},
-                  ],
-              }).json()
-              assert corrected['information']['missing_fields'] == ['background']
-              assert corrected['recommendations'] == []
-              completed = client.post('http://127.0.0.1:5173/api/chat', json={
-                  'messages': [
-                      {'role': 'user', 'content': 'Hi'},
-                      {'role': 'assistant', 'content': first['message']},
-                      {'role': 'user', 'content': 'Update my direction: programming.',
-                       'edit': {'field': 'direction', 'status': 'provided', 'value': 'programming'}},
-                      {'role': 'assistant', 'content': corrected['message']},
-                      {'role': 'user', 'content': 'I have no experience'},
-                  ],
-              }).json()
-              assert completed['information']['ready']
-              assert completed['recommendations']
+              assert first['information']['missing_fields'] == required
+              history = []
+              for index, (field, value) in enumerate([
+                  ('direction', 'programming'), ('study_stage', 'Undergraduate'),
+                  ('program', None), ('work_experience', None), ('completed_courses', None),
+              ]):
+                  history.append({'role': 'user', 'content': f'Update {field}: {value or "None"}',
+                      'edit': {'field': field, 'status': 'provided' if value else 'none', 'value': value}})
+                  reply = client.post('http://127.0.0.1:5173/api/chat', json={'messages': history})
+                  assert reply.status_code == 200
+                  assert reply.headers['cache-control'] == 'no-store'
+                  assert reply.json()['information']['missing_fields'] == required[index + 1:]
+                  if index < 4:
+                      assert reply.json()['recommendations'] == []
+              assert reply.json()['information']['ready']
+              assert reply.json()['recommendations']
+              direct = client.post('http://127.0.0.1:8000/api/chat', headers={'Origin': origin},
+                  json={'messages': history})
+              assert direct.status_code == 200
+              assert direct.headers['access-control-allow-origin'] == origin
           print('Actual frontend, backend and proxied chat request passed.')
           PY
           kill -TERM "$launcher_pid"

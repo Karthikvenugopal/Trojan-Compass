@@ -93,17 +93,19 @@ set it to `true`. No frontend environment file contains backend/provider credent
 The backend `.env.example` documents variables; it is not automatically loaded.
 Configure them in your server environment and restart both servers after changes.
 
-Before searching, chat collects two minimum answers: **an area to explore** and
-**relevant skills/experience/coursework**. An explicit “I don’t know” or “None”
-resolves either question. Broad themes such as “Building things” get a concrete
-follow-up before background and search. Already supplied answers are skipped.
-Dates, format and recorded prerequisites add questions only when they matter.
+Before recommendation search, chat collects five core answers: **direction, study
+stage, program/major, work/project experience, and completed courses**. Explicit
+“I don’t know” or “None” counts as an answer. It skips facts already supplied and
+asks one focused question at a time. A broad theme may get one refinement. Timing,
+format and graph prerequisites add questions only when material. No career target
+is required. Real course examples can help students recall their course history;
+only a student's confirmation establishes completion, never mastery.
 
-Beginner path: unsure → Building things → Programming (apps/websites) →
-no experience → sourced course options. The composition adapter follows existing
-interest-to-skill-to-course links without assigning a career target or inferring
-mastery. If current data has no match, chat explains the coverage limit once and
-offers sourced areas it can actually check, without a stack of internal warnings.
+Campus mode loads the official public USC course/event snapshot at startup, with
+source links and dated event occurrences. The public importer generates a validated
+shared-data batch and aggregate coverage report, never student records. See
+[university intake and refresh instructions](docs/university-intake.md). A missing
+match means limited current coverage; it does not restart the questionnaire.
 
 Open **What I’m using** below the chat to inspect or correct information. It is
 collapsed by default. Each field offers Not answered, I don’t know, None, or an

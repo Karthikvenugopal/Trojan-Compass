@@ -11,6 +11,7 @@ interface ChatMessageViewProps {
 
 export function ChatMessageView({ message, onSuggestedReply, isBusy }: ChatMessageViewProps) {
   const [showAll, setShowAll] = useState(false);
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const isAssistant = message.role === 'assistant';
   const recommendations = message.recommendations ?? [];
   const visibleRecommendations = showAll ? recommendations : recommendations.slice(0, 3);
@@ -33,6 +34,22 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy }: ChatMessa
         )}
         {recommendations.length > 3 && !showAll && (
           <button type="button" className="text-button" onClick={() => setShowAll(true)}>Show {recommendations.length - 3} more recommendations</button>
+        )}
+        {isAssistant && !!message.course_history_options?.length && (
+          <fieldset className="course-history-choices" disabled={isBusy}>
+            <legend>Recognize any? Select only courses you completed.</legend>
+            <p>These sourced examples are memory aids. You can type other courses below.</p>
+            {message.course_history_options.map(course => <div key={course.code}>
+              <label><input type="checkbox" checked={selectedCourses.includes(course.code)}
+                onChange={event => setSelectedCourses(current => event.target.checked
+                  ? [...current, course.code] : current.filter(code => code !== course.code))} /> {course.title}</label>
+              {' '}<a href={course.sources[0].url} target="_blank" rel="noopener noreferrer">USC source</a>
+            </div>)}
+            <button type="button" disabled={isBusy || !selectedCourses.length}
+              onClick={() => onSuggestedReply(`I have completed these courses: ${selectedCourses.join(', ')}.`)}>
+              Confirm completed courses
+            </button>
+          </fieldset>
         )}
         {isAssistant && message.suggested_replies && message.suggested_replies.length > 0 && (
           <div className="suggested-replies" aria-label="Suggested replies">

@@ -6,6 +6,10 @@ export function decodeResponse(value: unknown): ChatResponse {
   if (!record(value) || !text(value.message) || !strings(value.suggested_replies)
       || !strings(value.limitations) || !Array.isArray(value.recommendations)
       || !value.recommendations.every(recommendation)
+      || (value.course_history_options !== undefined && (!Array.isArray(value.course_history_options)
+        || value.course_history_options.length > 8 || !value.course_history_options.every(option =>
+          record(option) && text(option.code) && text(option.title) && Array.isArray(option.sources)
+          && option.sources.length > 0 && option.sources.every(item => record(item) && url(item.url) && text(item.title) && nullableText(item.checked_at)))))
       || (value.information !== undefined && !information(value.information))) {
     throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
   }
@@ -30,7 +34,7 @@ function information(value: unknown): boolean {
 
 function fieldKey(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 120
-    && /^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\..{1,100})$/.test(value);
+    && /^(direction|direction_detail|study_stage|work_experience|completed_courses|background|program|preferences|time_window|modality|target|skills\..{1,100})$/.test(value);
 }
 
 function recommendation(value: unknown): value is Recommendation {

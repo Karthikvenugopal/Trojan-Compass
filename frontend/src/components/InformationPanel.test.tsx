@@ -58,3 +58,13 @@ describe('information editor', () => {
     expect(screen.getByRole('textbox', { name: 'Interests or direction answer' })).toBeDisabled();
   });
 });
+
+it('shows the full empty core checklist when expanded before the first request', async () => {
+  const user = userEvent.setup();
+  render(<InformationPanel information={null} disabled={false} onSave={vi.fn()} />);
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /What I’m using/ }));
+  for (const label of ['Study stage', 'Program or major', 'Work, volunteering and projects', 'Completed courses']) {
+    expect(screen.getByRole('combobox', { name: label })).toHaveValue('not_answered');
+  }
+});
