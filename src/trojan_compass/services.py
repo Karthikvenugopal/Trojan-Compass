@@ -349,7 +349,7 @@ class DemoRecommendationService:
             answer.field == "direction" and answer.status in ("unknown", "none")
             for answer in request.context.answers
         )
-        programming = any(i.value.casefold() == "programming" for i in request.context.interests)
+        programming = any("programming" in i.value.casefold() for i in request.context.interests)
         if (
             general
             or programming

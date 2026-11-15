@@ -508,6 +508,47 @@ def test_demo_beginner_journey_with_uncertain_reply() -> None:
         assert not result.suggested_replies
 
 
+def test_demo_processes_checklist_choices_and_free_text_answers() -> None:
+    from trojan_compass.composition import RuntimeSettings, create_configured_app
+
+    history: list[dict[str, object]] = []
+    with TestClient(create_configured_app(RuntimeSettings(mode="demo"))) as client:
+
+        def send(text: str) -> ChatResponse:
+            history.append({"role": "user", "content": text})
+            response = client.post("/api/chat", json={"messages": history})
+            assert response.status_code == 200
+            result = ChatResponse.model_validate(response.json())
+            history.append({"role": "assistant", "content": result.message})
+            return result
+
+        first = send("I have an interest to explore")
+        assert first.information.missing_fields[0] == "direction"
+
+        broad = send("Building things")
+        assert broad.message.startswith("What kind of things would you enjoy building?")
+        assert broad.information.missing_fields[0] == "direction_detail"
+
+        detail = send("Programming (apps or websites)")
+        assert detail.information.missing_fields[0] == "study_stage"
+        assert "What interests you" not in detail.message
+
+        stage = send("Graduate student")
+        assert stage.information.missing_fields[0] == "program"
+        program = send("Computer Science")
+        assert program.information.missing_fields[0] == "work_experience"
+
+        work = send("2 years of experience as software engineer")
+        assert work.information.missing_fields[0] == "completed_courses"
+        result = send("CSCI 102 and MATH 125")
+        assert result.information.ready
+        assert result.recommendations[0].status == "demo_fixture"
+        assert all(
+            "Check current access" in item
+            for item in result.recommendations[0].prerequisites_or_access
+        )
+
+
 @pytest.mark.asyncio
 async def test_cap_results_after_direction_is_answered() -> None:
     resources = [resource().model_copy(update={"id": str(i)}) for i in range(5)]

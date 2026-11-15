@@ -166,7 +166,10 @@ def create_configured_app(
             raise ValueError(
                 "Choose campus or production mode for injected integration dependencies"
             )
-        return create_app(mode=settings.mode)
+        return create_app(
+            mode=settings.mode,
+            local_intake=ControlledIntakeParser() if settings.mode == "demo" else None,
+        )
     # The question assistant uses the same server-configured provider as extraction;
     # injected (test) extractors get no assistant unless one is injected too.
     # Live apps use AI orchestration. Explicit legacy dependency injection remains

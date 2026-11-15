@@ -1,7 +1,7 @@
-"""Re-derive only explicit UI selections; defer every unsupported turn to extraction.
+"""Re-derive answers to known questions; defer unrelated turns to extraction.
 
-This is production intake, not fixture data or a fallback recommendation generator.
-No earlier free-form message, correction or constraint can be skipped to use it.
+Answers are copied verbatim only when they directly follow a recognized assistant
+question. This does not infer skills, targets or other facts from free text.
 """
 
 import re
@@ -147,6 +147,27 @@ class ControlledIntakeParser:
                         for part in references
                     ]
                     continue  # Explicit completion answers do not establish skill mastery.
+
+            # In offline demo mode, retain literal answers only when the immediately
+            # preceding assistant turn asked for that specific information. This lets
+            # students type a real answer instead of being trapped in the same prompt.
+            evidence = [StudentStatement(message_index=index, quote=text)]
+            if field in {"direction", "direction_detail"}:
+                if normalized in STARTERS:
+                    continue
+                context.interests = [SupportedText(value=text, evidence=evidence)]
+                continue
+            if field == "study_stage":
+                context.study_stage = SupportedText(value=text, evidence=evidence)
+                continue
+            if field == "work_experience":
+                if normalized not in {"i have no experience", "no experience"}:
+                    context.experiences = [SupportedText(value=text, evidence=evidence)]
+                continue
+            if field == "completed_courses":
+                context.completed_courses = [SupportedText(value=text, evidence=evidence)]
+                continue
+
             allowed = (
                 field == "direction"
                 and text in DIRECTIONS
