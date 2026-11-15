@@ -515,7 +515,8 @@ async def test_cap_results_after_direction_is_answered() -> None:
     response = await ChatService(FakeExtractor(context), FakeRecommendations(result)).chat(
         ChatRequest(messages=[student("Show programming courses. I have no experience.")]),
     )
-    assert len(response.recommendations) == 3
+    # Chat requests up to four cards: three courses plus one event.
+    assert len(response.recommendations) == 4
     assert response.information.ready
     assert response.limitations == ["Fixture limitation"]
     assert response.recommendations[0].unknowns == resource().unknowns

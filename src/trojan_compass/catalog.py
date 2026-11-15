@@ -70,6 +70,13 @@ EXPANSIONS: dict[str, str] = {
     "ui": "user interface",
     "ux": "user experience design",
     "os": "operating systems",
+    "healthcare": "health medical medicine clinical",
+    "apps": "application software development mobile",
+    "websites": "web development",
+    "coding": "programming software",
+    "robots": "robotics",
+    "startup": "entrepreneurship venture",
+    "startups": "entrepreneurship venture",
 }
 
 
@@ -375,6 +382,9 @@ def _strings(values: object) -> tuple[str, ...]:
             out.append(value)
         elif isinstance(value, dict):
             text = value.get("courseSpace") or value.get("description") or value.get("name")
+            if not text and value.get("groupDescription"):
+                excluded = str(value.get("restriction") or "").casefold().startswith("excl")
+                text = f"{value['groupDescription']}" + (" (excluded)" if excluded else "")
             if not text:
                 text = " ".join(str(v) for v in value.values() if isinstance(v, str))
             if text:

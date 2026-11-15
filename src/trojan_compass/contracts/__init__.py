@@ -186,6 +186,67 @@ class Recommendation(Contract):
     status: Text | None = None
 
 
+class GraphNode(Contract):
+    """One node of the pathway subgraph shown to the student (shared campus data)."""
+
+    id: Text
+    kind: Literal["interest", "skill", "course", "professor", "event"]
+    label: Text
+    detail: Text | None = None
+    url: HttpUrl | None = None
+    state: Literal["known", "to_learn", "recommended", "prerequisite", "related"] | None = None
+
+
+class GraphEdge(Contract):
+    source: Text
+    target: Text
+    label: Text
+    # True when the link was inferred (for example from a course description).
+    inferred: bool = False
+
+
+class PathwayGraph(Contract):
+    nodes: list[GraphNode] = Field(default_factory=list, max_length=80)
+    edges: list[GraphEdge] = Field(default_factory=list, max_length=200)
+
+
+class RoadmapSkill(Contract):
+    name: Text
+    why: Text | None = None
+
+
+class RoadmapCourse(Contract):
+    code: Text
+    title: Text
+    term: Text | None = None
+    note: Text | None = None
+    url: HttpUrl | None = None
+
+
+class RoadmapPerson(Contract):
+    name: Text
+    role: Text | None = None
+    research: Text | None = None
+    url: HttpUrl | None = None
+
+
+class RoadmapEvent(Contract):
+    title: Text
+    when: Text | None = None
+    url: HttpUrl | None = None
+
+
+class Roadmap(Contract):
+    """What I know -> what to learn -> courses, people and events to explore."""
+
+    focus: Text
+    known: list[Text] = Field(default_factory=list, max_length=12)
+    to_learn: list[RoadmapSkill] = Field(default_factory=list, max_length=8)
+    courses: list[RoadmapCourse] = Field(default_factory=list, max_length=8)
+    people: list[RoadmapPerson] = Field(default_factory=list, max_length=6)
+    events: list[RoadmapEvent] = Field(default_factory=list, max_length=4)
+
+
 class RecommendationRequest(Contract):
     context: RetrievalContext
     user_query: Text
@@ -197,6 +258,11 @@ class RecommendationResult(Contract):
     clarification: Clarification | None = None
     limitations: list[Text] = Field(default_factory=list)
     exploration_options: list[Text] = Field(default_factory=list, max_length=5)
+    # Knowledge-graph pathway results (absent for plain card results).
+    summary: Text | None = None
+    follow_ups: list[Text] = Field(default_factory=list, max_length=5)
+    graph: PathwayGraph | None = None
+    roadmap: Roadmap | None = None
 
 
 class RecommendationService(Protocol):
@@ -233,3 +299,5 @@ class ChatResponse(Contract):
     information: InformationSnapshot = Field(default_factory=InformationSnapshot)
     # Official pages a direct campus/course answer relied on (empty for card replies).
     sources: list[Source] = Field(default_factory=list, max_length=5)
+    graph: PathwayGraph | None = None
+    roadmap: Roadmap | None = None

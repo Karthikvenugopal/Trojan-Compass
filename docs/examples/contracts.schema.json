@@ -926,6 +926,148 @@
         "title": "EventSchedule",
         "type": "object"
       },
+      "GraphEdge": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Target",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "inferred": {
+            "default": false,
+            "title": "Inferred",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "label"
+        ],
+        "title": "GraphEdge",
+        "type": "object"
+      },
+      "GraphNode": {
+        "additionalProperties": false,
+        "description": "One node of the pathway subgraph shown to the student (shared campus data).",
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "interest",
+              "skill",
+              "course",
+              "professor",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "known",
+                  "to_learn",
+                  "recommended",
+                  "prerequisite",
+                  "related"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label"
+        ],
+        "title": "GraphNode",
+        "type": "object"
+      },
+      "PathwayGraph": {
+        "additionalProperties": false,
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/$defs/GraphNode"
+            },
+            "maxItems": 80,
+            "title": "Nodes",
+            "type": "array"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/$defs/GraphEdge"
+            },
+            "maxItems": 200,
+            "title": "Edges",
+            "type": "array"
+          }
+        },
+        "title": "PathwayGraph",
+        "type": "object"
+      },
       "Recommendation": {
         "additionalProperties": false,
         "properties": {
@@ -1086,6 +1228,265 @@
         "title": "Recommendation",
         "type": "object"
       },
+      "Roadmap": {
+        "additionalProperties": false,
+        "description": "What I know -> what to learn -> courses, people and events to explore.",
+        "properties": {
+          "focus": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Focus",
+            "type": "string"
+          },
+          "known": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Known",
+            "type": "array"
+          },
+          "to_learn": {
+            "items": {
+              "$ref": "#/$defs/RoadmapSkill"
+            },
+            "maxItems": 8,
+            "title": "To Learn",
+            "type": "array"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/$defs/RoadmapCourse"
+            },
+            "maxItems": 8,
+            "title": "Courses",
+            "type": "array"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/$defs/RoadmapPerson"
+            },
+            "maxItems": 6,
+            "title": "People",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/RoadmapEvent"
+            },
+            "maxItems": 4,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "focus"
+        ],
+        "title": "Roadmap",
+        "type": "object"
+      },
+      "RoadmapCourse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "term": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Term"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "code",
+          "title"
+        ],
+        "title": "RoadmapCourse",
+        "type": "object"
+      },
+      "RoadmapEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "when": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "When"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "RoadmapEvent",
+        "type": "object"
+      },
+      "RoadmapPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Role"
+          },
+          "research": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Research"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RoadmapPerson",
+        "type": "object"
+      },
+      "RoadmapSkill": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Why"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RoadmapSkill",
+        "type": "object"
+      },
       "Source": {
         "additionalProperties": false,
         "properties": {
@@ -1162,6 +1563,52 @@
         "maxItems": 5,
         "title": "Exploration Options",
         "type": "array"
+      },
+      "summary": {
+        "anyOf": [
+          {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Summary"
+      },
+      "follow_ups": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 5,
+        "title": "Follow Ups",
+        "type": "array"
+      },
+      "graph": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/PathwayGraph"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "roadmap": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Roadmap"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
       }
     },
     "title": "RecommendationResult",
@@ -1249,6 +1696,125 @@
           }
         },
         "title": "EventSchedule",
+        "type": "object"
+      },
+      "GraphEdge": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Target",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "inferred": {
+            "default": false,
+            "title": "Inferred",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "label"
+        ],
+        "title": "GraphEdge",
+        "type": "object"
+      },
+      "GraphNode": {
+        "additionalProperties": false,
+        "description": "One node of the pathway subgraph shown to the student (shared campus data).",
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "interest",
+              "skill",
+              "course",
+              "professor",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "known",
+                  "to_learn",
+                  "recommended",
+                  "prerequisite",
+                  "related"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label"
+        ],
+        "title": "GraphNode",
         "type": "object"
       },
       "InformationField": {
@@ -1342,6 +1908,29 @@
         "title": "InformationSnapshot",
         "type": "object"
       },
+      "PathwayGraph": {
+        "additionalProperties": false,
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/$defs/GraphNode"
+            },
+            "maxItems": 80,
+            "title": "Nodes",
+            "type": "array"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/$defs/GraphEdge"
+            },
+            "maxItems": 200,
+            "title": "Edges",
+            "type": "array"
+          }
+        },
+        "title": "PathwayGraph",
+        "type": "object"
+      },
       "Recommendation": {
         "additionalProperties": false,
         "properties": {
@@ -1502,6 +2091,265 @@
         "title": "Recommendation",
         "type": "object"
       },
+      "Roadmap": {
+        "additionalProperties": false,
+        "description": "What I know -> what to learn -> courses, people and events to explore.",
+        "properties": {
+          "focus": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Focus",
+            "type": "string"
+          },
+          "known": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Known",
+            "type": "array"
+          },
+          "to_learn": {
+            "items": {
+              "$ref": "#/$defs/RoadmapSkill"
+            },
+            "maxItems": 8,
+            "title": "To Learn",
+            "type": "array"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/$defs/RoadmapCourse"
+            },
+            "maxItems": 8,
+            "title": "Courses",
+            "type": "array"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/$defs/RoadmapPerson"
+            },
+            "maxItems": 6,
+            "title": "People",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/RoadmapEvent"
+            },
+            "maxItems": 4,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "focus"
+        ],
+        "title": "Roadmap",
+        "type": "object"
+      },
+      "RoadmapCourse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "term": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Term"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "code",
+          "title"
+        ],
+        "title": "RoadmapCourse",
+        "type": "object"
+      },
+      "RoadmapEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "when": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "When"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "RoadmapEvent",
+        "type": "object"
+      },
+      "RoadmapPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Role"
+          },
+          "research": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Research"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RoadmapPerson",
+        "type": "object"
+      },
+      "RoadmapSkill": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Why"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RoadmapSkill",
+        "type": "object"
+      },
       "Source": {
         "additionalProperties": false,
         "properties": {
@@ -1583,6 +2431,28 @@
         "maxItems": 5,
         "title": "Sources",
         "type": "array"
+      },
+      "graph": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/PathwayGraph"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "roadmap": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Roadmap"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
       }
     },
     "required": [

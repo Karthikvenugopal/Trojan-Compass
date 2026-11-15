@@ -25,7 +25,9 @@ from trojan_compass.exploration import ExplorationRecommendationService
 from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
+from trojan_compass.knowledge_graph import KnowledgeGraph
 from trojan_compass.llm import configured_llm
+from trojan_compass.pathways import PathwayRecommendationService
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
 
@@ -55,6 +57,9 @@ class RuntimeSettings:
     neo4j_database: str = "neo4j"
     catalog_path: Path | None = None
     kb_path: Path | None = None
+    skills_path: Path | None = None
+    faculty_path: Path | None = None
+    events_path: Path | None = None
 
     @classmethod
     def from_environment(cls) -> "RuntimeSettings":
@@ -67,7 +72,16 @@ class RuntimeSettings:
         catalog_path = Path(catalog) if catalog else default_catalog
         kb = os.getenv("COMPASS_KB_PATH")
         kb_path = Path(kb) if kb else default_catalog.with_name("campus_kb.json")
+        data = default_catalog.parent
+        skills = Path(os.getenv("COMPASS_SKILLS_PATH") or data / "course_skills.json")
+        faculty = Path(os.getenv("COMPASS_FACULTY_PATH") or data / "faculty_research.json")
+        events = Path(
+            os.getenv("COMPASS_EVENTS_PATH") or data.parent / "mock" / "handshake_events.json"
+        )
         return cls(
+            skills_path=skills if skills.is_file() else None,
+            faculty_path=faculty if faculty.is_file() else None,
+            events_path=events if events.is_file() else None,
             kb_path=kb_path if kb_path.is_file() else None,
             catalog_path=catalog_path if catalog_path.is_file() else None,
             mode=cast(AppMode, mode),
@@ -163,7 +177,9 @@ def create_configured_app(
                 await asyncio.to_thread(owned_graph.close)
 
         lifespan = close_graph
-    notices = (SEED_NOTICE, COVERAGE_NOTICE) if settings.mode == "campus" else (COVERAGE_NOTICE,)
+    notices: tuple[str, ...] = (
+        (SEED_NOTICE, COVERAGE_NOTICE) if settings.mode == "campus" else (COVERAGE_NOTICE,)
+    )
     service: RecommendationService = ExplorationRecommendationService(
         RecommendationEngine(graph), graph
     )
@@ -173,9 +189,22 @@ def create_configured_app(
         catalog = CatalogIndex.load(settings.catalog_path)
         service = CatalogRecommendationService(service, catalog)
         notices = (CATALOG_SEED_NOTICE,)
-    if build_assistant:
+    llm = configured_llm() if build_assistant else None
+    if catalog is not None and settings.catalog_path and settings.skills_path:
+        # Knowledge graph over the same public data; the earlier services stay as the
+        # fallback for requests the graph cannot place (for example no stated direction).
+        knowledge_graph = KnowledgeGraph.load(
+            catalog,
+            settings.catalog_path,
+            settings.skills_path,
+            settings.faculty_path,
+            settings.events_path,
+        )
+        service = PathwayRecommendationService(knowledge_graph, llm, fallback=service)
+        notices = ()  # the pathway result states its own sources and limits
+    if llm is not None:
         knowledge = KnowledgeBase.load(settings.kb_path) if settings.kb_path else None
-        assistant = CampusAssistant(configured_llm(), catalog, knowledge)
+        assistant = CampusAssistant(llm, catalog, knowledge)
     return create_app(
         mode=settings.mode,
         extractor=extractor,

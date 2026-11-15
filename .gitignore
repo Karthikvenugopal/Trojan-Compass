@@ -16,3 +16,8 @@ frontend/dist/
 
 # USC catalog raw API cache (re-fetchable)
 data/raw/
+
+# Demo tooling
+tools/demo/node_modules/
+tools/demo/.browsers/
+tools/demo/out/

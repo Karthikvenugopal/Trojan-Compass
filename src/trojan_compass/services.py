@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 from trojan_compass.contracts import (
@@ -19,10 +20,10 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
-from trojan_compass.readiness import CHECKLIST_HINT, request_information
+from trojan_compass.readiness import CHECKLIST_HINT, request_information, starter_question
 
 if TYPE_CHECKING:
-    from trojan_compass.assistant import CampusAssistant
+    from trojan_compass.assistant import CampusAssistant, RouteDecision
 
 
 class ChatUnavailable(Exception):
@@ -82,6 +83,15 @@ class ChatService:
         try:
             # One bounded lifecycle; no retries that silently replay private content.
             async with asyncio.timeout(40):
+                starter = starter_question(request.messages[-1].content)
+                if starter is not None and len(request.messages) == 1:
+                    # Welcome-screen entry paths: ask their opening question directly.
+                    blank = request_information(RetrievalContext(), request.messages)
+                    return ChatResponse(
+                        message=f"{starter[0]}\n\n{CHECKLIST_HINT}",
+                        suggested_replies=starter[1],
+                        information=blank.snapshot(),
+                    )
                 extraction = asyncio.ensure_future(self._extractor.extract(request.messages))
                 answer = await self._answer_question(request, extraction)
                 if answer is not None:
@@ -95,18 +105,21 @@ class ChatService:
                     first_question = opening_question.requested_fields == ["direction"] and not any(
                         m.role == "assistant" for m in request.messages
                     )
+                    text, options = opening_question.text, opening_question.options
+                    if opening_question.requested_fields == ["direction"]:
+                        text, options = starter_question(request.messages[-1].content) or (
+                            text,
+                            options,
+                        )
                     return ChatResponse(
-                        message=(
-                            f"{opening_question.text}\n\n{CHECKLIST_HINT}"
-                            if first_question
-                            else opening_question.text
-                        ),
-                        suggested_replies=opening_question.options,
+                        message=f"{text}\n\n{CHECKLIST_HINT}" if first_question else text,
+                        suggested_replies=options,
                         information=information.snapshot(),
                     )
                 retrieval_request = RecommendationRequest(
                     context=context,
                     user_query=request.messages[-1].content,
+                    limit=4,
                 )
                 result = RecommendationResult.model_validate(
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
@@ -178,14 +191,18 @@ class ChatService:
                             "starting points, not personalized matches."
                         )
                     else:
-                        message = "Here are campus options with supporting sources below."
+                        message = result.summary or (
+                            "Here are campus options with supporting sources below."
+                        )
                 # Composition is deterministic: retrieved text is never executed or reprompted.
                 return ChatResponse(
                     message=message,
-                    suggested_replies=[],
+                    suggested_replies=result.follow_ups,
                     recommendations=recommendations,
                     limitations=limitations,
                     information=information.snapshot(),
+                    graph=result.graph,
+                    roadmap=result.roadmap,
                 )
         except Exception:
             raise ChatUnavailable() from None
@@ -198,18 +215,47 @@ class ChatService:
         Routing runs concurrently with extraction. A routing failure falls back to the
         existing flow rather than failing the turn.
         """
-        if self._assistant is None:
+        # Panel edits and the starter buttons always belong to the course flow.
+        latest = request.messages[-1]
+        if (
+            self._assistant is None
+            or latest.edit is not None
+            or latest.content.startswith("My background")  # pasted resume / experience
+        ):
             return None
-        try:
-            decision = await self._assistant.route(request.messages)
-        except Exception:
-            return None
+        decision = self._explain_request(request)
+        if decision is None:
+            try:
+                decision = await self._assistant.route(request.messages)
+            except Exception:
+                return None
         if decision.intent == "recommendation":
             return None
         extraction.cancel()
         with contextlib.suppress(BaseException):
             await extraction
         return await self._assistant.answer(request.messages, decision)
+
+    @staticmethod
+    def _explain_request(request: ChatRequest) -> "RouteDecision | None":
+        """'Explain these simply' explains the courses just recommended, from the catalog."""
+        from trojan_compass.assistant import RouteDecision
+
+        if not request.messages[-1].content.strip().casefold().startswith("explain these"):
+            return None
+        previous = next(
+            (m.content for m in reversed(request.messages[:-1]) if m.role == "assistant"), ""
+        )
+        codes = list(dict.fromkeys(re.findall(r"\b[A-Z]{2,4} \d{3}[A-Z]{0,2}\b", previous)))
+        if not codes:
+            return None
+        return RouteDecision(
+            intent="course_question",
+            course_codes=codes[:4],
+            search_query="Explain in plain, simple language what these courses cover and "
+            "why they fit the student's interest: " + ", ".join(codes[:4]),
+            needs_library_hours=False,
+        )
 
 
 class DemoRecommendationService:

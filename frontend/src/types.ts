@@ -73,6 +73,8 @@ export interface ChatResponse {
   information?: InformationSnapshot;
   /** Official pages a direct campus/course answer relied on. */
   sources?: Source[];
+  graph?: PathwayGraph | null;
+  roadmap?: Roadmap | null;
 }
 
 export interface DisplayMessage extends ChatMessage {
@@ -81,4 +83,42 @@ export interface DisplayMessage extends ChatMessage {
   limitations?: string[];
   suggested_replies?: string[];
   sources?: Source[];
+}
+
+/** Knowledge-graph pathway returned with recommendations (shared campus data). */
+export type GraphNodeKind = 'interest' | 'skill' | 'course' | 'professor' | 'event';
+
+export interface GraphNode {
+  id: string;
+  kind: GraphNodeKind;
+  label: string;
+  detail: string | null;
+  url: string | null;
+  state: 'known' | 'to_learn' | 'recommended' | 'prerequisite' | 'related' | null;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  label: string;
+  inferred: boolean;
+}
+
+export interface PathwayGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface Roadmap {
+  focus: string;
+  known: string[];
+  to_learn: { name: string; why: string | null }[];
+  courses: { code: string; title: string; term: string | null; note: string | null; url: string | null }[];
+  people: { name: string; role: string | null; research: string | null; url: string | null }[];
+  events: { title: string; when: string | null; url: string | null }[];
+}
+
+export interface Pathway {
+  graph: PathwayGraph | null;
+  roadmap: Roadmap | null;
 }

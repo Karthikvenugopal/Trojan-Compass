@@ -1,0 +1,2316 @@
+{
+ "notice": "MOCK DATA. Handshake's API is private; these events are synthetic samples with fictional employers, generated for the hackathon demo.",
+ "source_url": "https://usc.joinhandshake.com/",
+ "events": [
+  {
+   "id": "hs-mock-900016",
+   "name": "Trojan alumni panel: paths into data science and analytics",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-11-20T14:00:00-08:00",
+   "end_date": "2026-11-20T15:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample alumni panel about data mining, sql, data visualization. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "data mining",
+    "sql",
+    "data visualization"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Marshall School of Business",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Junior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900051",
+   "name": "Hands-on workshop: public policy for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Watt Way Foundation",
+    "industry": "Policy and social impact"
+   },
+   "host": "Watt Way Foundation",
+   "start_date": "2026-11-23T10:00:00-08:00",
+   "end_date": "2026-11-23T11:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Leavey Library auditorium",
+   "description": "Sample workshop about public policy, public administration. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "public policy",
+    "public administration"
+   ],
+   "audience": {
+    "schools": [
+     "Price School of Public Policy",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900038",
+   "name": "health and life sciences networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-11-27T17:30:00-08:00",
+   "end_date": "2026-11-27T19:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample networking mixer about health policy, clinical research. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "health policy",
+    "clinical research"
+   ],
+   "audience": {
+    "schools": [
+     "Keck School of Medicine",
+     "Alfred E. Mann School of Pharmacy and Pharmaceutical Sciences",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900011",
+   "name": "software engineering networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-11-30T16:00:00-08:00",
+   "end_date": "2026-11-30T18:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample networking mixer about database systems, software engineering. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "database systems",
+    "software engineering"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900035",
+   "name": "Gateway Product Studio site visit for entrepreneurship and product students",
+   "event_type": "Site Visit",
+   "employer": {
+    "name": "Gateway Product Studio",
+    "industry": "Entrepreneurship and product"
+   },
+   "host": "Gateway Product Studio",
+   "start_date": "2026-11-30T18:30:00-08:00",
+   "end_date": "2026-11-30T21:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample site visit about project management, business strategy, marketing. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "project management",
+    "business strategy",
+    "marketing"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900067",
+   "name": "CPT and OPT basics for international students",
+   "event_type": "Workshop",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-01T10:00:00-08:00",
+   "end_date": "2026-12-01T11:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Seeley G. Mudd, SGM 123",
+   "description": "Sample career-center workshop.",
+   "skills": [
+    "career planning"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900048",
+   "name": "Leavey Interactive student challenge: film production",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Leavey Interactive",
+    "industry": "Film, games and media"
+   },
+   "host": "Leavey Interactive",
+   "start_date": "2026-12-01T10:30:00-08:00",
+   "end_date": "2026-12-01T14:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample case competition about film production, screenwriting, animation. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "film production",
+    "screenwriting",
+    "animation"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900022",
+   "name": "Hoover Dynamics site visit for robotics and hardware students",
+   "event_type": "Site Visit",
+   "employer": {
+    "name": "Hoover Dynamics",
+    "industry": "Robotics and hardware"
+   },
+   "host": "Hoover Dynamics",
+   "start_date": "2026-12-03T17:30:00-08:00",
+   "end_date": "2026-12-03T20:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample site visit about robotics, vlsi design. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "robotics",
+    "vlsi design"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900044",
+   "name": "Hands-on workshop: journalism for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Shrine Pictures",
+    "industry": "Film, games and media"
+   },
+   "host": "Shrine Pictures",
+   "start_date": "2026-12-04T14:30:00-08:00",
+   "end_date": "2026-12-04T16:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ginsburg Hall auditorium",
+   "description": "Sample workshop about journalism, game design, screenwriting. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "journalism",
+    "game design",
+    "screenwriting"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900028",
+   "name": "Village Ventures info session: careers in entrepreneurship and product",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "Village Ventures",
+    "industry": "Entrepreneurship and product"
+   },
+   "host": "Village Ventures",
+   "start_date": "2026-12-07T14:30:00-08:00",
+   "end_date": "2026-12-07T15:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample employer info session about marketing, entrepreneurship, product management. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "marketing",
+    "entrepreneurship",
+    "product management"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900005",
+   "name": "Coffee chats with Nimbus Labs (large language models)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "Nimbus Labs",
+    "industry": "AI and machine learning"
+   },
+   "host": "Nimbus Labs",
+   "start_date": "2026-12-07T16:00:00-08:00",
+   "end_date": "2026-12-07T16:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Epstein Family Alumni Center",
+   "description": "Sample coffee chat about large language models, natural language processing. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "large language models",
+    "natural language processing"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900057",
+   "name": "Hands-on workshop: music industry for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Ramo Records",
+    "industry": "Music and performance"
+   },
+   "host": "Ramo Records",
+   "start_date": "2026-12-08T10:00:00-08:00",
+   "end_date": "2026-12-08T11:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample workshop about music industry, music production, music composition. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "music industry",
+    "music production",
+    "music composition"
+   ],
+   "audience": {
+    "schools": [
+     "Thornton School of Music"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900060",
+   "name": "Ramo Records student challenge: music composition",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Ramo Records",
+    "industry": "Music and performance"
+   },
+   "host": "Ramo Records",
+   "start_date": "2026-12-08T17:00:00-08:00",
+   "end_date": "2026-12-08T21:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample case competition about music composition, music production, music industry. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "music composition",
+    "music production",
+    "music industry"
+   ],
+   "audience": {
+    "schools": [
+     "Thornton School of Music"
+    ],
+    "class_years": [
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900052",
+   "name": "Trojan alumni panel: paths into policy and social impact",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-08T17:30:00-08:00",
+   "end_date": "2026-12-08T18:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample alumni panel about nonprofit management, policy analysis. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "nonprofit management",
+    "policy analysis"
+   ],
+   "audience": {
+    "schools": [
+     "Price School of Public Policy",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900058",
+   "name": "music and performance networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-08T18:00:00-08:00",
+   "end_date": "2026-12-08T20:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample networking mixer about music production, music composition, performance. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "music production",
+    "music composition",
+    "performance"
+   ],
+   "audience": {
+    "schools": [
+     "Thornton School of Music"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900013",
+   "name": "Coffee chats with Exposition Software (software engineering)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "Exposition Software",
+    "industry": "Software engineering"
+   },
+   "host": "Exposition Software",
+   "start_date": "2026-12-09T10:00:00-08:00",
+   "end_date": "2026-12-09T10:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample coffee chat about software engineering, python programming, cloud computing. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "software engineering",
+    "python programming",
+    "cloud computing"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900026",
+   "name": "Trojan alumni panel: paths into finance and consulting",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-11T12:30:00-08:00",
+   "end_date": "2026-12-11T13:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample alumni panel about valuation, financial accounting, corporate finance. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "valuation",
+    "financial accounting",
+    "corporate finance"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900042",
+   "name": "McClintock Media info session: careers in film, games and media",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "McClintock Media",
+    "industry": "Film, games and media"
+   },
+   "host": "McClintock Media",
+   "start_date": "2026-12-14T10:30:00-08:00",
+   "end_date": "2026-12-14T11:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample employer info session about animation, film production, storytelling. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "animation",
+    "film production",
+    "storytelling"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900033",
+   "name": "Coffee chats with Village Ventures (business strategy)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "Village Ventures",
+    "industry": "Entrepreneurship and product"
+   },
+   "host": "Village Ventures",
+   "start_date": "2026-12-14T12:30:00-08:00",
+   "end_date": "2026-12-14T13:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample coffee chat about business strategy, leadership, project management. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "business strategy",
+    "leadership",
+    "project management"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900050",
+   "name": "Civic Compass talk: urban planning in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Civic Compass",
+    "industry": "Policy and social impact"
+   },
+   "host": "Civic Compass",
+   "start_date": "2026-12-15T14:30:00-08:00",
+   "end_date": "2026-12-15T15:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample tech talk about urban planning, research methods. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "urban planning",
+    "research methods"
+   ],
+   "audience": {
+    "schools": [
+     "Price School of Public Policy",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900045",
+   "name": "film, games and media networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-15T17:30:00-08:00",
+   "end_date": "2026-12-15T19:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Epstein Family Alumni Center",
+   "description": "Sample networking mixer about storytelling, film production, game design. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "storytelling",
+    "film production",
+    "game design"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900019",
+   "name": "Hands-on workshop: robotics for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Lumen Robotics",
+    "industry": "Robotics and hardware"
+   },
+   "host": "Lumen Robotics",
+   "start_date": "2026-12-17T10:30:00-08:00",
+   "end_date": "2026-12-17T12:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample workshop about robotics, vlsi design, signal processing. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "robotics",
+    "vlsi design",
+    "signal processing"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900047",
+   "name": "Coffee chats with Leavey Interactive (journalism)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "Leavey Interactive",
+    "industry": "Film, games and media"
+   },
+   "host": "Leavey Interactive",
+   "start_date": "2026-12-17T12:30:00-08:00",
+   "end_date": "2026-12-17T13:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ginsburg Hall auditorium",
+   "description": "Sample coffee chat about journalism, screenwriting. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "journalism",
+    "screenwriting"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900053",
+   "name": "LA Metro Futures Lab student challenge: public policy",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "LA Metro Futures Lab",
+    "industry": "Policy and social impact"
+   },
+   "host": "LA Metro Futures Lab",
+   "start_date": "2026-12-17T14:30:00-08:00",
+   "end_date": "2026-12-17T18:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample case competition about public policy, nonprofit management. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "public policy",
+    "nonprofit management"
+   ],
+   "audience": {
+    "schools": [
+     "Price School of Public Policy",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900066",
+   "name": "Finding on-campus research positions",
+   "event_type": "Workshop",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-18T18:30:00-08:00",
+   "end_date": "2026-12-18T19:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample career-center workshop.",
+   "skills": [
+    "research methods"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900040",
+   "name": "Soto Health Partners student challenge: epidemiology",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Soto Health Partners",
+    "industry": "Health and life sciences"
+   },
+   "host": "Soto Health Partners",
+   "start_date": "2026-12-19T16:00:00-08:00",
+   "end_date": "2026-12-19T20:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample case competition about epidemiology, clinical research. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "epidemiology",
+    "clinical research"
+   ],
+   "audience": {
+    "schools": [
+     "Keck School of Medicine",
+     "Alfred E. Mann School of Pharmacy and Pharmaceutical Sciences",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900064",
+   "name": "Networking 101 for first-time job seekers",
+   "event_type": "Workshop",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-21T12:00:00-08:00",
+   "end_date": "2026-12-21T13:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample career-center workshop.",
+   "skills": [
+    "career networking"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Sophomore",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900018",
+   "name": "Hoover Dynamics info session: careers in robotics and hardware",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "Hoover Dynamics",
+    "industry": "Robotics and hardware"
+   },
+   "host": "Hoover Dynamics",
+   "start_date": "2026-12-22T17:00:00-08:00",
+   "end_date": "2026-12-22T18:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample employer info session about signal processing, control systems. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "signal processing",
+    "control systems"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900006",
+   "name": "Figueroa Research student challenge: large language models",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Figueroa Research",
+    "industry": "AI and machine learning"
+   },
+   "host": "Figueroa Research",
+   "start_date": "2026-12-24T14:00:00-08:00",
+   "end_date": "2026-12-24T18:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Leavey Library auditorium",
+   "description": "Sample case competition about large language models, natural language processing, artificial intelligence. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "large language models",
+    "natural language processing",
+    "artificial intelligence"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900007",
+   "name": "Lumen Robotics site visit for ai and machine learning students",
+   "event_type": "Site Visit",
+   "employer": {
+    "name": "Lumen Robotics",
+    "industry": "AI and machine learning"
+   },
+   "host": "Lumen Robotics",
+   "start_date": "2026-12-28T16:00:00-08:00",
+   "end_date": "2026-12-28T19:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Seeley G. Mudd, SGM 123",
+   "description": "Sample site visit about machine learning, large language models, deep learning. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "machine learning",
+    "large language models",
+    "deep learning"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900032",
+   "name": "Trojan alumni panel: paths into entrepreneurship and product",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-28T16:30:00-08:00",
+   "end_date": "2026-12-28T17:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Leavey Library auditorium",
+   "description": "Sample alumni panel about project management, product management, leadership. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "project management",
+    "product management",
+    "leadership"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900061",
+   "name": "Resume review drop-ins",
+   "event_type": "Resume Review",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2026-12-31T10:00:00-08:00",
+   "end_date": "2026-12-31T12:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample career-center resume review.",
+   "skills": [
+    "resume writing"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900046",
+   "name": "Trojan alumni panel: paths into film, games and media",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-01-01T17:30:00-08:00",
+   "end_date": "2027-01-01T18:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample alumni panel about film production, journalism, animation. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "film production",
+    "journalism",
+    "animation"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900068",
+   "name": "Graduate student career fair",
+   "event_type": "Career Fair",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-01-12T17:30:00-08:00",
+   "end_date": "2027-01-12T21:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample career-center career fair.",
+   "skills": [
+    "career networking",
+    "interviewing"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900002",
+   "name": "Hands-on workshop: machine learning for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Nimbus Labs",
+    "industry": "AI and machine learning"
+   },
+   "host": "Nimbus Labs",
+   "start_date": "2027-01-18T18:30:00-08:00",
+   "end_date": "2027-01-18T20:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Seeley G. Mudd, SGM 123",
+   "description": "Sample workshop about machine learning, large language models, information retrieval. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "machine learning",
+    "large language models",
+    "information retrieval"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900037",
+   "name": "Hands-on workshop: public health for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Alcazar Biotech",
+    "industry": "Health and life sciences"
+   },
+   "host": "Alcazar Biotech",
+   "start_date": "2027-01-21T14:30:00-08:00",
+   "end_date": "2027-01-21T16:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample workshop about public health, pharmacology, epidemiology. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "public health",
+    "pharmacology",
+    "epidemiology"
+   ],
+   "audience": {
+    "schools": [
+     "Keck School of Medicine",
+     "Alfred E. Mann School of Pharmacy and Pharmaceutical Sciences",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900015",
+   "name": "Bovard Insights talk: data science in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Bovard Insights",
+    "industry": "Data science and analytics"
+   },
+   "host": "Bovard Insights",
+   "start_date": "2027-01-22T16:30:00-08:00",
+   "end_date": "2027-01-22T17:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Seeley G. Mudd, SGM 123",
+   "description": "Sample tech talk about data science, data visualization, statistics. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "data science",
+    "data visualization",
+    "statistics"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Marshall School of Business",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Sophomore",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900027",
+   "name": "Cromwell Advisory student challenge: financial analysis",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Cromwell Advisory",
+    "industry": "Finance and consulting"
+   },
+   "host": "Cromwell Advisory",
+   "start_date": "2027-01-24T12:30:00-08:00",
+   "end_date": "2027-01-24T16:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample case competition about financial analysis, investment banking, financial accounting. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "financial analysis",
+    "investment banking",
+    "financial accounting"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900059",
+   "name": "Coffee chats with Ramo Records (performance)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "Ramo Records",
+    "industry": "Music and performance"
+   },
+   "host": "Ramo Records",
+   "start_date": "2027-01-25T14:00:00-08:00",
+   "end_date": "2027-01-25T14:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample coffee chat about performance, music production. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "performance",
+    "music production"
+   ],
+   "audience": {
+    "schools": [
+     "Thornton School of Music"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900034",
+   "name": "Village Ventures student challenge: business strategy",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Village Ventures",
+    "industry": "Entrepreneurship and product"
+   },
+   "host": "Village Ventures",
+   "start_date": "2027-01-25T18:30:00-08:00",
+   "end_date": "2027-01-25T22:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ginsburg Hall auditorium",
+   "description": "Sample case competition about business strategy, marketing, product management. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "business strategy",
+    "marketing",
+    "product management"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900062",
+   "name": "Interview practice lab",
+   "event_type": "Workshop",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-01-26T10:00:00-08:00",
+   "end_date": "2027-01-26T11:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample career-center workshop.",
+   "skills": [
+    "interviewing"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900017",
+   "name": "Coffee chats with McCarthy Data Co. (data mining)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "McCarthy Data Co.",
+    "industry": "Data science and analytics"
+   },
+   "host": "McCarthy Data Co.",
+   "start_date": "2027-01-28T14:00:00-08:00",
+   "end_date": "2027-01-28T14:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Seeley G. Mudd, SGM 123",
+   "description": "Sample coffee chat about data mining, statistics. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "data mining",
+    "statistics"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Marshall School of Business",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Sophomore",
+     "Senior"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900012",
+   "name": "Trojan alumni panel: paths into software engineering",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-01-29T17:00:00-08:00",
+   "end_date": "2027-01-29T18:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Fertitta Hall, JFF 240",
+   "description": "Sample alumni panel about python programming, data structures, database systems. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "python programming",
+    "data structures",
+    "database systems"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900001",
+   "name": "Nimbus Labs talk: large language models in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Nimbus Labs",
+    "industry": "AI and machine learning"
+   },
+   "host": "Nimbus Labs",
+   "start_date": "2027-01-29T17:30:00-08:00",
+   "end_date": "2027-01-29T18:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample tech talk about large language models, reinforcement learning. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "large language models",
+    "reinforcement learning"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900010",
+   "name": "Hands-on workshop: data structures for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Vermont Avenue Systems",
+    "industry": "Software engineering"
+   },
+   "host": "Vermont Avenue Systems",
+   "start_date": "2027-02-01T12:30:00-08:00",
+   "end_date": "2027-02-01T14:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ginsburg Hall auditorium",
+   "description": "Sample workshop about data structures, operating systems. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "data structures",
+    "operating systems"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900030",
+   "name": "Hands-on workshop: marketing for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Founders Row",
+    "industry": "Entrepreneurship and product"
+   },
+   "host": "Founders Row",
+   "start_date": "2027-02-01T17:00:00-08:00",
+   "end_date": "2027-02-01T18:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample workshop about marketing, product management, leadership. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "marketing",
+    "product management",
+    "leadership"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900043",
+   "name": "Leavey Interactive talk: animation in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Leavey Interactive",
+    "industry": "Film, games and media"
+   },
+   "host": "Leavey Interactive",
+   "start_date": "2027-02-03T18:00:00-08:00",
+   "end_date": "2027-02-03T19:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ginsburg Hall auditorium",
+   "description": "Sample tech talk about animation, film directing, storytelling. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "animation",
+    "film directing",
+    "storytelling"
+   ],
+   "audience": {
+    "schools": [
+     "Cinematic Arts",
+     "Annenberg School for Communication and Journalism"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900009",
+   "name": "Exposition Software talk: data structures in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Exposition Software",
+    "industry": "Software engineering"
+   },
+   "host": "Exposition Software",
+   "start_date": "2027-02-04T10:30:00-08:00",
+   "end_date": "2027-02-04T11:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample tech talk about data structures, software engineering. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "data structures",
+    "software engineering"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900063",
+   "name": "Build your elevator pitch",
+   "event_type": "Workshop",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-02-05T16:30:00-08:00",
+   "end_date": "2027-02-05T17:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample career-center workshop.",
+   "skills": [
+    "professional elevator pitch",
+    "public speaking"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900024",
+   "name": "Hands-on workshop: corporate finance for beginners",
+   "event_type": "Workshop",
+   "employer": {
+    "name": "Hill Street Partners",
+    "industry": "Finance and consulting"
+   },
+   "host": "Hill Street Partners",
+   "start_date": "2027-02-05T17:00:00-08:00",
+   "end_date": "2027-02-05T18:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample workshop about corporate finance, valuation, financial analysis. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "corporate finance",
+    "valuation",
+    "financial analysis"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900036",
+   "name": "Alcazar Biotech talk: clinical research in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Alcazar Biotech",
+    "industry": "Health and life sciences"
+   },
+   "host": "Alcazar Biotech",
+   "start_date": "2027-02-08T17:30:00-08:00",
+   "end_date": "2027-02-08T18:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Leavey Library auditorium",
+   "description": "Sample tech talk about clinical research, biostatistics. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "clinical research",
+    "biostatistics"
+   ],
+   "audience": {
+    "schools": [
+     "Keck School of Medicine",
+     "Alfred E. Mann School of Pharmacy and Pharmaceutical Sciences",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900049",
+   "name": "LA Metro Futures Lab info session: careers in policy and social impact",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "LA Metro Futures Lab",
+    "industry": "Policy and social impact"
+   },
+   "host": "LA Metro Futures Lab",
+   "start_date": "2027-02-08T18:30:00-08:00",
+   "end_date": "2027-02-08T19:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample employer info session about research methods, urban planning. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "research methods",
+    "urban planning"
+   ],
+   "audience": {
+    "schools": [
+     "Price School of Public Policy",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900039",
+   "name": "Coffee chats with Mission Clinical Research (epidemiology)",
+   "event_type": "Coffee Chat",
+   "employer": {
+    "name": "Mission Clinical Research",
+    "industry": "Health and life sciences"
+   },
+   "host": "Mission Clinical Research",
+   "start_date": "2027-02-09T14:30:00-08:00",
+   "end_date": "2027-02-09T15:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Leavey Library auditorium",
+   "description": "Sample coffee chat about epidemiology, health policy. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "epidemiology",
+    "health policy"
+   ],
+   "audience": {
+    "schools": [
+     "Keck School of Medicine",
+     "Alfred E. Mann School of Pharmacy and Pharmaceutical Sciences",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior",
+     "Masters"
+    ]
+   },
+   "registration_required": false,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900025",
+   "name": "finance and consulting networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-02-15T14:00:00-08:00",
+   "end_date": "2027-02-15T16:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample networking mixer about valuation, consulting. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "valuation",
+    "consulting"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business"
+    ],
+    "class_years": [
+     "Sophomore",
+     "Junior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900003",
+   "name": "ai and machine learning networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-02-15T18:30:00-08:00",
+   "end_date": "2027-02-15T20:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample networking mixer about reinforcement learning, artificial intelligence, information retrieval. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "reinforcement learning",
+    "artificial intelligence",
+    "information retrieval"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900029",
+   "name": "Gateway Product Studio talk: business strategy in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Gateway Product Studio",
+    "industry": "Entrepreneurship and product"
+   },
+   "host": "Gateway Product Studio",
+   "start_date": "2027-02-17T17:00:00-08:00",
+   "end_date": "2027-02-17T18:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ginsburg Hall auditorium",
+   "description": "Sample tech talk about business strategy, marketing, product management. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "business strategy",
+    "marketing",
+    "product management"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900065",
+   "name": "Spring Career and Internship Fair preview night",
+   "event_type": "Career Fair",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-02-22T17:00:00-08:00",
+   "end_date": "2027-02-22T20:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample career-center career fair.",
+   "skills": [
+    "career networking"
+   ],
+   "audience": {
+    "schools": [],
+    "class_years": [
+     "Freshman",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900054",
+   "name": "Watt Way Foundation site visit for policy and social impact students",
+   "event_type": "Site Visit",
+   "employer": {
+    "name": "Watt Way Foundation",
+    "industry": "Policy and social impact"
+   },
+   "host": "Watt Way Foundation",
+   "start_date": "2027-02-23T10:30:00-08:00",
+   "end_date": "2027-02-23T13:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample site visit about nonprofit management, urban planning. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "nonprofit management",
+    "urban planning"
+   ],
+   "audience": {
+    "schools": [
+     "Price School of Public Policy",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900021",
+   "name": "Trojan alumni panel: paths into robotics and hardware",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-02-23T16:30:00-08:00",
+   "end_date": "2027-02-23T17:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample alumni panel about control systems, robotics, vlsi design. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "control systems",
+    "robotics",
+    "vlsi design"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Junior",
+     "Masters"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900023",
+   "name": "Hill Street Partners info session: careers in finance and consulting",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "Hill Street Partners",
+    "industry": "Finance and consulting"
+   },
+   "host": "Hill Street Partners",
+   "start_date": "2027-02-24T12:00:00-08:00",
+   "end_date": "2027-02-24T13:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "virtual",
+   "location": "Zoom (link after RSVP)",
+   "description": "Sample employer info session about consulting, financial analysis. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "consulting",
+    "financial analysis"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900056",
+   "name": "Ramo Records talk: performance in practice",
+   "event_type": "Tech Talk",
+   "employer": {
+    "name": "Ramo Records",
+    "industry": "Music and performance"
+   },
+   "host": "Ramo Records",
+   "start_date": "2027-03-01T10:00:00-08:00",
+   "end_date": "2027-03-01T11:15:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample tech talk about performance, music composition. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "performance",
+    "music composition"
+   ],
+   "audience": {
+    "schools": [
+     "Thornton School of Music"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900004",
+   "name": "Trojan alumni panel: paths into ai and machine learning",
+   "event_type": "Alumni Panel",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-03-01T17:30:00-08:00",
+   "end_date": "2027-03-01T18:45:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Seeley G. Mudd, SGM 123",
+   "description": "Sample alumni panel about large language models, computer vision. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "large language models",
+    "computer vision"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900031",
+   "name": "entrepreneurship and product networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-03-03T14:30:00-08:00",
+   "end_date": "2027-03-03T16:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "hybrid",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample networking mixer about business strategy, entrepreneurship, product management. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "business strategy",
+    "entrepreneurship",
+    "product management"
+   ],
+   "audience": {
+    "schools": [
+     "Marshall School of Business",
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900014",
+   "name": "Trousdale Cloud student challenge: algorithms",
+   "event_type": "Case Competition",
+   "employer": {
+    "name": "Trousdale Cloud",
+    "industry": "Software engineering"
+   },
+   "host": "Trousdale Cloud",
+   "start_date": "2027-03-05T12:30:00-08:00",
+   "end_date": "2027-03-05T16:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample case competition about algorithms, cloud computing. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "algorithms",
+    "cloud computing"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Junior",
+     "Senior"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900008",
+   "name": "Vermont Avenue Systems info session: careers in software engineering",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "Vermont Avenue Systems",
+    "industry": "Software engineering"
+   },
+   "host": "Vermont Avenue Systems",
+   "start_date": "2027-03-08T16:00:00-08:00",
+   "end_date": "2027-03-08T17:00:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Ronald Tutor Campus Center, Room 227",
+   "description": "Sample employer info session about data structures, cloud computing. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "data structures",
+    "cloud computing"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Freshman",
+     "Senior"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900020",
+   "name": "robotics and hardware networking mixer with alumni",
+   "event_type": "Networking Mixer",
+   "employer": null,
+   "host": "USC Career Center",
+   "start_date": "2027-03-08T17:30:00-08:00",
+   "end_date": "2027-03-08T19:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample networking mixer about computer architecture, robotics, control systems. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "computer architecture",
+    "robotics",
+    "control systems"
+   ],
+   "audience": {
+    "schools": [
+     "Viterbi School of Engineering"
+    ],
+    "class_years": [
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900041",
+   "name": "Mission Clinical Research site visit for health and life sciences students",
+   "event_type": "Site Visit",
+   "employer": {
+    "name": "Mission Clinical Research",
+    "industry": "Health and life sciences"
+   },
+   "host": "Mission Clinical Research",
+   "start_date": "2027-03-08T17:30:00-08:00",
+   "end_date": "2027-03-08T20:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Annenberg Wallis Hall forum",
+   "description": "Sample site visit about epidemiology, biostatistics, public health. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "epidemiology",
+    "biostatistics",
+    "public health"
+   ],
+   "audience": {
+    "schools": [
+     "Keck School of Medicine",
+     "Alfred E. Mann School of Pharmacy and Pharmaceutical Sciences",
+     "Dornsife College of Letters, Arts and Sciences"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Senior",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  },
+  {
+   "id": "hs-mock-900055",
+   "name": "Bing Stage Collective info session: careers in music and performance",
+   "event_type": "Employer Info Session",
+   "employer": {
+    "name": "Bing Stage Collective",
+    "industry": "Music and performance"
+   },
+   "host": "Bing Stage Collective",
+   "start_date": "2027-03-08T17:30:00-08:00",
+   "end_date": "2027-03-08T18:30:00-08:00",
+   "time_zone": "America/Los_Angeles",
+   "medium": "in_person",
+   "location": "Michelson Center, MCB 101",
+   "description": "Sample employer info session about music industry, music production. Meet people working in the field and ask how they got started.",
+   "skills": [
+    "music industry",
+    "music production"
+   ],
+   "audience": {
+    "schools": [
+     "Thornton School of Music"
+    ],
+    "class_years": [
+     "Freshman",
+     "Sophomore",
+     "Junior",
+     "Senior",
+     "Masters",
+     "Doctorate"
+    ]
+   },
+   "registration_required": true,
+   "rsvp_url": "https://usc.joinhandshake.com/",
+   "is_mock": true
+  }
+ ]
+}

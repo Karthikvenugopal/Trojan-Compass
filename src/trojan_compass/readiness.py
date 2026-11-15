@@ -21,6 +21,31 @@ CHECKLIST_HINT = (
     "Before I search, we'll cover an area to explore and your experience. "
     "'I don't know' and 'None' are valid answers."
 )
+INTEREST_QUESTION = "What interest would you like to explore?"
+GOAL_QUESTION = "What topic or goal do you have in mind?"
+# The three entry paths on the welcome screen get a question that fits them.
+STARTER_QUESTIONS = {
+    "im not sure where to start": (
+        DIRECTION_QUESTION,
+        ["Building things", "Understanding people", "Solving problems", "I don't know"],
+    ),
+    "i have an interest to explore": (
+        f"{INTEREST_QUESTION} Describe it in your own words, for example “AI in healthcare”.",
+        ["AI in healthcare", "Film and storytelling", "Building apps", "I don't know"],
+    ),
+    "i know what i want": (
+        f"{GOAL_QUESTION} Name it as specifically as you like, for example "
+        "“efficient AI inference” or “a career in investment banking”.",
+        ["Efficient AI inference", "Investment banking", "Robotics research", "I don't know"],
+    ),
+}
+
+
+def starter_question(message: str) -> tuple[str, list[str]] | None:
+    text = re.sub(r"[^a-z ]", "", message.casefold().replace("’", "")).strip()
+    return next((q for key, q in STARTER_QUESTIONS.items() if text.startswith(key)), None)
+
+
 LABELS = {
     "direction": "Interests or direction",
     "direction_detail": "A more specific area to explore",
@@ -139,7 +164,14 @@ def derived_answers(context: RetrievalContext) -> dict[str, StudentAnswer]:
 
 def question_field(text: str) -> str | None:
     """Recognize our questions for short replies; arbitrary assistant text proves nothing."""
-    if text.startswith((DIRECTION_QUESTION, "Which topic would you like to explore?")):
+    if text.startswith(
+        (
+            DIRECTION_QUESTION,
+            INTEREST_QUESTION,
+            GOAL_QUESTION,
+            "Which topic would you like to explore?",
+        )
+    ):
         return "direction"
     if any(text.startswith(question) for question, _ in DETAIL_QUESTIONS.values()):
         return "direction_detail"
@@ -344,7 +376,7 @@ class RequestInformation:
             ),
             "direction": (
                 DIRECTION_QUESTION,
-                ["Building things", "Understanding people", "I don't know"],
+                ["Building things", "Understanding people", "Solving problems", "I don't know"],
             ),
             "time_window": (
                 "When would you be available?",

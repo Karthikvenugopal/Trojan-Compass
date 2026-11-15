@@ -7,7 +7,9 @@ export function decodeResponse(value: unknown): ChatResponse {
       || !strings(value.limitations) || !Array.isArray(value.recommendations)
       || !value.recommendations.every(recommendation)
       || (value.information !== undefined && !information(value.information))
-      || (value.sources !== undefined && !sources(value.sources))) {
+      || (value.sources !== undefined && !sources(value.sources))
+      || (value.graph != null && !graph(value.graph))
+      || (value.roadmap != null && !roadmap(value.roadmap))) {
     throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
   }
   return value as unknown as ChatResponse;
@@ -16,6 +18,32 @@ export function decodeResponse(value: unknown): ChatResponse {
 function sources(value: unknown): boolean {
   return Array.isArray(value) && value.length <= 5 && value.every(source => record(source)
     && url(source.url) && text(source.title) && nullableText(source.checked_at ?? null));
+}
+
+function optionalUrl(value: unknown): boolean { return value == null || url(value); }
+function optionalText(value: unknown): boolean { return value == null || text(value); }
+
+/** Graph labels and links are rendered, so reject anything that is not text or http(s). */
+function graph(value: unknown): boolean {
+  if (!record(value) || !Array.isArray(value.nodes) || !Array.isArray(value.edges)
+      || value.nodes.length > 80 || value.edges.length > 200) return false;
+  const kinds = ['interest', 'skill', 'course', 'professor', 'event'];
+  return value.nodes.every(node => record(node) && text(node.id) && text(node.label)
+      && kinds.includes(String(node.kind)) && optionalText(node.detail) && optionalUrl(node.url))
+    && value.edges.every(edge => record(edge) && text(edge.source) && text(edge.target) && text(edge.label));
+}
+
+function roadmap(value: unknown): boolean {
+  if (!record(value) || !text(value.focus) || !strings(value.known)) return false;
+  const lists = ['to_learn', 'courses', 'people', 'events'];
+  if (!lists.every(key => Array.isArray(value[key]) && (value[key] as unknown[]).every(record))) return false;
+  const items = (key: string) => value[key] as Record<string, unknown>[];
+  return items('to_learn').every(item => text(item.name) && optionalText(item.why))
+    && items('courses').every(item => text(item.code) && text(item.title) && optionalText(item.term)
+      && optionalText(item.note) && optionalUrl(item.url))
+    && items('people').every(item => text(item.name) && optionalText(item.role)
+      && optionalText(item.research) && optionalUrl(item.url))
+    && items('events').every(item => text(item.title) && optionalText(item.when) && optionalUrl(item.url));
 }
 
 function information(value: unknown): boolean {

@@ -1,21 +1,24 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Compass, RotateCcw, ShieldCheck, SquarePen } from 'lucide-react';
 import { ChatMessageView } from './components/ChatMessageView';
 import { MessageComposer } from './components/MessageComposer';
 import { Welcome } from './components/Welcome';
 import { InformationPanel } from './components/InformationPanel';
+import { PathwayPanel } from './components/PathwayPanel';
 import { chatApi, ChatApiError, isMockMode } from './lib/api';
 import type { ChatApi } from './lib/api';
-import type { ChatMessage, DisplayMessage, InformationEdit, InformationSnapshot } from './types';
+import type { ChatMessage, DisplayMessage, InformationEdit, InformationSnapshot, Pathway } from './types';
 import { decodeResponse } from './lib/response';
 import './styles.css';
+import './pathway.css';
 
 interface AppProps {
   api?: ChatApi;
   mockMode?: boolean;
 }
 
-const INTRO = 'Welcome to Trojan Compass. We’ll first cover an area to explore and your experience, then search USC courses and events. “I don’t know” and “None” are valid answers. Extra questions depend on your request.';
+const INTRO = 'Welcome to Trojan Compass. Tell me what you’re curious about and I’ll map it to skills, USC courses, professors, research and events, then build a roadmap you can keep. You can also ask quick campus questions, like “Is Leavey Library open now?”';
+const CHANGE_DIRECTION = 'Change direction';
 
 export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -27,9 +30,20 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
   const [ended, setEnded] = useState(false);
   const [information, setInformation] = useState<InformationSnapshot | null>(null);
   const [failedEdit, setFailedEdit] = useState<InformationEdit | null>(null);
+  const [pathway, setPathway] = useState<Pathway | null>(null);
   const busyRef = useRef(false);
   const generationRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest turn in view: the start of the latest reply, or the thinking indicator.
+  useEffect(() => {
+    const box = conversationRef.current;
+    if (!box || typeof box.scrollTo !== 'function') return;
+    const rows = box.querySelectorAll<HTMLElement>('.message-row.assistant');
+    const latest = rows[rows.length - 1];
+    box.scrollTo({ top: loading || !latest ? box.scrollHeight : Math.max(0, latest.offsetTop - 12), behavior: 'smooth' });
+  }, [messages, loading]);
 
   async function sendMessage(rawText: string = draft, edit?: InformationEdit) {
     const content = rawText.trim();
@@ -72,6 +86,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
       setMessages((current) => [...current, userMessage, assistantMessage]);
       // Direct campus answers carry no checklist; keep the course-search details as they were.
       if (response.information?.fields.length) setInformation(response.information);
+      if (response.graph || response.roadmap) setPathway({ graph: response.graph ?? null, roadmap: response.roadmap ?? null });
       setFailedEdit(null);
       setDraft('');
       setError(null);
@@ -102,6 +117,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
     busyRef.current = false;
     setMessages([]);
     setInformation(null);
+    setPathway(null);
     setFailedEdit(null);
     setDraft('');
     setPendingText(null);
@@ -118,6 +134,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
     busyRef.current = false;
     setMessages([]);
     setInformation(null);
+    setPathway(null);
     setFailedEdit(null);
     setDraft('');
     setPendingText(null);
@@ -125,6 +142,15 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
     setError(null);
     setEnded(false);
     setStatus('Fresh chat started.');
+  }
+
+  function handleReply(reply: string) {
+    // Changing direction clears the stated interest so the opening question is asked again.
+    if (reply === CHANGE_DIRECTION) {
+      void sendMessage('I’d like to change direction.', { field: 'direction', status: 'not_answered', value: null });
+      return;
+    }
+    void sendMessage(reply);
   }
 
   function handleStarter(text: string) {
@@ -149,16 +175,16 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
       </header>
 
       <main id="home" className="main-content">
-        <section className="page-heading" aria-label="About Trojan Compass">
+        <section className={`page-heading${messages.length > 0 ? ' compact' : ''}`} aria-label="About Trojan Compass">
           <span className="section-kicker">A USC student guide</span>
-          <h1>Find your next step.</h1>
-          <p>Find USC courses and events that help you take your next step.</p>
+          <h1>Find your path at USC.</h1>
+          <p>Your interests, mapped to skills, courses, professors, research and events.</p>
         </section>
 
         {mockMode && <div className="demo-disclosure"><ShieldCheck size={15} aria-hidden="true" /><span><b>Demo data:</b> examples are synthetic and do not represent live USC offerings.</span></div>}
 
         <section className="chat-panel" aria-label="Trojan Compass conversation">
-          <div className="conversation" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions">
+          <div className="conversation" ref={conversationRef} role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions">
             {!conversationStarted && (
               <div className="welcome-wrap">
                 <div className="welcome-message"><span className="assistant-mini" aria-hidden="true"><Compass size={16} /></span><p>{INTRO}</p></div>
@@ -166,10 +192,10 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
               </div>
             )}
             {messages.map((message) => (
-              <ChatMessageView key={message.id} message={message} isBusy={loading || draft.trim().length > 0} onSuggestedReply={(reply) => void sendMessage(reply)} />
+              <ChatMessageView key={message.id} message={message} isBusy={loading || draft.trim().length > 0} onSuggestedReply={handleReply} />
             ))}
             {pendingText && <div className="pending-row"><div className="pending-user"><b>You</b><p>{pendingText}</p></div></div>}
-            {loading && <div className="thinking" role="status"><span className="dot-loader" aria-hidden="true"><i /><i /><i /></span><span>Finding a helpful next step…</span></div>}
+            {loading && <div className="thinking" role="status"><span className="dot-loader" aria-hidden="true"><i /><i /><i /></span><span>Walking the USC knowledge graph…</span></div>}
           </div>
 
           {error && (
@@ -185,6 +211,8 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
 
           {!ended && <MessageComposer value={draft} onChange={value => { setDraft(value); setFailedEdit(null); }} onSubmit={() => void sendMessage(draft, failedEdit ?? undefined)} disabled={loading} />}
         </section>
+
+        {!ended && pathway && <PathwayPanel pathway={pathway} />}
 
         {!ended && <InformationPanel key={generationRef.current} information={information}
           disabled={loading || draft.trim().length > 0}
