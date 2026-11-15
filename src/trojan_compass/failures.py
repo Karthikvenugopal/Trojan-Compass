@@ -8,6 +8,7 @@ import httpx
 class FailureReason(StrEnum):
     INVALID_OUTPUT = "invalid_model_output"
     SCHEMA = "invalid_model_structure"
+    DECISION = "invalid_ai_next_step"
     EVIDENCE = "invalid_model_evidence"
     CONFLICT = "conflicting_model_fields"
     TRUNCATED = "incomplete_model_output"
@@ -21,6 +22,17 @@ class FailureReason(StrEnum):
     CONFIGURATION = "provider_configuration"
     INTERNAL = "service_failure"
     LOCAL_CONTEXT = "local_context_limit"
+
+
+class DecisionIssue(StrEnum):
+    MISSING_QUESTION = "missing_question"
+    REPEATED_QUESTION = "asked_answered_field"
+    QUESTION_SCOPE = "question_outside_missing_fields"
+    EARLY_SEARCH = "minimum_not_answered"
+    EMPTY_QUERY = "empty_search_query"
+    SEARCH_QUESTION = "search_and_question_conflict"
+    CAREER_REQUIRED = "career_target_made_mandatory"
+    INVALID_ROUTE = "invalid_campus_route"
 
 
 class ProcessingStage(StrEnum):
@@ -55,12 +67,16 @@ def provider_reason(error: httpx.HTTPStatusError) -> FailureReason:
 
 
 FAILURE_MESSAGES = {
+    FailureReason.DECISION: (
+        "The AI did not choose a valid next step after a retry. "
+        "Your message is preserved; no search or recommendation was fabricated."
+    ),
     FailureReason.LOCAL_CONTEXT: (
         "The local model context budget is too small for this request. Nothing was truncated. "
         "Use a shorter background or configure a larger supported OLLAMA_CONTEXT_LENGTH."
     ),
     FailureReason.SCHEMA: (
-        "The AI returned an invalid context structure after validation repair. "
+        "The AI response did not match the required structure. "
         "Your message is preserved. Error: invalid_model_structure."
     ),
     FailureReason.EVIDENCE: (

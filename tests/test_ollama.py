@@ -31,7 +31,8 @@ async def test_local_schema_generation_has_no_credentials_threads_or_retained_se
         assert payload["format"] == Result.model_json_schema()
         assert payload["stream"] is False and payload["keep_alive"] == 0
         assert payload["think"] is False
-        assert payload["options"]["num_ctx"] == 32768
+        assert 4096 <= payload["options"]["num_ctx"] < 32768
+        assert payload["options"]["num_ctx"] >= 1024 + payload["options"]["num_predict"]
         assert not {"context", "tools", "previous_response_id", "thread", "store"} & set(payload)
         return httpx.Response(
             200,

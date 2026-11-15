@@ -38,6 +38,7 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.failures import FailureReason
 from trojan_compass.llm import LLMFailure, Model, StructuredLLM
+from trojan_compass.planner_wire import PlannerOutput
 from trojan_compass.services import ChatUnavailable
 from trojan_compass.university import (
     AcademicCourseHistoryService,
@@ -46,6 +47,77 @@ from trojan_compass.university import (
 )
 
 Reply = BaseModel | LLMFailure | Callable[[dict[str, Any]], BaseModel]
+
+
+def wire_fixture(decision: ConversationDecision) -> PlannerOutput:
+    """Encode existing synthetic domain fixtures in the compact provider protocol."""
+    if "target" in decision.required_fields:
+        raise LLMFailure(FailureReason.SCHEMA)
+    facts: list[dict[str, Any]] = []
+
+    def add(field: str, value: str, status: str, proof: list[StudentStatement]) -> None:
+        facts.append(
+            {
+                "field": field,
+                "value": value,
+                "status": status,
+                "message_index": proof[0].message_index,
+                "quote": proof[0].quote,
+            }
+        )
+
+    context = decision.context
+    for field, values in [
+        ("interest", context.interests),
+        ("experience", context.experiences),
+        ("completed_course", context.completed_courses),
+        ("goal", context.goals),
+        ("preference", context.constraints.additional_preferences),
+    ]:
+        for item in values:
+            add(field, item.value, "provided", item.evidence)
+    for field in ("program", "study_stage"):
+        item = getattr(context, field)
+        if item is not None:
+            add(field, item.value, "provided", item.evidence)
+    for field in ("time_window", "modality"):
+        item = getattr(context.constraints, field)
+        if item is not None:
+            add(field, item.value, "provided", item.evidence)
+    for skill in context.skills:
+        add("skills." + skill.name, skill.name, skill.status, skill.evidence)
+    for answer in context.answers:
+        if answer.status != "not_answered":
+            add(answer.field, answer.value or answer.status, answer.status, answer.evidence)
+    if context.target:
+        add(
+            "target." + context.target.kind,
+            context.target.name,
+            "provided",
+            context.target.evidence,
+        )
+    question = decision.question
+    route = decision.campus_route
+    return PlannerOutput.model_validate(
+        {
+            "intent": route.intent if route else decision.intent,
+            "facts": facts,
+            "question": (
+                {
+                    "field": question.requested_fields[0],
+                    "text": question.text,
+                    "options": question.options,
+                    "reason": question.reason,
+                }
+                if question
+                else None
+            ),
+            "search_query": decision.search_query or (route.search_query if route else ""),
+            "occupation_ids": decision.occupation_ids,
+            "course_codes": route.course_codes if route else [],
+            "needs_library_hours": route.needs_library_hours if route else False,
+        }
+    )
 
 
 class FakeReasoner:
@@ -62,6 +134,8 @@ class FakeReasoner:
         if isinstance(reply, LLMFailure):
             raise reply
         result = reply(payload) if callable(reply) else reply
+        if schema is PlannerOutput and isinstance(result, ConversationDecision):
+            result = wire_fixture(result)
         return schema.model_validate(result.model_dump())
 
 
@@ -205,7 +279,7 @@ async def test_first_turn_uses_ai_question_instead_of_a_canned_script() -> None:
         ChatRequest(messages=[ChatMessage(role="user", content="I'm not sure where to start.")])
     )
     assert response.message.startswith("What are you studying or considering?")
-    assert llm.schemas == ["ConversationDecision"]
+    assert llm.schemas == ["PlannerOutput"]
     assert not spy.calls and not response.recommendations
     assert all(field.value is None for field in response.information.fields)
     assert not response.information.ready
@@ -230,7 +304,7 @@ async def test_rich_answer_skips_script_and_ai_selects_sourced_software_plan(
     response = await make_service(llm, spy, catalog).chat(
         ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
     )
-    assert llm.schemas == ["ConversationDecision", "GuidedAnswer"]
+    assert llm.schemas == ["PlannerOutput", "GuidedAnswer"]
     assert response.information.ready and len(spy.calls) == 1
     assert response.guidance and response.guidance.suggested_paths[0].title == "Software developer"
     assert not any("Mechanical" in path.title for path in response.guidance.suggested_paths)
@@ -440,7 +514,7 @@ def test_default_live_factory_uses_ai_even_for_welcome_buttons(
             "/api/chat",
             json={"messages": [{"role": "user", "content": "I'm not sure where to start."}]},
         )
-    assert response.status_code == 200 and llm.schemas == ["ConversationDecision"]
+    assert response.status_code == 200 and llm.schemas == ["PlannerOutput"]
     assert response.json()["message"].startswith("What would you enjoy trying")
 
 
@@ -480,7 +554,7 @@ async def test_reported_multiturn_programming_journey_uses_ai_selected_software(
     spy = RetrievalSpy()
     response = await make_service(llm, spy, catalog).chat(ChatRequest(messages=messages))
     assert response.guidance and response.guidance.suggested_paths[0].id == "software-developer"
-    assert llm.schemas == ["ConversationDecision", "GuidedAnswer"]
+    assert llm.schemas == ["PlannerOutput", "GuidedAnswer"]
     assert len(llm.payloads[0]["conversation"]) == len(turns)
     assert spy.calls[0].context.completed_courses[0].value == "CSCI 102L"
     assert spy.calls[0].context.interests[0].value == "Computer programming"
@@ -619,7 +693,7 @@ async def test_factual_campus_question_uses_ai_without_requiring_career_checklis
         ChatRequest(messages=[ChatMessage(role="user", content="What does CSCI 103L cover?")])
     )
     assert response.sources and not spy.calls
-    assert llm.schemas == ["ConversationDecision", "CampusAnswer"]
+    assert llm.schemas == ["PlannerOutput", "CampusAnswer"]
 
 
 @pytest.mark.asyncio
@@ -637,8 +711,8 @@ async def test_native_local_transport_drives_both_ai_stages(catalog: CatalogInde
         payload = json.loads(request.content)
         calls.append(payload["format"]["title"])
         generated = (
-            search()
-            if payload["format"]["title"] == "ConversationDecision"
+            wire_fixture(search())
+            if payload["format"]["title"] == "PlannerOutput"
             else composed(json.loads(payload["messages"][1]["content"]))
         )
         return httpx.Response(
@@ -654,7 +728,7 @@ async def test_native_local_transport_drives_both_ai_stages(catalog: CatalogInde
     response = await make_service(llm, RetrievalSpy(), catalog).chat(
         ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
     )
-    assert calls == ["ConversationDecision", "GuidedAnswer"]
+    assert calls == ["PlannerOutput", "GuidedAnswer"]
     assert response.guidance and response.guidance.suggested_paths[0].id == "software-developer"
 
 
@@ -720,3 +794,23 @@ async def test_material_graph_clarification_is_ai_written_before_showing_resourc
     )
     assert response.message == question.text and response.suggested_replies == question.options
     assert response.guidance is None and not response.recommendations
+
+
+@pytest.mark.asyncio
+async def test_semantic_next_step_failure_is_not_reported_as_invalid_json_structure() -> None:
+    from trojan_compass.failures import DecisionIssue
+
+    premature = ConversationDecision(
+        context=RetrievalContext(), intent="search", search_query="courses"
+    )
+    llm = FakeReasoner([premature, premature])
+    spy = RetrievalSpy()
+    with pytest.raises(ChatUnavailable) as caught:
+        await make_service(llm, spy).chat(
+            ChatRequest(messages=[ChatMessage(role="user", content="Hi")])
+        )
+    assert caught.value.reason == FailureReason.DECISION
+    assert caught.value.issue == DecisionIssue.EARLY_SEARCH
+    assert llm.payloads[1]["validation_feedback"]["issue"] == "minimum_not_answered"
+    assert "program" in llm.payloads[1]["validation_feedback"]["unanswered_fields"]
+    assert not spy.calls

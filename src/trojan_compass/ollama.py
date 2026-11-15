@@ -84,6 +84,9 @@ class OllamaStructuredLLM:
         )
         if budget > self._context_length:
             raise LLMFailure(FailureReason.LOCAL_CONTEXT)
+        # The configured window is a ceiling, not a mandatory KV allocation.
+        # Small turns should not allocate the same 32K window as a long document.
+        requested_context = min(self._context_length, max(4096, ((budget + 1023) // 1024) * 1024))
         payload: dict[str, object] = {
             "model": self._model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -94,7 +97,7 @@ class OllamaStructuredLLM:
             "keep_alive": 0,
             "options": {
                 "temperature": 0,
-                "num_ctx": self._context_length,
+                "num_ctx": requested_context,
                 "num_predict": self._max_output_tokens,
             },
         }
@@ -121,7 +124,7 @@ class OllamaStructuredLLM:
                     for key, value in model.model_info.items()
                     if key.endswith(".context_length") and isinstance(value, int)
                 ]
-                if windows and self._context_length > min(windows):
+                if windows and requested_context > min(windows):
                     raise LLMFailure(FailureReason.LOCAL_CONTEXT)
                 response = await client.post(self._endpoint, json=payload)
                 response.raise_for_status()

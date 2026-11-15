@@ -31,7 +31,7 @@ from trojan_compass.documents import (
     MemoryDocumentParser,
 )
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
-from trojan_compass.failures import FAILURE_MESSAGES, STAGE_LABELS, FailureReason
+from trojan_compass.failures import FAILURE_MESSAGES, STAGE_LABELS
 from trojan_compass.gemini import GeminiContextExtractor
 from trojan_compass.linkedin import (
     LinkedInRequest,
@@ -262,11 +262,8 @@ def create_app(
                 "error": {
                     "code": exc.reason.value,
                     "message": FAILURE_MESSAGES[exc.reason]
-                    + (
-                        " Timed out while " + STAGE_LABELS[exc.stage] + "."
-                        if exc.reason == FailureReason.TIMEOUT and exc.stage
-                        else ""
-                    ),
+                    + (" Step: " + STAGE_LABELS[exc.stage] + "." if exc.stage else "")
+                    + (" Check: " + exc.issue.value + "." if exc.issue else ""),
                 }
             },
         )

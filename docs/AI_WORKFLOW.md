@@ -11,7 +11,7 @@ failure never selects it. Default application composition is tested separately.
 
 1. Validate the active frontend conversation and its byte/character limits.
 2. Make a structured AI decision from the complete indexed conversation. The model
-   extracts supported context, applies corrections, chooses one useful next question
+   emits compact, quoted student facts, applies corrections, chooses one useful next question
    or search, writes semantic retrieval terms and selects possible occupation IDs
    from the shared public evidence catalog. It chooses the order and wording of
    questions, handles uncertain students and skips discovery when facts are supplied.
@@ -105,3 +105,29 @@ Official references checked 2026-11-15:
 - https://docs.ollama.com/api/chat
 - https://docs.ollama.com/faq
 - https://ollama.com/library/qwen3
+
+## Local planner contract and latency fix
+
+The planner now emits a flat list of evidenced facts and one question/action instead
+of a full nested profile with empty values. Unasked fields are omitted and initialized
+as not_answered/null by the domain layer. Explicit unknown/none facts still cite a
+student statement; their wire value is ordinary text that maps to domain null. This
+removes conditional status/value combinations that JSON Schema allowed but Python
+validators rejected. The compatibility decision model also normalizes non-provided
+values before nested validation. A regression test reproduces the former rejection
+through the native Ollama transport.
+
+The planner prompt and occupation index are roughly two-thirds smaller, and its
+output schema is 2.4 KB instead of 6.7 KB. The local adapter requests a context window
+sized to each actual prompt plus a conservative template/output reserve, bounded by
+OLLAMA_CONTEXT_LENGTH and the model's advertised maximum. A short greeting no longer
+requires a 32K KV allocation. No student history is truncated. keep_alive=0 remains
+unchanged; avoiding retained prompt state still incurs model-loading overhead.
+These are measured request-size reductions, not verified live latency claims.
+
+Policy errors (such as a premature search or repeating an answered question) now use
+an invalid-next-step error with a static check code. The repair receives the exact
+rule and unanswered field names, not just 'invalid schema'. No student values or raw
+model output appear in errors/logs. Provenance is checked before applying ordered
+fact corrections, so output ordering or a repairable index mistake cannot reinstate
+an old program value.
