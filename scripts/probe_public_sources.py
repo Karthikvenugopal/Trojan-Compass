@@ -27,3 +27,21 @@ for name in scripts:
     print('MAIN JS BYTES',len(body),flush=True)
     print('PUBLIC URLS',sorted(set(re.findall(r'https?[^\s"\'`<>]{1,180}',body)))[:100],flush=True)
     print('API STRINGS',re.findall(r'.{0,100}(?:api/|apiUrl|apiURL|baseUrl|graphql|/catalogue|departments|course_data|apiBase).{0,160}',body)[:55],flush=True)
+
+for method in ('apiCoursesCoursesByTermSchoolProgram', 'apiCoursesCourse', 'apiProgramsPrefix', 'apiSearchBasic'):
+    at=body.find(method+'(')
+    part=body[at:at+1800]
+    print('QUERY FIELDS',method,re.findall(r'([A-Za-z]+)=\"?\+encodeURIComponent',part),re.findall(r'parameter [^;]{0,70}',part)[:4],flush=True)
+    print('METHOD SHAPE',method,part[:950],flush=True)
+print('ROUTE PATHS',re.findall(r'path:\"([^\"]{0,160})',body)[-80:],flush=True)
+for path in ('api/Schools/TermCode?termCode=20263', 'api/Programs/TermCode?termCode=20263', 'api/Courses/CoursesByTermSchoolProgram?termCode=20263&schoolCode=LAS&programCode=PSYC'):
+    try:
+        response=get(base+path)
+        obj=json.loads(response)
+        print('CATALOGUE ENDPOINT',path,'TYPE',type(obj).__name__,'COUNT',len(obj),flush=True)
+        sample=obj[:1] if isinstance(obj,list) else obj
+        if isinstance(sample,dict):
+            print('CATALOGUE TOP KEYS',list(sample),flush=True)
+        print('CATALOGUE SAMPLE',json.dumps(sample,ensure_ascii=False)[:4000],flush=True)
+    except Exception as error:
+        print('CATALOGUE ERROR',path,type(error).__name__,str(error)[:120],flush=True)
