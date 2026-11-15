@@ -196,6 +196,55 @@ def test_explicit_course_picker_confirmation_needs_no_llm_and_proves_no_mastery(
     assert context.skills == []
 
 
+def test_course_history_accepts_common_usc_code_shorthand_and_natural_titles() -> None:
+    from trojan_compass.readiness import COURSES_QUESTION
+
+    parser = ControlledIntakeParser()
+    coded = parser.parse(
+        [
+            ChatMessage(role="assistant", content=COURSES_QUESTION),
+            ChatMessage(role="user", content="CS570 and CS 572"),
+        ]
+    )
+    assert coded is not None
+    assert [item.value for item in coded.completed_courses] == ["CSCI 570", "CSCI 572"]
+    assert coded.skills == []
+
+    named = parser.parse(
+        [
+            ChatMessage(role="assistant", content=COURSES_QUESTION),
+            ChatMessage(role="user", content="I have done the Algorithms course"),
+        ]
+    )
+    assert named is not None
+    assert [item.value for item in named.completed_courses] == ["Algorithms course"]
+    assert named.skills == []
+
+
+def test_unrelated_followup_does_not_erase_completed_checklist_answers() -> None:
+    from trojan_compass.readiness import COURSES_QUESTION, DIRECTION_QUESTION
+
+    messages = [
+        ChatMessage(role="assistant", content=DIRECTION_QUESTION),
+        ChatMessage(role="user", content="Building things"),
+        ChatMessage(role="assistant", content="What kind of things would you enjoy building?"),
+        ChatMessage(role="user", content="Design or architecture"),
+        ChatMessage(role="assistant", content=COURSES_QUESTION),
+        ChatMessage(role="user", content="CS570 and CS 572"),
+        ChatMessage(role="assistant", content="I don't have a verified match for those."),
+        ChatMessage(role="user", content="I have done the Algorithms course"),
+    ]
+    context = ControlledIntakeParser().parse(messages)
+    assert context is not None
+    assert context.interests[0].value == "Design or architecture"
+    assert [item.value for item in context.completed_courses] == [
+        "CSCI 570",
+        "CSCI 572",
+        "Algorithms course",
+    ]
+    assert context.skills == []
+
+
 @pytest.mark.asyncio
 async def test_optional_router_timeout_is_cancelled_before_intake(
     monkeypatch: pytest.MonkeyPatch,

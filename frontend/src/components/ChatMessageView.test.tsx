@@ -20,3 +20,12 @@ it('never preselects course examples and requires student confirmation', async (
   await user.click(confirm);
   expect(send).toHaveBeenCalledWith('I have completed these courses: PSYC 100.');
 });
+
+it('disables suggested replies from earlier turns', () => {
+  const send = vi.fn();
+  render(<ChatMessageView isBusy={false} isLatest={false} onSuggestedReply={send} message={{
+    id: 'earlier-question', role: 'assistant', content: 'What interests you?',
+    suggested_replies: ['Building things'],
+  }} />);
+  expect(screen.getByRole('button', { name: 'Building things' })).toBeDisabled();
+});

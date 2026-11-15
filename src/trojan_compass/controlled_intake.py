@@ -1,7 +1,7 @@
-"""Re-derive only explicit UI selections; defer every unsupported turn to extraction.
+"""Re-derive answers to known questions; defer unrelated turns to extraction.
 
-This is production intake, not fixture data or a fallback recommendation generator.
-No earlier free-form message, correction or constraint can be skipped to use it.
+Answers are copied verbatim only when they directly follow a recognized assistant
+question. This does not infer skills, targets or other facts from free text.
 """
 
 import re
@@ -100,7 +100,33 @@ class ControlledIntakeParser:
                 else None
             )
             if field is None:
-                return None
+                # An additional course-history statement may follow a completed
+                # onboarding flow (or a no-match response). Keep it as literal
+                # evidence instead of discarding the entire previously parsed chat.
+                completed = _completed_course_mentions(text)
+                if completed:
+                    evidence = [StudentStatement(message_index=index, quote=text)]
+                    context.completed_courses.extend(
+                        SupportedText(value=value, evidence=evidence) for value in completed
+                    )
+                    continue
+                correction = r"\b(actually|correction|instead|change|not that|i meant)\b"
+                if re.search(correction, normalized):
+                    return None
+                if not any(
+                    (
+                        context.interests,
+                        context.completed_courses,
+                        context.experiences,
+                        context.program,
+                        context.study_stage,
+                    )
+                ):
+                    return None
+                # Demo intake is deliberately tolerant of unrelated follow-up turns:
+                # the full transcript is replayed on every request, so returning
+                # None here used to erase every answer and restart onboarding.
+                continue
             if normalized in UNCERTAIN:
                 continue  # Readiness scopes explicit unknown/none to the question.
             if field == "program" and re.fullmatch(r"[A-Za-z][A-Za-z &/().-]{1,99}", text):
@@ -133,20 +159,37 @@ class ControlledIntakeParser:
                     )
                     continue
             if field == "completed_courses":
-                courses = text.removeprefix("I have completed these courses: ").rstrip(".")
-                references = [part.strip() for part in courses.split(",")]
-                if references and all(
-                    re.fullmatch(r"[A-Za-z]{2,6}[ -]\d{3}[A-Za-z]{0,4}", part)
-                    for part in references
-                ):
+                references = _completed_course_mentions(text)
+                if references:
                     context.completed_courses = [
                         SupportedText(
-                            value=re.sub(r"[ -]", " ", part.upper()),
+                            value=part,
                             evidence=[StudentStatement(message_index=index, quote=text)],
                         )
                         for part in references
                     ]
                     continue  # Explicit completion answers do not establish skill mastery.
+
+            # In offline demo mode, retain literal answers only when the immediately
+            # preceding assistant turn asked for that specific information. This lets
+            # students type a real answer instead of being trapped in the same prompt.
+            evidence = [StudentStatement(message_index=index, quote=text)]
+            if field in {"direction", "direction_detail"}:
+                if normalized in STARTERS:
+                    continue
+                context.interests = [SupportedText(value=text, evidence=evidence)]
+                continue
+            if field == "study_stage":
+                context.study_stage = SupportedText(value=text, evidence=evidence)
+                continue
+            if field == "work_experience":
+                if normalized not in {"i have no experience", "no experience"}:
+                    context.experiences = [SupportedText(value=text, evidence=evidence)]
+                continue
+            if field == "completed_courses":
+                context.completed_courses = [SupportedText(value=text, evidence=evidence)]
+                continue
+
             allowed = (
                 field == "direction"
                 and text in DIRECTIONS
@@ -168,3 +211,32 @@ class ControlledIntakeParser:
                     )
                 ]
         return context
+
+
+def _completed_course_mentions(text: str) -> list[str]:
+    """Read course codes or a clearly labeled course name as exposure only."""
+    value = text.strip().removeprefix("I have completed these courses: ").rstrip(" .")
+    # USC students commonly omit the final I in CSCI when speaking informally.
+    code_pattern = re.compile(
+        r"\b(CSCI|CS|MATH|EE|ITP|BUAD|WRIT|CTIN)\s*-?\s*(\d{3}[A-Za-z]{0,4})\b",
+        re.I,
+    )
+    codes = list(code_pattern.finditer(value))
+    if codes:
+        remainder = code_pattern.sub("", value)
+        if re.sub(r"[\s,and;./()-]+", "", remainder):
+            return []
+        normalized = (
+            f"{'CSCI' if match.group(1).casefold() in {'cs', 'csci'} else match.group(1).upper()} "
+            f"{match.group(2).upper()}"
+            for match in codes
+        )
+        return list(dict.fromkeys(normalized))
+    # Accept a plain course title only when the student explicitly says it was
+    # completed/taken/done; do not infer completion from a topic mention.
+    name = re.fullmatch(
+        r"(?:i\s+(?:have\s+)?(?:done|taken|completed)|completed|took)\s+(?:the\s+)?(.+?)\s+course",
+        value,
+        flags=re.I,
+    )
+    return [name.group(1).strip().title() + " course"] if name else []

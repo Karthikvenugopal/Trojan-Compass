@@ -68,7 +68,7 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy, isLatest = 
         )}
         {isAssistant && message.suggested_replies && message.suggested_replies.length > 0 && (
           <div className="suggested-replies" aria-label="Suggested replies">
-            {message.suggested_replies.map((reply) => <button type="button" key={reply} disabled={isBusy} onClick={() => onSuggestedReply(reply)}>{reply}</button>)}
+            {message.suggested_replies.map((reply) => <button type="button" key={reply} disabled={isBusy || !isLatest} onClick={() => onSuggestedReply(reply)}>{reply}</button>)}
           </div>
         )}
       </div>

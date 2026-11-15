@@ -6,7 +6,12 @@ from typing import Any
 
 import pytest
 
-from trojan_compass.catalog import CatalogIndex, CatalogRecommendationService, tokenize
+from trojan_compass.catalog import (
+    CatalogIndex,
+    CatalogRecommendationService,
+    query_phrases,
+    tokenize,
+)
 from trojan_compass.contracts import (
     Clarification,
     Recommendation,
@@ -113,6 +118,19 @@ def test_stemming_joins_word_forms() -> None:
     assert tokenize("retrieval") == tokenize("Retrieval")
     assert tokenize("models") == tokenize("model")
     assert tokenize("I tried YouTube videos") == []
+
+
+@pytest.mark.asyncio
+async def test_completed_course_title_is_used_as_background_for_next_course(
+    index: CatalogIndex,
+) -> None:
+    context = RetrievalContext(completed_courses=[text("Information Retrieval")])
+    assert query_phrases(context) == ["Information Retrieval"]
+    result = await CatalogRecommendationService(Empty(), index).recommend(request(context))
+    assert all(
+        card.title != "CSCI 572: Information Retrieval and Web Search Engines"
+        for card in result.recommendations
+    )
 
 
 def test_rag_and_information_retrieval_find_the_ir_course(index: CatalogIndex) -> None:

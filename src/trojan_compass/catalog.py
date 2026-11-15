@@ -262,6 +262,22 @@ class CatalogRecommendationService:
         # Retrieve a bounded candidate pool before applying the same student-fit
         # constraints as the graph path. No student query/results are cached.
         hits = self._index.search(phrases, max(30, request.limit * 3), exclude)
+        completed_names = [
+            re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", name.casefold()))
+            .strip()
+            .removesuffix(" course")
+            for name in completed_course_names(context)
+        ]
+        hits = [
+            hit
+            for hit in hits
+            if not any(
+                name
+                and len(name.split()) >= 2
+                and (name in hit.course.title.casefold() or hit.course.title.casefold() in name)
+                for name in completed_names
+            )
+        ]
         stage = context.study_stage.value.casefold() if context.study_stage else ""
         if "undergrad" in stage:
             hits = [h for h in hits if h.course.level not in ("graduate", "doctoral")]
@@ -286,10 +302,7 @@ class CatalogRecommendationService:
                         continue
                 feasible_hits.append(hit)
             hits = feasible_hits
-        completed_titles = {c.value.strip().casefold() for c in context.completed_courses}
-        hits = [h for h in hits if h.course.title.casefold() not in completed_titles][
-            : request.limit
-        ]
+        hits = hits[: request.limit]
         if not hits:
             return result
         strong = [self._card(h, phrases) for h in hits if h.phrase]
@@ -411,6 +424,9 @@ def query_phrases(context: RetrievalContext) -> list[str]:
         phrases.append(context.target.name)
     phrases += [s.name for s in context.skills]
     phrases += [e.value for e in context.experiences]
+    # Student-reported completed coursework is useful background for finding
+    # the next course; exact course codes are excluded from results above.
+    phrases += [course.value for course in context.completed_courses]
     phrases += [
         a.value
         for a in context.answers

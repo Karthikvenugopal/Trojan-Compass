@@ -32,7 +32,7 @@ from trojan_compass.llm import StructuredLLM, configured_llm
 from trojan_compass.readiness import DEFAULT_FIXED_FIELDS
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
-from trojan_compass.services import AskBackPolicy
+from trojan_compass.services import AskBackPolicy, DemoRecommendationService
 from trojan_compass.university import (
     AcademicCourseHistoryService,
     UniversityGraphRepository,
@@ -166,7 +166,19 @@ def create_configured_app(
             raise ValueError(
                 "Choose campus or production mode for injected integration dependencies"
             )
-        return create_app(mode=settings.mode)
+        recommendations: RecommendationService | None = None
+        if settings.mode == "demo" and settings.catalog_path is not None:
+            # Demo stays offline, but can use the bundled public USC catalog snapshot
+            # for real course facts instead of pretending the fixed example is live.
+            demo_catalog = CatalogIndex.load(settings.catalog_path)
+            recommendations = CatalogRecommendationService(
+                DemoRecommendationService(), demo_catalog
+            )
+        return create_app(
+            mode=settings.mode,
+            recommendations=recommendations,
+            local_intake=ControlledIntakeParser() if settings.mode == "demo" else None,
+        )
     # The question assistant uses the same server-configured provider as extraction;
     # injected (test) extractors get no assistant unless one is injected too.
     # Live apps use AI orchestration. Explicit legacy dependency injection remains
