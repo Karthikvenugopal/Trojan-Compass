@@ -32,3 +32,71 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+  startup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: pip install -e .
+      - run: python -m venv --system-site-packages .venv
+      - run: npm ci --prefix frontend
+      - name: Verify actual servers, frontend proxy and shutdown
+        shell: bash
+        run: |
+          printf 'COMPASS_MODE=demo\n' > .env
+          bash -n scripts/dev.sh
+          bash scripts/dev.sh > /tmp/compass-startup.log 2>&1 &
+          launcher_pid=$!
+          trap 'kill -TERM "$launcher_pid" 2>/dev/null || true; wait "$launcher_pid" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import time
+          import httpx
+          with httpx.Client(trust_env=False, timeout=1) as client:
+              deadline = time.monotonic() + 45
+              while time.monotonic() < deadline:
+                  try:
+                      frontend = client.get('http://127.0.0.1:5173')
+                      if frontend.status_code == 200:
+                          break
+                  except httpx.HTTPError:
+                      pass
+                  time.sleep(0.25)
+              else:
+                  raise SystemExit('Frontend did not start')
+              health = client.get('http://127.0.0.1:5173/health')
+              assert health.status_code == 200
+              assert health.json()['mode'] == 'demo'
+              reply = client.post('http://127.0.0.1:5173/api/chat', json={
+                  'messages': [{'role': 'user', 'content': 'Show a programming course'}],
+              })
+              assert reply.status_code == 200
+              assert reply.json()['recommendations']
+              assert reply.headers['cache-control'] == 'no-store'
+          print('Actual frontend, backend and proxied chat request passed.')
+          PY
+          kill -TERM "$launcher_pid"
+          wait "$launcher_pid" || test "$?" -eq 143
+          trap - EXIT
+          python - <<'PY'
+          import socket
+          import time
+          for port in (8000, 5173):
+              for attempt in range(20):
+                  with socket.socket() as client:
+                      if client.connect_ex(('127.0.0.1', port)) != 0:
+                          break
+                  time.sleep(0.1)
+              else:
+                  raise SystemExit(f'Port {port} remained open after shutdown')
+          print('Both servers stopped cleanly.')
+          PY
+      - name: Show startup diagnostics on failure
+        if: failure()
+        run: cat /tmp/compass-startup.log 2>/dev/null || true

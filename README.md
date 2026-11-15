@@ -37,6 +37,16 @@ OpenAPI is at `/docs`. Shared Pydantic models are in
 Examples use synthetic student statements. `GET /health` reports the configured
 mode. There are no session, resume or LinkedIn ingestion endpoints.
 
+## Local test launcher
+
+After configuring the server-only `.env`, run `bash scripts/dev.sh` from a normal
+terminal. It checks local port permissions, creates/uses a project Python
+`.venv`, installs missing dependencies, starts both services, and verifies their
+HTTP readiness before printing the URL. Keep the terminal open while testing;
+Ctrl+C stops both services. A sandbox that prohibits local listeners cannot host
+this preview; the launcher reports that specific failure without claiming the
+site is running. No conversation or prompt logs are written by the launcher.
+
 ## Integrated startup
 
 All four workstreams now connect through the v2 contracts. The backend factory
