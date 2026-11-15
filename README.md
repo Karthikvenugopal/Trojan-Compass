@@ -143,3 +143,19 @@ and HTTP transports. They verify plumbing and policy without real student data.
 ## Frontend
 
 See [`frontend/README.md`](frontend/README.md) for setup, adapter configuration, privacy behavior, and frontend checks.
+
+## Shared campus graph
+
+Install the project with `pip install -e .`, configure `NEO4J_URI`, `NEO4J_USERNAME`, and
+`NEO4J_PASSWORD`, then import sourced seed data or a reviewed CSV/JSON partner update:
+
+```sh
+trojan-compass-import data/seed/usc.json
+trojan-compass-import path/to/campus-update.csv
+trojan-compass-import path/to/campus-update.json
+```
+
+Imports merge on stable identifiers and can be repeated to update shared records. See
+[`docs/DATA_IMPORT.md`](docs/DATA_IMPORT.md) for templates, required fields, source refresh
+limits, and database query-log privacy settings. See
+[`docs/GRAPH_INTEGRATION.md`](docs/GRAPH_INTEGRATION.md) for the graph/recommendation contract.

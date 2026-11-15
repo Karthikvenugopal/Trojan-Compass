@@ -124,3 +124,14 @@ async def test_later_reads_see_immutable_shared_action_update() -> None:
 
     assert (await repository.find_courses(("CSCI103L",)))[0].title == original.title
     assert (await updated_repository.find_courses(("CSCI103L",)))[0].title == update.title
+
+
+@pytest.mark.asyncio
+async def test_browse_actions_returns_bounded_shared_records() -> None:
+    repository = FakeGraphRepository()
+    IngestionPipeline(repository).import_records(load_json(SEED))
+
+    actions = await repository.browse_actions(1)
+
+    assert len(actions) == 1
+    assert actions[0].kind == "course"

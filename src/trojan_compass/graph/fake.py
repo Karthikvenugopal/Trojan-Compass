@@ -140,6 +140,13 @@ class FakeGraphRepository(GraphRepository):
             if wanted.intersection(topic.casefold() for topic in action.topics)
         ]
 
+    async def browse_actions(self, limit: int) -> list[CampusAction]:
+        """Return shared actions in stable title order for broad discovery requests."""
+        actions = sorted(
+            self._actions.values(), key=lambda action: (action.title.casefold(), action.id)
+        )
+        return actions[:limit]
+
     async def find_courses(self, references: Sequence[str]) -> list[CampusAction]:
         wanted = {_normalize(item) for item in references}
         return [
