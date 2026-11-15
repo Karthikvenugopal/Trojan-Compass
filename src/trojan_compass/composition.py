@@ -19,6 +19,7 @@ from trojan_compass.contracts import (
     RecommendationResult,
     RecommendationService,
 )
+from trojan_compass.exploration import ExplorationRecommendationService
 from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
@@ -146,6 +147,8 @@ def create_configured_app(
     return create_app(
         mode=settings.mode,
         extractor=extractor,
-        recommendations=CoverageRecommendationService(RecommendationEngine(graph), notices),
+        recommendations=CoverageRecommendationService(
+            ExplorationRecommendationService(RecommendationEngine(graph), graph), notices
+        ),
         lifespan=lifespan,
     )

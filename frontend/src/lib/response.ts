@@ -30,7 +30,7 @@ function information(value: unknown): boolean {
 
 function fieldKey(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 120
-    && /^(direction|background|program|preferences|time_window|modality|target|skills\..{1,100})$/.test(value);
+    && /^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\..{1,100})$/.test(value);
 }
 
 function recommendation(value: unknown): value is Recommendation {

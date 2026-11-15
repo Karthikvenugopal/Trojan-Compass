@@ -93,12 +93,17 @@ set it to `true`. No frontend environment file contains backend/provider credent
 The backend `.env.example` documents variables; it is not automatically loaded.
 Configure them in your server environment and restart both servers after changes.
 
-Chat checks answer states before recommending: a required field must have a
-supported answer, including an explicit “I don’t know” or “None.” A greeting,
-course/event keyword or previous unanswered question does not unlock cards.
-Direction and background form a small core checklist; extra requirements depend
-on the request and graph-informed prerequisites. Unknown direction permits only
-clearly labeled general starting points, with limitations rather than invented fit.
+Before searching, chat collects two minimum answers: **an area to explore** and
+**relevant skills/experience/coursework**. An explicit “I don’t know” or “None”
+resolves either question. Broad themes such as “Building things” get a concrete
+follow-up before background and search. Already supplied answers are skipped.
+Dates, format and recorded prerequisites add questions only when they matter.
+
+Beginner path: unsure → Building things → Programming (apps/websites) →
+no experience → sourced course options. The composition adapter follows existing
+interest-to-skill-to-course links without assigning a career target or inferring
+mastery. If current data has no match, chat explains the coverage limit once and
+offers sourced areas it can actually check, without a stack of internal warnings.
 
 Open **What I’m using** below the chat to inspect or correct information. It is
 collapsed by default. Each field offers Not answered, I don’t know, None, or an

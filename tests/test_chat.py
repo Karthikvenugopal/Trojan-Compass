@@ -296,11 +296,17 @@ class EchoRecommendations:
 async def test_request_isolation_concurrent_and_sequential() -> None:
     service = ChatService(QueryExtractor(), EchoRecommendations())
     responses = await asyncio.gather(
-        *[service.chat(ChatRequest(messages=[student(query)])) for query in ["robotics", "music"]]
+        *[
+            service.chat(ChatRequest(messages=[student(query + ". I have no experience.")]))
+            for query in ["robotics", "music"]
+        ]
     )
-    assert [r.recommendations[0].id for r in responses] == ["robotics", "music"]
-    third = await service.chat(ChatRequest(messages=[student("design")]))
-    assert third.recommendations[0].id == "design"
+    assert [r.recommendations[0].id for r in responses] == [
+        "robotics. I have no experience.",
+        "music. I have no experience.",
+    ]
+    third = await service.chat(ChatRequest(messages=[student("design. I have no experience.")]))
+    assert third.recommendations[0].id == "design. I have no experience."
     assert set(vars(service)) == {"_extractor", "_recommendations", "_policy"}
 
 
@@ -399,7 +405,9 @@ def test_failures_and_no_content_logs(extraction: bool, caplog: pytest.LogCaptur
         response = client.post(
             "/api/chat",
             json={
-                "messages": [{"role": "user", "content": "PRIVATE_SENTINEL"}],
+                "messages": [
+                    {"role": "user", "content": "PRIVATE_SENTINEL. I have no experience."}
+                ],
             },
         )
     assert response.status_code == 503
@@ -422,7 +430,12 @@ def test_endpoint_does_not_open_student_files(monkeypatch: pytest.MonkeyPatch) -
             response = client.post(
                 "/api/chat",
                 json={
-                    "messages": [{"role": "user", "content": "Show a programming course"}],
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "Show a programming course. I have no experience.",
+                        }
+                    ],
                 },
             )
         assert response.status_code == 200
@@ -471,6 +484,14 @@ def test_demo_beginner_journey_with_uncertain_reply() -> None:
         second = client.post("/api/chat", json={"messages": messages})
         assert second.status_code == 200
         result = ChatResponse.model_validate(second.json())
+        assert result.information.missing_fields == ["background"]
+        messages += [
+            {"role": "assistant", "content": result.message},
+            {"role": "user", "content": "I have no experience"},
+        ]
+        result = ChatResponse.model_validate(
+            client.post("/api/chat", json={"messages": messages}).json()
+        )
         assert result.recommendations[0].status == "demo_fixture"
         assert result.recommendations[0].sources
         assert "Demo mode" in result.limitations[0]
@@ -491,7 +512,7 @@ async def test_cap_results_after_direction_is_answered() -> None:
         ]
     )
     response = await ChatService(FakeExtractor(context), FakeRecommendations(result)).chat(
-        ChatRequest(messages=[student("Show programming courses")]),
+        ChatRequest(messages=[student("Show programming courses. I have no experience.")]),
     )
     assert len(response.recommendations) == 3
     assert response.information.ready
@@ -599,7 +620,7 @@ async def test_invalid_retrieval_output_fails_without_fabricated_fallback() -> N
                     recommendations=[invalid],
                 )
             ),
-        ).chat(ChatRequest(messages=[student("Synthetic query")]))
+        ).chat(ChatRequest(messages=[student("Synthetic query. I have no experience.")]))
 
 
 @pytest.mark.asyncio
@@ -621,7 +642,7 @@ async def test_maximum_length_clarification_with_provisional_results() -> None:
                 clarification=question,
             )
         ),
-    ).chat(ChatRequest(messages=[student("Show me campus options")]))
+    ).chat(ChatRequest(messages=[student("Show me campus options. I have no experience.")]))
     assert response.message == question.text
     assert not response.recommendations
     assert response.information.missing_fields == ["skills.python"]

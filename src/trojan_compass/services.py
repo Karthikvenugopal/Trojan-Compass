@@ -30,7 +30,14 @@ class AskBackPolicy:
     def field(self, question: Clarification) -> str | None:
         field = question.requested_fields[0]
         field = "direction" if field == "interests" else field.removeprefix("constraints.")
-        if field in ("direction", "background", "target", "time_window", "modality"):
+        if field in (
+            "direction",
+            "direction_detail",
+            "background",
+            "target",
+            "time_window",
+            "modality",
+        ):
             return field
         if field.startswith("skills.") and 0 < len(field[7:]) <= 100:
             return field
@@ -76,8 +83,15 @@ class ChatService:
                 context = information.context
                 opening_question = information.missing_question()
                 if opening_question is not None:
+                    first_question = opening_question.requested_fields == ["direction"] and not any(
+                        m.role == "assistant" for m in request.messages
+                    )
                     return ChatResponse(
-                        message=f"{opening_question.text}\n\n{CHECKLIST_HINT}",
+                        message=(
+                            f"{opening_question.text}\n\n{CHECKLIST_HINT}"
+                            if first_question
+                            else opening_question.text
+                        ),
                         suggested_replies=opening_question.options,
                         information=information.snapshot(),
                     )
@@ -106,6 +120,21 @@ class ChatService:
                         information=information.snapshot(),
                     )
                 recommendations = result.recommendations[: retrieval_request.limit]
+                if not recommendations:
+                    return ChatResponse(
+                        message=(
+                            "Your search details are collected. I don't have a verified "
+                            "USC match for them in my current data. "
+                            + (
+                                "I can check these areas if you'd like to switch:"
+                                if result.exploration_options
+                                else "You can try a different interest or check again "
+                                "when more data is available."
+                            )
+                        ),
+                        suggested_replies=result.exploration_options,
+                        information=information.snapshot(),
+                    )
                 limitations = list(result.limitations)
                 if context.constraints.time_window is not None:
                     limitations.append(
@@ -122,7 +151,7 @@ class ChatService:
                 unavailable = [
                     field.label
                     for field in information.snapshot().fields
-                    if field.status in ("unknown", "none") and field.required
+                    if field.status == "unknown" and field.required
                 ]
                 if unavailable:
                     limitations.append(
@@ -131,18 +160,16 @@ class ChatService:
                         + ". Suggestions cannot be matched to those details."
                     )
                 if recommendations:
-                    if information.answer("direction").status in ("unknown", "none"):
+                    if information.answer("direction").status in (
+                        "unknown",
+                        "none",
+                    ) or information.answer("direction_detail").status in ("unknown", "none"):
                         message = (
-                            "You don't have a direction to share yet. These are general campus "
+                            "You haven't chosen a specific direction yet. These are general campus "
                             "starting points, not personalized matches."
                         )
                     else:
                         message = "Here are campus options with supporting sources below."
-                else:
-                    message = (
-                        "I couldn’t find supported matches for this request. "
-                        "You can try a broader topic or another course or event preference."
-                    )
                 # Composition is deterministic: retrieved text is never executed or reprompted.
                 return ChatResponse(
                     message=message,

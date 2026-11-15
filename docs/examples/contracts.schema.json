@@ -43,7 +43,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -142,6 +142,7 @@
         "properties": {
           "field": {
             "enum": [
+              "direction_detail",
               "background",
               "time_window",
               "modality"
@@ -208,7 +209,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -425,7 +426,7 @@
         "items": {
           "$ref": "#/$defs/ContextRequirement"
         },
-        "maxItems": 3,
+        "maxItems": 4,
         "title": "Requested Context",
         "type": "array"
       }
@@ -477,6 +478,7 @@
         "properties": {
           "field": {
             "enum": [
+              "direction_detail",
               "background",
               "time_window",
               "modality"
@@ -576,7 +578,7 @@
             "items": {
               "$ref": "#/$defs/ContextRequirement"
             },
-            "maxItems": 3,
+            "maxItems": 4,
             "title": "Requested Context",
             "type": "array"
           }
@@ -626,7 +628,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -1150,6 +1152,16 @@
         },
         "title": "Limitations",
         "type": "array"
+      },
+      "exploration_options": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 5,
+        "title": "Exploration Options",
+        "type": "array"
       }
     },
     "title": "RecommendationResult",
@@ -1244,7 +1256,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -1320,7 +1332,7 @@
           "missing_fields": {
             "items": {
               "maxLength": 120,
-              "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+              "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
               "type": "string"
             },
             "title": "Missing Fields",

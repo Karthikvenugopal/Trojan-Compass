@@ -131,6 +131,14 @@ def test_campus_beginner_unsure_still_gets_sourced_options() -> None:
         second = ChatResponse.model_validate(
             client.post("/api/chat", json={"messages": messages}).json()
         )
+        assert second.information.missing_fields == ["background"]
+        messages += [
+            {"role": "assistant", "content": second.message},
+            {"role": "user", "content": "I have no experience"},
+        ]
+        second = ChatResponse.model_validate(
+            client.post("/api/chat", json={"messages": messages}).json()
+        )
         assert second.recommendations
         assert not second.suggested_replies
         assert all(r.sources and r.unknowns for r in second.recommendations)
