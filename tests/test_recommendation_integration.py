@@ -8,9 +8,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from compact_checklist import AskBackPolicy, ChatService, create_app
 from fastapi.testclient import TestClient
 
-from trojan_compass.api import create_app
 from trojan_compass.contracts import (
     ChatMessage,
     ChatRequest,
@@ -25,7 +25,6 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.recommendations import FixedClock, RecommendationEngine
 from trojan_compass.recommendations.synthetic_graph import synthetic_repository
-from trojan_compass.services import AskBackPolicy, ChatService
 
 NOW = datetime(2026, 11, 14, 12, 0, tzinfo=timezone(timedelta(hours=-8)))
 EXAMPLES = Path(__file__).resolve().parents[1] / "docs" / "examples"

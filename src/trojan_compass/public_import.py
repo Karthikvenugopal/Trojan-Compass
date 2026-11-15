@@ -352,7 +352,7 @@ def collect(
                     (row, programs.get(row.get("prefix"), {"name": row.get("prefix")}))
                     for row in rows
                 ]
-        result = []
+        result: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for prefix, program in programs.items():
             data = client.get(
                 "classes.usc.edu",

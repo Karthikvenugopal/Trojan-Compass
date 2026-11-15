@@ -1,35 +1,73 @@
 {
-  "message": "What interests you, or what would you like to explore?",
+  "message": "What interests you, or what would you like to explore?\n\nBefore recommendations, we'll cover your study stage, program, experience and completed courses. Already shared answers count; 'I don't know' and 'None' are fine.",
   "suggested_replies": [
-    "Building things",
+    "Arts or storytelling",
     "Understanding people",
+    "Building things",
+    "Business or public service",
     "I don't know"
   ],
   "recommendations": [],
   "limitations": [],
   "information": {
-    "ready": false,
-    "missing_fields": [
-      "direction",
-      "background"
-    ],
     "fields": [
       {
         "field": "direction",
+        "status": "not_answered",
+        "value": null,
         "label": "Interests or direction",
         "category": "fixed",
-        "required": true,
+        "required": true
+      },
+      {
+        "field": "study_stage",
         "status": "not_answered",
-        "value": null
+        "value": null,
+        "label": "Study stage",
+        "category": "fixed",
+        "required": true
+      },
+      {
+        "field": "program",
+        "status": "not_answered",
+        "value": null,
+        "label": "Program or major",
+        "category": "fixed",
+        "required": true
+      },
+      {
+        "field": "work_experience",
+        "status": "not_answered",
+        "value": null,
+        "label": "Work, volunteering and projects",
+        "category": "fixed",
+        "required": true
+      },
+      {
+        "field": "completed_courses",
+        "status": "not_answered",
+        "value": null,
+        "label": "Completed courses",
+        "category": "fixed",
+        "required": true
       },
       {
         "field": "background",
-        "label": "Skills and experience",
-        "category": "fixed",
-        "required": true,
         "status": "not_answered",
-        "value": null
+        "value": null,
+        "label": "Skills and comfort",
+        "category": "fixed",
+        "required": false
       }
+    ],
+    "ready": false,
+    "missing_fields": [
+      "direction",
+      "study_stage",
+      "program",
+      "work_experience",
+      "completed_courses"
     ]
-  }
+  },
+  "course_history_options": []
 }

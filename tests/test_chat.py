@@ -8,11 +8,11 @@ from typing import Any
 
 import httpx
 import pytest
+from compact_checklist import AskBackPolicy, ChatService, create_app
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
 from starlette.types import Message, Scope
 
-from trojan_compass.api import create_app
 from trojan_compass.contracts import (
     ChatMessage,
     ChatRequest,
@@ -35,7 +35,7 @@ from trojan_compass.extraction import (
     validate_evidence,
 )
 from trojan_compass.readiness import DIRECTION_QUESTION
-from trojan_compass.services import AskBackPolicy, ChatService, ChatUnavailable
+from trojan_compass.services import ChatUnavailable
 
 
 class FakeExtractor:
@@ -307,7 +307,7 @@ async def test_request_isolation_concurrent_and_sequential() -> None:
     ]
     third = await service.chat(ChatRequest(messages=[student("design. I have no experience.")]))
     assert third.recommendations[0].id == "design. I have no experience."
-    assert set(vars(service)) == {"_extractor", "_recommendations", "_policy"}
+    assert set(vars(service)) == {"_extractor", "_recommendations", "_policy", "_course_history"}
 
 
 @pytest.mark.parametrize(

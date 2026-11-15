@@ -25,6 +25,12 @@ from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
+from trojan_compass.services import AskBackPolicy
+from trojan_compass.university import (
+    AcademicCourseHistoryService,
+    UniversityGraphRepository,
+    public_snapshot,
+)
 
 COVERAGE_NOTICE = (
     "The connected graph has limited course and event coverage. Missing matches do not mean "
@@ -32,7 +38,8 @@ COVERAGE_NOTICE = (
 )
 SEED_NOTICE = (
     "Using a reviewed USC seed snapshot, not a live database or enrollment feed. "
-    "Some skill links are inferred. Event dates recorded only as dates are not shown as times."
+    "Some skill links and discipline tags are inferred from public metadata; tags do not "
+    "prove learning outcomes. Event dates recorded only as dates are not shown as times."
 )
 
 
@@ -84,12 +91,32 @@ def seed_repository(path: Path | None = None) -> FakeGraphRepository:
 class CoverageRecommendationService:
     """Attach truthful deployment limitations; only collaborators/config survive calls."""
 
-    def __init__(self, engine: RecommendationService, notices: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        engine: RecommendationService,
+        notices: tuple[str, ...],
+        graph: GraphRepository | None = None,
+    ) -> None:
         self._engine = engine
         self._notices = notices
+        self._graph = graph
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
-        result = await self._engine.recommend(request)
+        completed = []
+        if self._graph is not None and request.context.completed_courses:
+            completed = await self._graph.find_courses(
+                [v.value for v in request.context.completed_courses]
+            )
+        completed_ids = {a.id for a in completed}
+        expanded = request.model_copy(update={"limit": 10}) if completed_ids else request
+        result = await self._engine.recommend(expanded)
+        result = result.model_copy(
+            update={
+                "recommendations": [r for r in result.recommendations if r.id not in completed_ids][
+                    : request.limit
+                ]
+            }
+        )
         return result.model_copy(update={"limitations": [*self._notices, *result.limitations]})
 
 
@@ -98,6 +125,7 @@ def create_configured_app(
     *,
     extractor: ContextExtractor | None = None,
     graph: GraphRepository | None = None,
+    policy: AskBackPolicy | None = None,
 ) -> FastAPI:
     """Wire extraction → Peri's engine → Abishek's adapter. No automatic imports/writes.
 
@@ -115,6 +143,8 @@ def create_configured_app(
     lifespan = None
     if graph is None and settings.mode == "campus":
         graph = seed_repository(settings.seed_path)
+        if settings.seed_path is None and (snapshot := public_snapshot()) is not None:
+            graph = UniversityGraphRepository(graph, snapshot)
     elif graph is None:
         if not all(
             (
@@ -143,12 +173,17 @@ def create_configured_app(
                 await asyncio.to_thread(owned_graph.close)
 
         lifespan = close_graph
+    if settings.mode == "production" and (snapshot := public_snapshot()) is not None:
+        # Enrich only records actually returned by the live adapter, never add seed fallback.
+        graph = UniversityGraphRepository(graph, snapshot, overlay=False)
     notices = (SEED_NOTICE, COVERAGE_NOTICE) if settings.mode == "campus" else (COVERAGE_NOTICE,)
     return create_app(
         mode=settings.mode,
         extractor=extractor,
         recommendations=CoverageRecommendationService(
-            ExplorationRecommendationService(RecommendationEngine(graph), graph), notices
+            ExplorationRecommendationService(RecommendationEngine(graph), graph), notices, graph
         ),
         lifespan=lifespan,
+        policy=policy,
+        course_history=AcademicCourseHistoryService(graph),
     )

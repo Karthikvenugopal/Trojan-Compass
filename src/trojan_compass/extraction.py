@@ -19,10 +19,18 @@ missing skills from absence. Only an explicit statement of ability warrants know
 learning means currently learning, not_yet_learned requires explicit lack of study;
 otherwise unknown. No direction is a valid starting point; do not invent a target.
 Also populate answers: direction summarizes interests/goals/target; background
-summarizes explicitly stated skills, experience and coursework. Values are short
+summarizes explicitly stated skills/comfort only. work_experience summarizes work,
+internships, volunteering and projects; completed_courses summarizes courses the
+student actually says they completed. study_stage records whether they have started
+at USC and their stated level/year. program records their stated degree/major or
+one they are considering. These are distinct fields: no work experience does not
+mean no completed courses or no skills. Not having started USC does not mean no
+prior coursework. Ask/record explicit None or unknown for each unavailable field.
+Values are short
 sentences in the student's terms. A field starts not_answered with value=null.
-Optional program and preferences answers summarize the program/major and other
-explicit constraints. They are not required merely because they are absent.
+preferences summarizes other explicit constraints. A suggested KG course is only
+a memory aid: record completion ONLY after the student explicitly confirms it.
+Never infer which courses they took from major, year, degree, suggestions or skills.
 Broad activities such as 'building things', 'understanding people' and 'solving
 problems' need direction_detail before a focused search: cite the activity in
 requested_context. Ask what kind, without inventing a career or skill. A concrete
@@ -36,7 +44,7 @@ the student or what they have tried. Keep those fields not_answered. Having no
 career target also does not mean having no interests. A bare "I don't know" resolves
 only the question just asked, never unrelated fields or earlier provided facts.
 Do not mark an unanswered field unknown merely because an assistant asked it.
-An explicit zero-experience answer is none for background, not a claim about
+An explicit zero-experience answer is none for work_experience, not a claim about
 individual skill mastery. For a specific skill use field='skills.<casefolded name>'.
 Preserve explicit unknown/none answers across turns until the student corrects them.
 The student may attach a typed edit to a user message. Apply it as a correction:

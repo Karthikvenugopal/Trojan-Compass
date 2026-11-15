@@ -19,12 +19,15 @@ Completed courses never prove mastery.
 
 ## Minimum questions before any recommendation search
 
-There are two fixed information requirements, not a forced number of turns:
+There are five fixed information requirements, not a forced number of turns:
 
 | Requirement | Question | Complete when |
 | --- | --- | --- |
 | Area to explore | What interests you, or what would you like to explore? | A concrete area, or explicit unknown/none. |
-| Relevant background | What skills, projects or courses have you tried so far? | Supported experience/coursework/skill statements, or explicit unknown/none. |
+| Study stage | Have you started at USC yet, and what level are you studying? | A supported answer, or explicit unknown/none. |
+| Program/major | What program or major are you studying or considering? | A supported answer, undecided, or explicit unknown/none. |
+| Experience | What work, internship, volunteer or project experience do you have? | Supported statements, or explicit unknown/none. |
+| Completed courses | Which courses have you already completed? | Student-confirmed coursework, or explicit unknown/none. |
 
 “Building things” is a useful broad preference, not yet a searchable domain. Ask
 “What kind of things would you enjoy building?” with choices such as programming
@@ -34,7 +37,7 @@ choice. A concrete answer resolves this refinement. Explicit inability to narrow
 it also counts as answered and permits labeled general starting points.
 
 Ask one concrete question at a time, skip answers already present, and collect
-background before calling RecommendationService. If both requirements are answered
+all five core answers before calling RecommendationService. If they are answered
 in the first message, search immediately. Never repeatedly say “not enough info.”
 Tell the student which question comes next instead.
 
@@ -44,7 +47,7 @@ one further clarification before cards are returned. A previous unanswered quest
 is not an answer. Unknown/none is acknowledged and not repeatedly requested.
 
 The sequence is validate → extract → apply corrections → collect area/refinement
-and background → collect required request constraints → search → resolve any
+and the other core answers → collect required request constraints → search → resolve any
 material graph clarification → compose sourced results. All values are request-local.
 
 ## Grounded exploration and missing coverage
@@ -54,7 +57,7 @@ separate Topic node for it. Chat composition reuses the existing engine, feasibi
 ranking and card builder, then names the actual skill relation in the evidence path.
 No graph edges, career goals, skill gaps or mastery are invented. Completed courses,
 known skills and recorded access constraints still apply. A bounded supplemental
-lookup examines up to 100 shared action records; primary engine queries are unchanged.
+lookup examines up to 30,000 shared action records; primary engine queries are unchanged.
 
 If there is no verified match after collecting the minimum answers, explain that
 the **current data** lacks a match. Return a concise response and actionable sourced
@@ -97,3 +100,6 @@ field. Existing recommendations and graph interfaces are unchanged. Examples:
 Tests cover unanswered versus explicit absence, request-specific gates, prerequisites,
 corrections and resets, assistant evidence rejection, isolation, safe failures,
 collapsed editing, retry, response validation and clearing without browser storage.
+
+See [university intake and public data](university-intake.md) for sourced course-history
+examples, public refresh commands, coverage reporting and dataset limitations.

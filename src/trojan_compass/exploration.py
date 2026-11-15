@@ -33,6 +33,17 @@ def interest_name(value: str) -> str:
         "coding": "computer programming",
         "programming": "computer programming",
         "programming apps or websites": "computer programming",
+        "psychology or behavior": "psychology",
+        "health or medicine": "medicine",
+        "education or social work": "social work",
+        "visual art or design": "design",
+        "film or storytelling": "film",
+        "music or performance": "music",
+        "business or entrepreneurship": "business",
+        "public policy or social work": "public policy",
+        "law or justice": "law",
+        "design or architecture": "architecture",
+        "engineering or physical systems": "engineering",
     }.get(text, text)
 
 
@@ -54,7 +65,7 @@ class ExplorationRecommendationService:
 
         # Bounded shared-data lookup, never a student cache. Primary engine queries
         # remain authoritative; this only bridges interests to existing skill edges.
-        actions = [a for a in await self._graph.browse_actions(100) if a.sources]
+        actions = [a for a in await self._graph.browse_actions(30_000) if a.sources]
         interests = request.context.interests + request.context.goals
         names = completed_course_names(request.context)
         completed = await self._graph.find_courses(names) if names else []
@@ -81,6 +92,31 @@ class ExplorationRecommendationService:
                 None,
             )
             if match is None:
+                topic_match = next(
+                    (
+                        (interest.value, topic)
+                        for interest in interests
+                        for topic in action.topics
+                        if interest_name(interest.value) == interest_name(topic)
+                    ),
+                    None,
+                )
+                if topic_match is None:
+                    continue
+                feasibility = self._feasibility.check(action, request.context, codes)
+                if feasibility.excluded is not None:
+                    continue
+                candidate = Candidate(action, topics=[topic_match[1]])
+                scored.append(
+                    Scored(
+                        candidate,
+                        feasibility,
+                        self._ranker.score(
+                            candidate, feasibility, requested_kind(request.user_query)
+                        ),
+                    )
+                )
+                paths[action.id] = (topic_match[0], topic_match[1], "topic")
                 continue
             interest, link = match
             if (
@@ -110,6 +146,26 @@ class ExplorationRecommendationService:
             for item in selected:
                 action = item.candidate.action
                 interest, skill, relation = paths[action.id]
+                if relation == "topic":
+                    card = self._explainer.build(item)
+                    recommendations.append(
+                        card.model_copy(
+                            update={
+                                "why_relevant": [
+                                    f"You mentioned “{interest}”; "
+                                    f"this option is tagged with {skill}."
+                                ],
+                                "benefits": card.benefits
+                                or [f"Explore {skill} through this sourced campus option."],
+                                "evidence_path": [
+                                    f"Student interest: {interest}",
+                                    f"Topic: {skill}",
+                                    f"{action.title} → COVERS → {skill}",
+                                ],
+                            }
+                        )
+                    )
+                    continue
                 verb = {
                     "teaches": "teaches",
                     "practices": "offers practice in",
@@ -145,7 +201,7 @@ class ExplorationRecommendationService:
                 recommendations=recommendations,
                 clarification=question,
                 limitations=[
-                    "Matched your interest to sourced skill links; eligibility and "
+                    "Matched your interest to sourced topic or skill links; eligibility and "
                     "enrollment still need confirmation."
                 ],
             )

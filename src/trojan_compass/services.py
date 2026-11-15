@@ -1,6 +1,7 @@
 """Dependency-injected orchestration; services retain dependencies, never student state."""
 
 import asyncio
+import re
 
 from trojan_compass.contracts import (
     ChatMessage,
@@ -9,6 +10,7 @@ from trojan_compass.contracts import (
     Clarification,
     ContextExtractor,
     CourseDetails,
+    CourseHistoryService,
     Recommendation,
     RecommendationRequest,
     RecommendationResult,
@@ -17,7 +19,27 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
-from trojan_compass.readiness import CHECKLIST_HINT, request_information
+from trojan_compass.readiness import CHECKLIST_HINT, DEFAULT_FIXED_FIELDS, request_information
+
+
+def latest_search_query(messages: list[ChatMessage]) -> str:
+    """An intake answer such as None must not erase an explicit event/course request."""
+    search = re.compile(
+        r"\b(show|find|recommend|suggest|looking for|want)\b.*"
+        r"\b(courses?|classes|events?|workshops?|talks?)\b",
+        re.I,
+    )
+    for message in reversed(messages):
+        if message.edit and message.edit.field in (
+            "direction",
+            "direction_detail",
+            "target",
+            "preferences",
+        ):
+            return message.content
+        if message.role == "user" and message.edit is None and search.search(message.content):
+            return message.content
+    return messages[-1].content
 
 
 class ChatUnavailable(Exception):
@@ -27,12 +49,19 @@ class ChatUnavailable(Exception):
 class AskBackPolicy:
     """Defer discovery to graph retrieval; filter questions already answered by context."""
 
+    def __init__(self, fixed_fields: tuple[str, ...] = DEFAULT_FIXED_FIELDS) -> None:
+        self.fixed_fields = fixed_fields
+
     def field(self, question: Clarification) -> str | None:
         field = question.requested_fields[0]
         field = "direction" if field == "interests" else field.removeprefix("constraints.")
         if field in (
             "direction",
             "direction_detail",
+            "study_stage",
+            "program",
+            "work_experience",
+            "completed_courses",
             "background",
             "target",
             "time_window",
@@ -54,7 +83,7 @@ class AskBackPolicy:
         field = self.field(question)
         if field is None:
             return None
-        information = request_information(context, messages)
+        information = request_information(context, messages, self.fixed_fields)
         # Merely asking before is not evidence of an answer. Explicit unknown/none
         # resolves the question without claiming that the student has a skill.
         return question if information.answer(field).status == "not_answered" else None
@@ -66,10 +95,12 @@ class ChatService:
         extractor: ContextExtractor,
         recommendations: RecommendationService,
         policy: AskBackPolicy | None = None,
+        course_history: CourseHistoryService | None = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
         self._policy = policy or AskBackPolicy()
+        self._course_history = course_history
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         try:
@@ -79,13 +110,27 @@ class ChatService:
                     (await self._extractor.extract(request.messages)).model_dump(),
                 )
                 validate_evidence(context, request.messages)
-                information = request_information(context, request.messages)
+                information = request_information(
+                    context, request.messages, self._policy.fixed_fields
+                )
                 context = information.context
                 opening_question = information.missing_question()
                 if opening_question is not None:
-                    first_question = opening_question.requested_fields == ["direction"] and not any(
-                        m.role == "assistant" for m in request.messages
-                    )
+                    courses = []
+                    if (
+                        opening_question.requested_fields == ["completed_courses"]
+                        and self._course_history
+                    ):
+                        try:
+                            courses = await self._course_history.suggest(context)
+                        except Exception:
+                            # Optional public course examples must not block free-text history.
+                            # Never log exception text: dependencies may embed student arguments.
+                            courses = []
+                    first_question = (
+                        self._policy.fixed_fields == DEFAULT_FIXED_FIELDS
+                        or opening_question.requested_fields == ["direction"]
+                    ) and not any(m.role == "assistant" for m in request.messages)
                     return ChatResponse(
                         message=(
                             f"{opening_question.text}\n\n{CHECKLIST_HINT}"
@@ -94,10 +139,11 @@ class ChatService:
                         ),
                         suggested_replies=opening_question.options,
                         information=information.snapshot(),
+                        course_history_options=courses,
                     )
                 retrieval_request = RecommendationRequest(
                     context=context,
-                    user_query=request.messages[-1].content,
+                    user_query=latest_search_query(request.messages),
                 )
                 result = RecommendationResult.model_validate(
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
