@@ -247,3 +247,5 @@ class ChatResponse(Contract):
     limitations: list[Text] = Field(default_factory=list)
     information: InformationSnapshot = Field(default_factory=InformationSnapshot)
     course_history_options: list[CourseHistoryOption] = Field(default_factory=list, max_length=8)
+    # Official pages a direct campus/course answer relied on (empty for card replies).
+    sources: list[Source] = Field(default_factory=list, max_length=5)

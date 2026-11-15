@@ -14,6 +14,7 @@ dependencies = [
     "uvicorn>=0.34,<1",
     "python-dotenv>=1,<2",
     "neo4j>=5.28,<7",
+    "tzdata>=2024.1",
 ]
 
 [project.scripts]
@@ -24,6 +25,8 @@ packages = ["src/trojan_compass"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "data/seed/usc.json" = "trojan_compass/data/usc.json"
+"data/usc/catalog.json" = "trojan_compass/data/catalog.json"
+"data/usc/campus_kb.json" = "trojan_compass/data/campus_kb.json"
 "data/seed/university.json.gz" = "trojan_compass/data/university.json.gz"
 "data/seed/university_report.json" = "trojan_compass/data/university_report.json"
 

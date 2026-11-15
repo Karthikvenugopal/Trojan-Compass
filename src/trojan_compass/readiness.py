@@ -78,7 +78,7 @@ DETAIL_QUESTIONS = {
         [
             "Design or architecture",
             "Engineering or physical systems",
-            "Programming — apps or websites",
+            "Programming (apps or websites)",
             "I don't know",
         ],
     ),

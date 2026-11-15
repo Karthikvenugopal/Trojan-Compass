@@ -1638,6 +1638,14 @@
         "maxItems": 8,
         "title": "Course History Options",
         "type": "array"
+      },
+      "sources": {
+        "items": {
+          "$ref": "#/$defs/Source"
+        },
+        "maxItems": 5,
+        "title": "Sources",
+        "type": "array"
       }
     },
     "required": [

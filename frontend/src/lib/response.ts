@@ -10,10 +10,16 @@ export function decodeResponse(value: unknown): ChatResponse {
         || value.course_history_options.length > 8 || !value.course_history_options.every(option =>
           record(option) && text(option.code) && text(option.title) && Array.isArray(option.sources)
           && option.sources.length > 0 && option.sources.every(item => record(item) && url(item.url) && text(item.title) && nullableText(item.checked_at)))))
-      || (value.information !== undefined && !information(value.information))) {
+      || (value.information !== undefined && !information(value.information))
+      || (value.sources !== undefined && !sources(value.sources))) {
     throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
   }
   return value as unknown as ChatResponse;
+}
+
+function sources(value: unknown): boolean {
+  return Array.isArray(value) && value.length <= 5 && value.every(source => record(source)
+    && url(source.url) && text(source.title) && nullableText(source.checked_at ?? null));
 }
 
 function information(value: unknown): boolean {

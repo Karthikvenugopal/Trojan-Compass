@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from typing import TYPE_CHECKING
 
 from trojan_compass.contracts import (
     ChatMessage,
@@ -19,7 +20,12 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
-from trojan_compass.readiness import CHECKLIST_HINT, DEFAULT_FIXED_FIELDS, request_information
+from trojan_compass.readiness import (
+    CHECKLIST_HINT,
+    DEFAULT_FIXED_FIELDS,
+    question_field,
+    request_information,
+)
 
 
 def latest_search_query(messages: list[ChatMessage]) -> str:
@@ -40,6 +46,10 @@ def latest_search_query(messages: list[ChatMessage]) -> str:
         if message.role == "user" and message.edit is None and search.search(message.content):
             return message.content
     return messages[-1].content
+
+
+if TYPE_CHECKING:
+    from trojan_compass.assistant import CampusAssistant
 
 
 class ChatUnavailable(Exception):
@@ -96,18 +106,25 @@ class ChatService:
         recommendations: RecommendationService,
         policy: AskBackPolicy | None = None,
         course_history: CourseHistoryService | None = None,
+        assistant: "CampusAssistant | None" = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
         self._policy = policy or AskBackPolicy()
         self._course_history = course_history
+        self._assistant = assistant
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         try:
             # One bounded lifecycle; no retries that silently replay private content.
             async with asyncio.timeout(40):
+                # Route first: campus questions need no extraction. Keeping every
+                # provider call awaited here prevents orphan work on cancellation.
+                answer = await self._answer_question(request)
+                if answer is not None:
+                    return answer
                 context = RetrievalContext.model_validate(
-                    (await self._extractor.extract(request.messages)).model_dump(),
+                    (await self._extractor.extract(request.messages)).model_dump()
                 )
                 validate_evidence(context, request.messages)
                 information = request_information(
@@ -226,6 +243,35 @@ class ChatService:
                 )
         except Exception:
             raise ChatUnavailable() from None
+
+    async def _answer_question(self, request: ChatRequest) -> ChatResponse | None:
+        """Route campus/course questions to the assistant; None continues the course flow.
+
+        Routing failure falls back to intake. There are no background extraction
+        tasks, so timeout, cancellation and failure release request-local content.
+        """
+        if self._assistant is None or request.messages[-1].edit is not None:
+            return None
+        latest = request.messages[-1].content
+        if re.search(
+            r"\b(recommend|suggest)\b|what should I (take|study|learn|explore)", latest, re.I
+        ):
+            return None
+        if (
+            len(request.messages) > 1
+            and request.messages[-2].role == "assistant"
+            and question_field(request.messages[-2].content) is not None
+            and "?" not in latest
+        ):
+            # Ordinary answers to our own checklist stay in intake deterministically.
+            return None
+        try:
+            decision = await self._assistant.route(request.messages)
+        except Exception:
+            return None
+        if decision.intent == "recommendation":
+            return None
+        return await self._assistant.answer(request.messages, decision)
 
 
 class DemoRecommendationService:

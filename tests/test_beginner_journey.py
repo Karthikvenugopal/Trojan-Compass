@@ -33,7 +33,7 @@ class JourneyExtractor:
                     ]
                 )
             if text in (
-                "Programming — apps or websites",
+                "Programming (apps or websites)",
                 "Computer programming",
                 "Coding",
                 "Computer programming. I have no experience.",
@@ -76,9 +76,9 @@ def test_beginner_can_follow_choices_to_a_sourced_course_without_a_career_goal()
         second = send(client, history, "Building things")
         assert second.recommendations == []
         assert second.message == "What kind of things would you enjoy building?"
-        assert "Programming — apps or websites" in second.suggested_replies
+        assert "Programming (apps or websites)" in second.suggested_replies
         assert second.limitations == []
-        third = send(client, history, "Programming — apps or websites")
+        third = send(client, history, "Programming (apps or websites)")
         assert third.recommendations == []
         assert third.information.missing_fields == ["background"]
         result = send(client, history, "I have no experience")

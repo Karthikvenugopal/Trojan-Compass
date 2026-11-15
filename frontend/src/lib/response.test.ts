@@ -55,3 +55,10 @@ it.each([[{ code: 'PSYC 100', title: 'Psychology', sources: [] }],
   [null]])('rejects malformed course-history choices', course_history_options => {
   expect(() => decodeResponse({ message: 'Synthetic', suggested_replies: [], recommendations: [], limitations: [], course_history_options })).toThrow();
 });
+
+it('accepts answer sources and rejects unsafe source links', () => {
+  const source = { url: 'https://libraries.usc.edu/hours', title: 'Library Hours', checked_at: null };
+  expect(decodeResponse({ ...(response() as object), sources: [source] }).sources?.[0]?.title).toBe('Library Hours');
+  expect(() => decodeResponse({ ...(response() as object),
+    sources: [{ ...source, url: 'javascript:alert(1)' }] })).toThrow('unreadable response');
+});

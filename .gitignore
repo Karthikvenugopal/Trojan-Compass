@@ -13,3 +13,6 @@ build/
 # Frontend dependencies and build output
 node_modules/
 frontend/dist/
+
+# USC catalog raw API cache (re-fetchable)
+data/raw/

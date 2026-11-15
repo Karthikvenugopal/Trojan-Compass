@@ -63,3 +63,16 @@ References checked 2026-11-14:
 
 Tests use mocked HTTP and synthetic conversations; no live Gemini call or account
 retention verification is claimed.
+
+## Campus questions
+
+Campus mode routes factual questions using the same configured provider. A direct
+campus answer uses a second structured call with request-local evidence; a
+recommendation turn routes first and then extracts context. Each call is awaited
+within the request lifecycle; cancellation leaves no background extraction task.
+Typed edits and ordinary checklist answers bypass routing. No provider-managed
+threads or student caches are used. OpenAI calls use `store=false`; this does not
+claim that provider retention is disabled. Public library HTML may be cached for
+10 minutes; it contains no student request information. Empty evidence or no valid
+citation yields a static unavailable response. Deadline answers must respect the
+published term/year and ask when it is ambiguous.

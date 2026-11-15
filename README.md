@@ -20,7 +20,7 @@ uvicorn trojan_compass.api:app_from_environment --factory --no-access-log
 ```
 
 Default `COMPASS_MODE=demo` makes **no LLM or KG calls**. Try “Help me get started”,
-then “I'm not sure”. The demo asks one question and shows a fixed CSCI 102 example
+then answer the core checklist (unknown or None are valid). The demo shows a fixed CSCI 102 example
 with its official source, unknowns and a demo label. It does not interpret a
 student's background or claim personalized ranking. No current event fixture is
 available. The public course page was checked on 2026-11-14; it is a static fixture,
@@ -131,6 +131,48 @@ current graph model omits date-only event schedules, prerequisite edges and some
 source semantics when returning actions. The UI exposes unknowns and coverage
 limitations; consult [graph limitations](docs/GRAPH_INTEGRATION.md). Missing matches
 are not evidence that USC lacks suitable opportunities.
+
+## Full USC course catalog
+
+`python scripts/fetch_usc_catalog.py` downloads every school and program from USC's
+public Schedule of Classes API (`https://classes.usc.edu/api`, no login) for Spring 2026,
+Fall 2026 and Spring 2027 (`--terms` to change), covering undergraduate, graduate and
+doctoral courses in all schools. It writes `data/usc/catalog.json`: one record per course
+with official title, description, recommended preparation, prerequisites, restrictions,
+units, level, schools/programs, and per-term sections, seats, modes, instructors and
+syllabus links. Raw responses are cached in the git-ignored `data/raw/` so an
+interrupted run resumes. Requests are sequential with a delay.
+
+In `campus` mode the server loads this catalog at startup (or `COMPASS_CATALOG_PATH`).
+It supplements curated results with catalog courses ranked by BM25 over
+their official title/description/prep against what the student said. Each card quotes
+the matched description sentence and links the official listing. Matching is lexical:
+it does not infer mastery or confirm eligibility/D-clearance. Undergraduate discovery
+excludes graduate catalog courses; known graph prerequisite blocks, completed courses,
+and explicit event requests remain respected. Seats are as of the fetch time. Re-run the script to refresh.
+
+## Campus questions
+
+In `campus` mode a router (same configured LLM) runs before extraction. Questions
+such as "Is any library open now?", "Who teaches CSCI 572 in Spring?" or "When is the
+last day to drop a class?" are answered directly instead of entering the course
+search. Recommendation requests and replies to onboarding questions keep the existing
+flow; if routing fails, the turn falls back to that flow.
+
+Answers use only evidence gathered for that request, and cite it under the reply:
+
+- **Live library hours** from `https://libraries.usc.edu/hours` (cached 10 minutes),
+  evaluated against current Pacific time.
+- **Course records** from `data/usc/catalog.json` (instructors, meeting times, seats,
+  prerequisites, description per term).
+- **Official USC pages** in `data/usc/campus_kb.json`, built by
+  `python scripts/fetch_campus_kb.py` from public sites (libraries, registrar and
+  academic calendar, student health, dining, transportation, career centers, OIS,
+  housing, IT, financial aid, DPS, rec sports, graduate school, student life, OSAS).
+  Override with `COMPASS_KB_PATH`.
+
+If the evidence does not cover a question, the assistant says so and points to the
+closest official page. Page snapshots go stale; re-run the script to refresh.
 
 ## Behavior and limits
 

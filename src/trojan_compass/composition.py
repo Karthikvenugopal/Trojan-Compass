@@ -13,6 +13,8 @@ from fastapi import FastAPI
 from pydantic import SecretStr
 
 from trojan_compass.api import AppMode, configured_extractor, create_app
+from trojan_compass.assistant import CampusAssistant, KnowledgeBase
+from trojan_compass.catalog import CatalogIndex, CatalogRecommendationService
 from trojan_compass.contracts import (
     ContextExtractor,
     RecommendationRequest,
@@ -23,6 +25,7 @@ from trojan_compass.exploration import ExplorationRecommendationService
 from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
+from trojan_compass.llm import configured_llm
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
 from trojan_compass.services import AskBackPolicy
@@ -41,6 +44,16 @@ SEED_NOTICE = (
     "Some skill links and discipline tags are inferred from public metadata; tags do not "
     "prove learning outcomes. Event dates recorded only as dates are not shown as times."
 )
+CATALOG_SEED_NOTICE = (
+    "Courses come from a snapshot of USC's public Schedule of Classes; events come from a "
+    "reviewed public calendar snapshot. Neither is a live enrollment feed."
+)
+
+
+def shared_data_path(name: str) -> Path:
+    """Locate the same public snapshot in a checkout and an installed wheel."""
+    source = Path(__file__).resolve().parents[2] / "data" / "usc" / name
+    return source if source.is_file() else Path(__file__).resolve().parent / "data" / name
 
 
 @dataclass(frozen=True)
@@ -53,6 +66,8 @@ class RuntimeSettings:
     neo4j_username: str = ""
     neo4j_password: SecretStr = SecretStr("")
     neo4j_database: str = "neo4j"
+    catalog_path: Path | None = None
+    kb_path: Path | None = None
 
     @classmethod
     def from_environment(cls) -> "RuntimeSettings":
@@ -60,7 +75,14 @@ class RuntimeSettings:
         if mode not in ("demo", "diagnostic", "campus", "production"):
             raise ValueError("COMPASS_MODE must be demo, diagnostic, campus or production")
         seed_path = os.getenv("COMPASS_SEED_PATH")
+        catalog = os.getenv("COMPASS_CATALOG_PATH")
+        default_catalog = shared_data_path("catalog.json")
+        catalog_path = Path(catalog) if catalog else default_catalog
+        kb = os.getenv("COMPASS_KB_PATH")
+        kb_path = Path(kb) if kb else shared_data_path("campus_kb.json")
         return cls(
+            kb_path=kb_path if kb_path.is_file() else None,
+            catalog_path=catalog_path if catalog_path.is_file() else None,
             mode=cast(AppMode, mode),
             seed_path=Path(seed_path) if seed_path else None,
             neo4j_uri=os.getenv("NEO4J_URI", ""),
@@ -126,6 +148,7 @@ def create_configured_app(
     extractor: ContextExtractor | None = None,
     graph: GraphRepository | None = None,
     policy: AskBackPolicy | None = None,
+    assistant: CampusAssistant | None = None,
 ) -> FastAPI:
     """Wire extraction → Peri's engine → Abishek's adapter. No automatic imports/writes.
 
@@ -139,6 +162,9 @@ def create_configured_app(
                 "Choose campus or production mode for injected integration dependencies"
             )
         return create_app(mode=settings.mode)
+    # The question assistant uses the same server-configured provider as extraction;
+    # injected (test) extractors get no assistant unless one is injected too.
+    build_assistant = extractor is None and assistant is None
     extractor = extractor if extractor is not None else configured_extractor()
     lifespan = None
     if graph is None and settings.mode == "campus":
@@ -177,21 +203,26 @@ def create_configured_app(
         # Enrich only records actually returned by the live adapter, never add seed fallback.
         graph = UniversityGraphRepository(graph, snapshot, overlay=False)
     notices = (SEED_NOTICE, COVERAGE_NOTICE) if settings.mode == "campus" else (COVERAGE_NOTICE,)
+    service: RecommendationService = ExplorationRecommendationService(
+        RecommendationEngine(graph),
+        graph,
+        subjects=graph.course_subjects if isinstance(graph, UniversityGraphRepository) else None,
+    )
+    catalog = None
+    if settings.mode == "campus" and settings.catalog_path is not None:
+        # Shared public catalog, loaded once at startup (never per student request).
+        catalog = CatalogIndex.load(settings.catalog_path)
+        service = CatalogRecommendationService(service, catalog, graph=graph)
+        notices = (CATALOG_SEED_NOTICE,)
+    if build_assistant:
+        knowledge = KnowledgeBase.load(settings.kb_path) if settings.kb_path else None
+        assistant = CampusAssistant(configured_llm(), catalog, knowledge)
     return create_app(
         mode=settings.mode,
         extractor=extractor,
-        recommendations=CoverageRecommendationService(
-            ExplorationRecommendationService(
-                RecommendationEngine(graph),
-                graph,
-                subjects=graph.course_subjects
-                if isinstance(graph, UniversityGraphRepository)
-                else None,
-            ),
-            notices,
-            graph,
-        ),
+        recommendations=CoverageRecommendationService(service, notices, graph),
         lifespan=lifespan,
         policy=policy,
         course_history=AcademicCourseHistoryService(graph),
+        assistant=assistant,
     )

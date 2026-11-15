@@ -1,6 +1,7 @@
 """Validated request-local extraction. No provider threads or mutable conversation state."""
 
 import json
+import re
 from typing import Any
 
 import httpx
@@ -55,14 +56,49 @@ experience level (background), availability (time_window) or delivery format
 (modality) necessary to fit their request. Cite that request. Do not invent
 requirements for ordinary browsing. Apply later changes to the request too.
 Each fact must cite a short exact quote from a user message and its zero-based
-message_index in the original array. Do not put names/contact details or irrelevant
-sensitive information in context. Omit unsupported fields. Return empty lists/null
-for unavailable information. Quotes support the claimed value AND skill status.
+message_index in the original array. Copy one contiguous span verbatim; never
+abbreviate it with "..." or change its wording or capitalization. Do not put
+names/contact details or irrelevant sensitive information in context. Omit
+unsupported fields. Return empty lists/null for unavailable information. Quotes
+support the claimed value AND skill status.
 """
 
 
 class ExtractionFailure(Exception):
     """Safe boundary exception; never include provider payloads or student content."""
+
+
+def parse_context(raw: str) -> RetrievalContext:
+    """Validate model output, dropping redundant text on non-provided answers.
+
+    Models sometimes echo the student's word (e.g. value "None" with status "none").
+    Only a provided answer carries a value, so the echo is discarded before strict
+    validation instead of failing the whole turn.
+    """
+    data = json.loads(raw)
+    if isinstance(data, dict):
+        for answer in data.get("answers") or []:
+            if isinstance(answer, dict) and answer.get("status") != "provided":
+                answer["value"] = None
+    return RetrievalContext.model_validate(data)
+
+
+def quoted(quote: str, content: str) -> bool:
+    """Allow punctuation/case normalization only; never elide student words.
+
+    Ellipses can hide a negation ("I ... know" versus "I do not know"), so
+    non-contiguous model quotations must be rejected and extracted again.
+    """
+    if quote in content:
+        return True
+    if "..." in quote or "…" in quote:
+        return False
+    words = _words(quote)
+    return bool(words) and f" {words} " in f" {_words(content)} "
+
+
+def _words(value: str) -> str:
+    return " ".join(re.findall(r"[^\W_]+", value.casefold()))
 
 
 def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) -> None:
@@ -73,7 +109,7 @@ def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) ->
             if value.message_index >= len(messages):
                 raise ExtractionFailure()
             message = messages[value.message_index]
-            if message.role != "user" or value.quote not in message.content:
+            if message.role != "user" or not quoted(value.quote, message.content):
                 raise ExtractionFailure()
         elif isinstance(value, BaseModel):
             for name in type(value).model_fields:
@@ -178,7 +214,7 @@ class OpenAIContextExtractor:
                 or not choice.message.content
             ):
                 raise ExtractionFailure()
-            context = RetrievalContext.model_validate_json(choice.message.content)
+            context = parse_context(choice.message.content)
             validate_evidence(context, messages)
             return context
         except Exception:
