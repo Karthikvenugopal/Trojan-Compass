@@ -156,3 +156,47 @@ career abbreviation, prior volunteering and a scoped negative work reply) and pr
 only boolean checks, safe error codes and elapsed time. No student conversation or
 raw model reply is printed/saved. Mocked CI tests verify the checks and wiring;
 they do not prove that the installed local model passes this semantic evaluation.
+
+## Fixed boundaries versus model decisions
+
+This is a hybrid system, not an unrestricted autonomous career researcher.
+
+| Stage | Current behavior |
+| --- | --- |
+| Language interpretation and dialogue | LLM extracts facts, interprets short replies, chooses question/order/options and search intent. The live path bypasses legacy scripted short-answer interpretation. |
+| Minimum intake | Code and prompts require direction, study stage, program, work experience and completed courses. Provided, explicitly unknown and explicitly absent resolve a field. |
+| Career coverage | A curated public dataset supplies 13 occupation baselines and their skills. The LLM chooses among them; it cannot invent another supported baseline. |
+| Candidate retrieval | Graph traversal, lexical catalog search, feasibility filters, ranking weights, course-number ordering and candidate limits are deterministic. This limits what the LLM can select. |
+| Guide composition | LLM selects supplied occupations/resources/skills, writes the plan and can ask one material follow-up. Code verifies IDs and step references. |
+| Course memory aids | Public course records with programmed program/stage matching and ordering. They never establish course completion. |
+| UI | Layout, manual edit dropdown states, labels and errors are fixed. Live conversational reply buttons are model-generated; fixed demo/diagnostic modes are separate. |
+| Privacy and validity | Fixed request limits, provenance checks, no student persistence, source/ID checks and bounded retries. |
+
+Legacy questionnaire strings still exist for explicitly injected legacy flows and
+fixtures; their presence does not mean the current live AI service calls that
+question selector. Candidate generation still uses deterministic code, including
+the public-data matching inside the evidence guide.
+
+## Composition validation repair
+
+The guide composer gets exact allowed IDs grouped by recommendation, occupation,
+skill and action. A fabricated/duplicate ID, unselected step reference, dependency
+error, generated URL or repeated question is rejected before publishing. One
+same-provider repair receives the original evidence and a static failure category,
+not exception text or a logged draft. A second invalid response fails closed.
+Retrieval is not repeated; auth, quota, network failures and timeouts are not retried.
+The existing overall deadline still bounds the full turn.
+
+Retrieved courses/events with sources and action URLs are projected into plan
+resources even when no occupation baseline was selected. This makes the same
+evidence available to both cards and plan steps. Actions use short request-local
+handles in model input; validated selections and step references are resolved back
+to original IDs before returning. This is identifier bookkeeping, not a semantic
+match or a student fact. Sources/access checks remain on the original records.
+The composer receives the relevant candidate facts without duplicated source URLs
+or occupation baselines; original sources are attached to the validated response.
+
+An optional uncertain answer must remain unknown on later turns and must not be
+requested again. The LLM owns that semantic classification; there is no new phrase
+dictionary. Prompts also tell it to avoid extending minimum intake for optional
+preferences and to use plain-language reply buttons instead of internal enums.

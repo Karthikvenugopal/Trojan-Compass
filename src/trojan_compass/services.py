@@ -22,7 +22,7 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.controlled_intake import ControlledIntakeParser
 from trojan_compass.extraction import ExtractionFailure, validate_evidence
-from trojan_compass.failures import DecisionIssue, FailureReason, ProcessingStage
+from trojan_compass.failures import CompositionIssue, DecisionIssue, FailureReason, ProcessingStage
 from trojan_compass.readiness import (
     CHECKLIST_HINT,
     DEFAULT_FIXED_FIELDS,
@@ -71,7 +71,7 @@ class ChatUnavailable(Exception):
         self,
         reason: FailureReason = FailureReason.INTERNAL,
         stage: ProcessingStage | None = None,
-        issue: DecisionIssue | None = None,
+        issue: DecisionIssue | CompositionIssue | None = None,
     ) -> None:
         super().__init__()
         self.reason = reason

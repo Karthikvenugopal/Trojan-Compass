@@ -38,7 +38,7 @@ from trojan_compass.extraction import (
     grounded_context,
     parse_context,
 )
-from trojan_compass.failures import DecisionIssue, FailureReason, ProcessingStage
+from trojan_compass.failures import CompositionIssue, DecisionIssue, FailureReason, ProcessingStage
 from trojan_compass.llm import LLMFailure, StructuredLLM
 from trojan_compass.planner_wire import (
     PLANNER_PROMPT,
@@ -56,6 +56,14 @@ class DecisionFailure(ExtractionFailure):
 
     def __init__(self, issue: DecisionIssue) -> None:
         super().__init__(FailureReason.DECISION)
+        self.issue = issue
+
+
+class CompositionFailure(ExtractionFailure):
+    """Content-free feedback: resource validation is distinct from student provenance."""
+
+    def __init__(self, issue: CompositionIssue) -> None:
+        super().__init__(FailureReason.EVIDENCE)
         self.issue = issue
 
 
@@ -127,6 +135,8 @@ instead of giving arbitrary careers. If a career is explicit, build practical or
 steps addressing self-reported gaps and unknowns, using selected sourced resources.
 Every step.action_ids and skill_names must refer to your selected actions/skills;
 depends_on can refer only to an earlier step.id. All resource IDs must be unique.
+selection_ids lists the exact IDs allowed for each category. Copy them verbatim;
+an action ID is not a recommendation ID, title, URL, or a new slug you create.
 
 Use tool_clarification when its field is genuinely unanswered and material. Ask ONE
 question at a time. Do not repeat answered questions (unknown/none counts answered).
@@ -134,6 +144,8 @@ question=null when no clarification is needed. suggested_replies must fit the ac
 question/next move; never pretend a suggested answer is a student fact. If asking for
 a skill use skills.<lowercase skill name>. Keep prose concise, avoid redundant caveat
 walls, and do not announce 'no match' if other supplied evidence supports a plan.
+Use plain language in question options, never internal enum tokens. Optional
+uncertainty is resolved; do not turn an unknown timeframe into another timing question.
 """
 
 
@@ -194,7 +206,9 @@ class AIChatService:
                 return await self._compose(request, decision, information, result)
         except ExtractionFailure as error:
             raise ChatUnavailable(
-                error.reason, stage, error.issue if isinstance(error, DecisionFailure) else None
+                error.reason,
+                stage,
+                error.issue if isinstance(error, (DecisionFailure, CompositionFailure)) else None,
             ) from None
         except LLMFailure as error:
             raise ChatUnavailable(error.reason, stage) from None
@@ -380,6 +394,23 @@ class AIChatService:
         occupations = {r.id: r for r in self._library.roles if r.id in decision.occupation_ids}
         skills: dict[str, CareerSkill] = {}
         actions: dict[str, GuidanceAction] = {}
+        # Retrieved recommendations are also valid plan resources. Without this
+        # projection a sourced course appeared in cards but could not legally be
+        # referenced by a step, especially when no occupation was selected.
+        for rec in recommendations.values():
+            if rec.action_url is not None and rec.sources:
+                actions[rec.id] = GuidanceAction(
+                    id=rec.id,
+                    kind=rec.kind,
+                    title=rec.title,
+                    summary=rec.summary,
+                    why_relevant=" ".join(rec.why_relevant) or rec.summary,
+                    url=rec.action_url,
+                    sources=rec.sources,
+                    availability="snapshot",
+                    checks=[*rec.prerequisites_or_access, *rec.unknowns],
+                    term=rec.course.term if rec.course else None,
+                )
         for role in occupations.values():
             # A model-selected possible occupation is NOT written to student context.target.
             candidate = await self._evidence.guide(context, [], exploration_role=role)
@@ -393,13 +424,16 @@ class AIChatService:
                 skills[f"target:{skill.name.casefold()}"] = skill
             for action in scoped.actions:
                 actions[action.id] = action
+        # Short request-local handles reduce copying errors without changing any
+        # candidate or its meaning. Validate handles before resolving original IDs.
+        actions = {f"a{i}": action for i, action in enumerate(actions.values(), start=1)}
         material_field = None
         if result.clarification:
             field = AskBackPolicy().field(result.clarification)
             if field and information.answer(field).status == "not_answered":
                 material_field = field
                 information.require(field)
-        payload = {
+        payload: dict[str, object] = {
             "conversation": [m.model_dump() for m in request.messages],
             "context": context.model_dump(),
             "information": information.snapshot().model_dump(),
@@ -408,17 +442,68 @@ class AIChatService:
             else None,
             "tool_clarification_unanswered": material_field is not None,
             "tool_limitations": result.limitations,
-            "recommendations": [r.model_dump(mode="json") for r in recommendations.values()],
-            "occupations": [r.model_dump(mode="json") for r in occupations.values()],
-            "skills": [{"id": k, **v.model_dump(mode="json")} for k, v in skills.items()],
-            "actions": [a.model_dump(mode="json") for a in actions.values()],
+            # The composer selects/explains evidence; source URLs and rendering
+            # metadata stay on domain objects and are attached after validation.
+            # Avoid duplicating long URLs/baselines in every selection candidate.
+            "recommendations": [
+                r.model_dump(mode="json", exclude={"action_url", "sources", "evidence_path"})
+                for r in recommendations.values()
+            ],
+            "occupations": [
+                r.model_dump(mode="json", exclude={"skills", "aliases", "source"})
+                for r in occupations.values()
+            ],
+            "skills": [
+                {"id": k, **v.model_dump(mode="json", exclude={"sources", "student_evidence"})}
+                for k, v in skills.items()
+            ],
+            "actions": [
+                {**action.model_dump(mode="json", exclude={"url", "sources"}), "id": handle}
+                for handle, action in actions.items()
+            ],
+            "selection_ids": {
+                "recommendations": list(recommendations),
+                "occupations": list(occupations),
+                "skills": list(skills),
+                "actions": list(actions),
+            },
         }
-        answer = await self._llm.complete(COMPOSITION_PROMPT, json.dumps(payload), GuidedAnswer)
-        self._validate_answer(answer, information, recommendations, occupations, skills, actions)
-        if material_field and (
-            answer.question is None or answer.question.requested_fields != [material_field]
-        ):
-            raise ExtractionFailure(FailureReason.SCHEMA)
+        # Repair the composition at its own boundary; never rerun retrieval or
+        # weaken evidence checks, and never retry transport/auth/quota failures.
+        for attempt in range(2):
+            try:
+                answer = await self._llm.complete(
+                    COMPOSITION_PROMPT, json.dumps(payload), GuidedAnswer
+                )
+                self._validate_answer(
+                    answer, information, recommendations, occupations, skills, actions
+                )
+                if material_field and (
+                    answer.question is None or answer.question.requested_fields != [material_field]
+                ):
+                    raise ExtractionFailure(FailureReason.SCHEMA)
+                break
+            except (LLMFailure, ExtractionFailure) as error:
+                if attempt or error.reason not in {
+                    FailureReason.SCHEMA,
+                    FailureReason.EVIDENCE,
+                    FailureReason.DECISION,
+                    FailureReason.INVALID_OUTPUT,
+                    FailureReason.CONFLICT,
+                }:
+                    raise
+                payload["validation_feedback"] = {
+                    "issue": error.issue.value
+                    if isinstance(error, (CompositionFailure, DecisionFailure))
+                    else error.reason.value,
+                    "instruction": (
+                        "One final repair using the original evidence. Copy selection_ids "
+                        "exactly from the matching category; do not create or shorten IDs. "
+                        "Steps reference only selected actions and exact selected skill names. "
+                        "Do not ask any field whose status is provided, unknown or none. "
+                        "No URLs in prose. Empty selections are valid when nothing fits."
+                    ),
+                }
         if material_field:
             assert answer.question is not None
             return ChatResponse(
@@ -460,7 +545,10 @@ class AIChatService:
             suggested_paths=choices,
             skills=selected_skills,
             actions=selected_actions,
-            steps=answer.steps,
+            steps=[
+                step.model_copy(update={"action_ids": [actions[key].id for key in step.action_ids]})
+                for step in answer.steps
+            ],
             next_question=answer.question,
             limitations=answer.limitations,
         )
@@ -495,25 +583,25 @@ class AIChatService:
         ]:
             ids = [c.id for c in choices]
             if len(ids) != len(set(ids)) or not set(ids) <= allowed:
-                raise ExtractionFailure(FailureReason.EVIDENCE)
+                raise CompositionFailure(CompositionIssue.RESOURCE_IDS)
         skill_ids = [s.id for s in answer.skills]
         if len(skill_ids) != len(set(skill_ids)) or not set(skill_ids) <= set(skills):
-            raise ExtractionFailure(FailureReason.EVIDENCE)
+            raise CompositionFailure(CompositionIssue.SKILL_IDS)
         selected_names = {skills[s.id].name for s in answer.skills}
         action_ids = {a.id for a in answer.actions}
         prior: set[str] = set()
         for step in answer.steps:
             if step.id in prior or not set(step.depends_on) <= prior:
-                raise ExtractionFailure(FailureReason.EVIDENCE)
+                raise CompositionFailure(CompositionIssue.STEP_ORDER)
             if (
                 not set(step.action_ids) <= action_ids
                 or not set(step.skill_names) <= selected_names
             ):
-                raise ExtractionFailure(FailureReason.EVIDENCE)
+                raise CompositionFailure(CompositionIssue.STEP_REFERENCES)
             prior.add(step.id)
         if answer.question is not None:
             self._validate_question(answer.question, information)
         # Source links only come from validated tool records, never generated prose.
         prose = answer.model_dump_json()
         if re.search(r"https?://|www\.", prose, re.I):
-            raise ExtractionFailure(FailureReason.EVIDENCE)
+            raise CompositionFailure(CompositionIssue.GENERATED_URL)
