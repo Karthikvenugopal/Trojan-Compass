@@ -45,3 +45,25 @@ for path in ('api/Schools/TermCode?termCode=20263', 'api/Programs/TermCode?termC
         print('CATALOGUE SAMPLE',json.dumps(sample,ensure_ascii=False)[:4000],flush=True)
     except Exception as error:
         print('CATALOGUE ERROR',path,type(error).__name__,str(error)[:120],flush=True)
+for method in ('apiCoursesCoursesByTermSchoolProgram', 'apiCoursesCourse'):
+    match=re.search(re.escape(method)+r'\([^)]*\)\{let',body)
+    if match:
+        print('PUBLIC GET PARAMS',body[match.start():match.start()+1100],flush=True)
+for path in (
+    'api/Courses/CoursesByTermSchoolProgram?termCode=20263&schoolPrefix=DRNS&programPrefix=PSYC',
+    'api/Courses/CoursesByTermSchoolProgram?termCode=20263&schoolPrefix=MEDK&programPrefix=ANY',
+    'api/Search/Basic?termCode=20263&searchTerm=PSYC',
+):
+    try:
+        obj=json.loads(get(base+path))
+        print('PUBLIC COURSE RESPONSE',path,'TYPE',type(obj).__name__,flush=True)
+        rows=obj.get('courses') if isinstance(obj,dict) else obj
+        if isinstance(obj,dict):
+            print('RESPONSE KEYS',list(obj),flush=True)
+        if isinstance(rows,list):
+            print('COURSE COUNT',len(rows),flush=True)
+            if rows and isinstance(rows[0],dict):
+                print('COURSE FIELDS',list(rows[0]),flush=True)
+                print('COURSE FACTS',json.dumps({k:v for k,v in rows[0].items() if k.lower() in ('courseid','title','coursename','prefix','units','minunits','maxunits','prerequisite','prerequisites','prerequisitetext','corequisite','description','leveloneprefix','leveltwoprefix','classnumber','coursetitle','coursedescription','corequisites','prerequisitecondition')},ensure_ascii=False)[:2000],flush=True)
+    except Exception as error:
+        print('PUBLIC COURSE ERROR',type(error).__name__,str(error)[:120],flush=True)
