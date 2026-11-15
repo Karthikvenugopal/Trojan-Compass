@@ -20,6 +20,7 @@ class FailureReason(StrEnum):
     PROVIDER = "provider_unavailable"
     CONFIGURATION = "provider_configuration"
     INTERNAL = "service_failure"
+    LOCAL_CONTEXT = "local_context_limit"
 
 
 class ProcessingStage(StrEnum):
@@ -54,6 +55,10 @@ def provider_reason(error: httpx.HTTPStatusError) -> FailureReason:
 
 
 FAILURE_MESSAGES = {
+    FailureReason.LOCAL_CONTEXT: (
+        "The local model context budget is too small for this request. Nothing was truncated. "
+        "Use a shorter background or configure a larger supported OLLAMA_CONTEXT_LENGTH."
+    ),
     FailureReason.SCHEMA: (
         "The AI returned an invalid context structure after validation repair. "
         "Your message is preserved. Error: invalid_model_structure."
@@ -101,8 +106,8 @@ FAILURE_MESSAGES = {
         "needs fixing; repeated retries will not help."
     ),
     FailureReason.INVALID_OUTPUT: (
-        "The AI response could not be safely validated. Your message is still here. Guided "
-        "choices can be processed directly."
+        "The AI response could not be safely validated. Your message is still here. No "
+        "scripted recommendations were substituted."
     ),
     FailureReason.INTERNAL: (
         "This request could not be completed. Your message is still here; no recommendations "

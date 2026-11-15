@@ -173,8 +173,8 @@ class FailingLLM:
 def test_environment_factory_uses_real_campus_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COMPASS_MODE", "campus")
     monkeypatch.setattr("trojan_compass.composition.configured_extractor", extractor)
-    # A failing question router must fall back to the normal recommendation flow.
-    monkeypatch.setattr("trojan_compass.composition.configured_llm", FailingLLM)
+    # Live AI failure must not silently return the old scripted recommendation flow.
+    monkeypatch.setattr("trojan_compass.composition.configured_llm", lambda **kwargs: FailingLLM())
     with TestClient(app_from_environment()) as client:
         assert client.get("/health").json()["mode"] == "campus"
         response = client.post(
@@ -191,14 +191,9 @@ def test_environment_factory_uses_real_campus_path(monkeypatch: pytest.MonkeyPat
                 ]
             },
         )
-    assert response.status_code == 200
-    assert not response.json()["recommendations"]
-    assert response.json()["information"]["missing_fields"] == [
-        "study_stage",
-        "program",
-        "work_experience",
-        "completed_courses",
-    ]
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "invalid_model_output"
+    assert "recommendations" not in response.json()
 
 
 def test_public_seed_loaded_at_startup_only(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -12,9 +12,6 @@ const statuses = { known: 'Self-reported strength', learning: 'Currently learnin
 /** A plan in the current conversation, never a saved student dashboard. */
 export function CareerGuide({ guidance, disabled, onEdit }: Props) {
   const [tab, setTab] = useState<'course' | 'faculty' | 'research' | 'event'>(guidance.actions[0]?.kind ?? 'course');
-  const question = guidance.next_question;
-  const skill = question?.requested_fields[0]?.startsWith('skills.')
-    ? guidance.skills.find(s => `skills.${s.name.toLowerCase()}` === question.requested_fields[0]) : null;
   const groups = [
     { kind: 'course' as const, label: 'Learning', icon: BookOpen },
     { kind: 'faculty' as const, label: 'Faculty & instructors', icon: Users },
@@ -49,17 +46,7 @@ export function CareerGuide({ guidance, disabled, onEdit }: Props) {
           }}><option value="" disabled>Choose an update…</option><option value="known">Comfortable</option><option value="learning">Learning</option><option value="not_yet_learned">Not learned yet</option><option value="unknown">Not sure</option></select></label>
         </details>
       </div>)}</div>
-      {skill && question && <fieldset className="career-skill-check" disabled={disabled}>
-        <legend>One useful check: {skill.name}</legend>
-        <div className="suggested-replies">
-          {[
-            ['I’m comfortable', `I am comfortable with ${skill.name}.`],
-            ['I’m learning', `I am learning ${skill.name}.`],
-            ['Not learned yet', `I have not learned ${skill.name} yet.`],
-          ].map(([label, value]) => <button type="button" key={label} onClick={() => onEdit({ field: `skills.${skill.name.toLowerCase()}`, status: 'provided', value }, skill.name)}>{label}</button>)}
-          <button type="button" onClick={() => onEdit({ field: `skills.${skill.name.toLowerCase()}`, status: 'unknown', value: null }, skill.name)}>I’m not sure</button>
-        </div>
-      </fieldset>}
+
     </div>}
     {!!guidance.steps.length && <div className="career-roadmap"><h4>Your next steps</h4><ol>
       {guidance.steps.map((step, index) => <li key={step.id}><span className="step-number" aria-hidden="true">{index + 1}</span><div><b>{step.title}</b><p>{step.description}</p>

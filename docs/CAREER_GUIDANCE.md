@@ -1,5 +1,11 @@
 # Career guidance and optional background imports
 
+**Current live orchestration:** [AI_WORKFLOW.md](AI_WORKFLOW.md). The AI now chooses
+questions, semantic searches, occupations and plan prose on every turn. Deterministic
+helpers described below supply evidence and compatibility tests, not live scripted
+conversation decisions. There is no scripted career fallback on AI failure.
+
+
 Compass now builds a working career plan instead of ending at course results.
 The five-field minimum intake stays in place. A student may answer manually or
 add background directly to supply multiple facts together. Unknown and None

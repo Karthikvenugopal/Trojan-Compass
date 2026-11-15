@@ -47,6 +47,7 @@ from trojan_compass.services import (
 )
 
 if TYPE_CHECKING:
+    from trojan_compass.ai_chat import AIChatService
     from trojan_compass.assistant import CampusAssistant
 
 AppMode = Literal["demo", "diagnostic", "campus", "production"]
@@ -151,6 +152,7 @@ def create_app(
     assistant: "CampusAssistant | None" = None,
     guidance: CareerGuidanceService | None = None,
     local_intake: ControlledIntakeParser | None = None,
+    chat_service: "AIChatService | None" = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
@@ -285,7 +287,7 @@ def create_app(
     async def chat(request: ChatRequest) -> ChatResponse:
         if mode == "diagnostic":
             return dummy_response()
-        return await service.chat(request)
+        return await (chat_service or service).chat(request)
 
     @app.get("/api/diagnostics/dummy", response_model=ChatResponse)
     async def diagnostic_dummy() -> ChatResponse:
@@ -309,6 +311,11 @@ def app_from_environment() -> FastAPI:
 def configured_extractor() -> ContextExtractor:
     """Select a server-only provider; invalid/missing configuration fails closed."""
     provider = os.environ.get("LLM_PROVIDER", "openai")
+    if provider == "ollama":
+        from trojan_compass.ollama import OllamaContextExtractor, configured_ollama
+
+        configured_ollama()  # Validate endpoint/model settings before accepting requests.
+        return OllamaContextExtractor()
     if provider == "gemini":
         key = os.environ.get("GEMINI_API_KEY", "")
         model = os.environ.get("GEMINI_MODEL", "")
@@ -316,7 +323,7 @@ def configured_extractor() -> ContextExtractor:
             raise ValueError("GEMINI_API_KEY and GEMINI_MODEL are required")
         return GeminiContextExtractor(key, model)
     if provider != "openai":
-        raise ValueError("LLM_PROVIDER must be openai or gemini")
+        raise ValueError("LLM_PROVIDER must be openai, gemini or ollama")
     key = os.environ.get("OPENAI_API_KEY", "")
     model = os.environ.get("OPENAI_MODEL", "")
     if not key or not model:

@@ -87,11 +87,9 @@ class PathLibrary(Contract):
         wanted = " ".join(i.value for i in context.interests + context.goals).casefold()
         ranked = sorted(self.roles, key=lambda r: -sum(key(t) in key(wanted) for t in r.topics))
         matched = [r for r in ranked if any(key(t) in key(wanted) for t in r.topics)]
-        if matched:
-            return matched[:3]
-        # Balanced examples for an explicitly undecided student, without a CS default.
-        ids = {"social-research", "graphic-designer", "mechanical-engineer"}
-        return [r for r in self.roles if r.id in ids][:3]
+        # No unrelated fallback. Live AI orchestration selects occupations from
+        # evidence directly; this compatibility helper only returns actual matches.
+        return matched[:3]
 
 
 class EvidenceCareerGuide:
@@ -105,7 +103,11 @@ class EvidenceCareerGuide:
         self._catalog = catalog
 
     async def guide(
-        self, context: RetrievalContext, recommendations: list[Recommendation]
+        self,
+        context: RetrievalContext,
+        recommendations: list[Recommendation],
+        *,
+        exploration_role: CareerPath | None = None,
     ) -> CareerGuidance:
         chosen: str | None = context.target.name if context.target else None
         if chosen is None:
@@ -122,6 +124,9 @@ class EvidenceCareerGuide:
             if chosen and (context.target is None or context.target.kind == "role")
             else None
         )
+        # A possible occupation selected by the AI is evidence scope, not a student target.
+        if exploration_role is not None:
+            role = exploration_role
         skills: list[CareerSkill] = []
         limitations = [
             "Occupation baselines are not company/team hiring requirements or a readiness score.",

@@ -17,7 +17,8 @@ it('shows unknown distinctly and sends an explicit skill assessment', async () =
   render(<CareerGuide guidance={plan} disabled={false} onEdit={save} />);
   expect(screen.getByText('Not assessed')).toBeInTheDocument();
   expect(screen.queryByText('Confirmed development need')).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Not learned yet' }));
+  await user.click(screen.getByText('Why this matters'));
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Update Mathematics assessment' }), 'not_yet_learned');
   expect(save).toHaveBeenCalledWith({ field: 'skills.mathematics', status: 'provided', value: 'I have not learned Mathematics yet.' }, 'Mathematics');
   expect(screen.getByText('Availability unknown', { selector: '.availability-note' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /View official source/ })).toHaveAttribute('href', source.url);

@@ -80,16 +80,13 @@ async def test_declared_gaps_learning_and_strengths_stay_distinct(
     assert plan.steps[1].skill_names == ["Programming"]
 
 
-async def test_undecided_student_gets_choices_without_an_assigned_career(
+async def test_evidence_builder_never_invents_unrelated_occupation_fallback(
     guide: EvidenceCareerGuide,
 ) -> None:
     plan = await guide.guide(RetrievalContext(), [])
     assert plan.mode == "explore" and plan.goal is None
     assert not plan.skills
-    assert len(plan.suggested_paths) == 3
-    assert all(p.sources for p in plan.suggested_paths)
-    assert any("designer" in p.title.lower() for p in plan.suggested_paths)
-    assert any("research" in p.title.lower() for p in plan.suggested_paths)
+    assert plan.suggested_paths == []
 
 
 @pytest.mark.parametrize(
@@ -120,7 +117,7 @@ async def test_unknown_company_or_team_does_not_get_invented_requirements(
     student.target.kind = "company"
     plan = await guide.guide(student, [])
     assert plan.mode == "coverage_gap" and not plan.skills
-    assert plan.suggested_paths
+    assert not plan.suggested_paths
 
 
 async def test_graduate_research_plan_does_not_present_undergraduate_program_as_eligible(

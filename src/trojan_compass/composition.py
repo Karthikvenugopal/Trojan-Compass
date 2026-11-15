@@ -12,6 +12,7 @@ from typing import cast
 from fastapi import FastAPI
 from pydantic import SecretStr
 
+from trojan_compass.ai_chat import AIChatService
 from trojan_compass.api import AppMode, configured_extractor, create_app
 from trojan_compass.assistant import CampusAssistant, KnowledgeBase
 from trojan_compass.career_guidance import EvidenceCareerGuide, PathLibrary
@@ -27,7 +28,7 @@ from trojan_compass.exploration import ExplorationRecommendationService
 from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
-from trojan_compass.llm import configured_llm
+from trojan_compass.llm import StructuredLLM, configured_llm
 from trojan_compass.readiness import DEFAULT_FIXED_FIELDS
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
@@ -152,6 +153,7 @@ def create_configured_app(
     graph: GraphRepository | None = None,
     policy: AskBackPolicy | None = None,
     assistant: CampusAssistant | None = None,
+    llm: StructuredLLM | None = None,
 ) -> FastAPI:
     """Wire extraction → Peri's engine → Abishek's adapter. No automatic imports/writes.
 
@@ -167,7 +169,10 @@ def create_configured_app(
         return create_app(mode=settings.mode)
     # The question assistant uses the same server-configured provider as extraction;
     # injected (test) extractors get no assistant unless one is injected too.
-    use_local_intake = extractor is None
+    # Live apps use AI orchestration. Explicit legacy dependency injection remains
+    # available for existing focused tests; provider failure never selects it.
+    use_ai = llm is not None or (extractor is None and assistant is None)
+    use_local_intake = extractor is None and not use_ai
     build_assistant = extractor is None and assistant is None
     extractor = extractor if extractor is not None else configured_extractor()
     lifespan = None
@@ -218,19 +223,40 @@ def create_configured_app(
         catalog = CatalogIndex.load(settings.catalog_path)
         service = CatalogRecommendationService(service, catalog, graph=graph)
         notices = (CATALOG_SEED_NOTICE,)
-    if build_assistant:
+    agent_llm = (
+        llm if llm is not None else (configured_llm(max_output_tokens=8192) if use_ai else None)
+    )
+    if build_assistant or (use_ai and assistant is None):
         knowledge = KnowledgeBase.load(settings.kb_path) if settings.kb_path else None
-        assistant = CampusAssistant(configured_llm(), catalog, knowledge)
+        assistant = CampusAssistant(agent_llm or configured_llm(), catalog, knowledge)
+    covered = CoverageRecommendationService(service, notices, graph)
+    history = AcademicCourseHistoryService(graph)
+    library = PathLibrary.load()
+    evidence = EvidenceCareerGuide(graph, library, catalog)
+    ai_service = None
+    if use_ai:
+        assert agent_llm is not None and assistant is not None
+        ai_service = AIChatService(
+            agent_llm,
+            covered,
+            library,
+            evidence,
+            history,
+            assistant,
+            notices[0],
+            request_timeout=180 if os.getenv("LLM_PROVIDER") == "ollama" else 75,
+        )
     return create_app(
         mode=settings.mode,
         extractor=extractor,
-        recommendations=CoverageRecommendationService(service, notices, graph),
+        recommendations=covered,
         lifespan=lifespan,
         policy=policy,
-        course_history=AcademicCourseHistoryService(graph),
+        course_history=history,
         assistant=assistant,
         local_intake=ControlledIntakeParser() if use_local_intake else None,
-        guidance=EvidenceCareerGuide(graph, PathLibrary.load(), catalog)
+        chat_service=ai_service,
+        guidance=evidence
         if policy is None or policy.fixed_fields == DEFAULT_FIXED_FIELDS
         else None,
     )

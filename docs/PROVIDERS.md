@@ -1,5 +1,11 @@
 # Extraction providers and external data handling
 
+For the current AI-led workflow and local Ollama option, see [AI_WORKFLOW.md](AI_WORKFLOW.md).
+`LLM_PROVIDER=ollama` selects native local structured generation without cloud credentials
+or automatic cloud fallback. Every live conversation turn invokes the chosen provider.
+Local daemon logging/retention is separate; it has not been audited or reconfigured.
+
+
 Provider selection is server-side and does not change `POST /api/chat`, the
 frontend, retrieval contracts or the student-data lifecycle. No provider choice
 creates a session/profile repository. Each call re-derives context from the
