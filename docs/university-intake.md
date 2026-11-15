@@ -31,6 +31,12 @@ completion; completion never proves mastery. Students can type all relevant cour
 including courses absent from the graph. Course-history lookup helps answer intake;
 recommendation retrieval remains blocked until the core checklist is answered.
 
+The reviewed November 14, 2026 snapshot contains **4,646 courses across 26 schools**
+and **2,396 unique calendar events / 3,477 dated occurrences**, including **357
+upcoming or ongoing occurrences** as checked. These counts are deliberately distinct:
+archived events are not upcoming suggestions. See the generated
+[coverage report](../data/seed/university_report.json) for school counts and omissions.
+
 ## Public shared-data refresh
 
 Run from the repository root:

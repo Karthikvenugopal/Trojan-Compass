@@ -5,17 +5,20 @@ remain unchanged; their feasibility, ranking and card composition are reused.
 """
 
 import re
+from collections.abc import Mapping
+from dataclasses import replace
 
 from trojan_compass.contracts import (
     Clarification,
     RecommendationRequest,
     RecommendationResult,
     RecommendationService,
+    RetrievalContext,
 )
 from trojan_compass.recommendations.clock import Clock, SystemClock
 from trojan_compass.recommendations.explain import Explainer
 from trojan_compass.recommendations.feasibility import FeasibilityChecker
-from trojan_compass.recommendations.graph import GraphRepository
+from trojan_compass.recommendations.graph import CampusAction, GraphRepository
 from trojan_compass.recommendations.preparation import completed_course_names, normalize_code
 from trojan_compass.recommendations.ranking import Ranker, RankingPolicy, Scored
 from trojan_compass.recommendations.retrieval import Candidate
@@ -40,6 +43,7 @@ def interest_name(value: str) -> str:
         "film or storytelling": "film",
         "music or performance": "music",
         "business or entrepreneurship": "business",
+        "business administration": "business",
         "public policy or social work": "public policy",
         "law or justice": "law",
         "design or architecture": "architecture",
@@ -49,10 +53,15 @@ def interest_name(value: str) -> str:
 
 class ExplorationRecommendationService:
     def __init__(
-        self, engine: RecommendationService, graph: GraphRepository, clock: Clock | None = None
+        self,
+        engine: RecommendationService,
+        graph: GraphRepository,
+        clock: Clock | None = None,
+        subjects: Mapping[str, str] | None = None,
     ) -> None:
         self._engine = engine
         self._graph = graph
+        self._subjects = subjects or {}
         clock = clock or SystemClock()
         self._feasibility = FeasibilityChecker(clock)
         self._ranker = Ranker(RankingPolicy(), clock)
@@ -60,7 +69,11 @@ class ExplorationRecommendationService:
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
         result = await self._engine.recommend(request)
-        if result.recommendations or result.clarification or request.context.target is not None:
+        if (
+            (result.recommendations and not self._subjects)
+            or result.clarification
+            or request.context.target is not None
+        ):
             return result
 
         # Bounded shared-data lookup, never a student cache. Primary engine queries
@@ -140,7 +153,52 @@ class ExplorationRecommendationService:
             )
             paths[action.id] = (interest, link.skill.name, link.relation)
 
-        selected = self._ranker.select(scored, request.limit)
+        # Public subject identity and stated study level improve ordering; neither
+        # establishes eligibility, completion or mastery. Career paths stay authoritative.
+        if self._subjects:
+            scored = [
+                replace(
+                    item,
+                    score=replace(
+                        item.score,
+                        relevance=item.score.relevance
+                        + self.academic_bonus(item.candidate.action, request.context),
+                        preference=item.score.preference
+                        + (
+                            5
+                            if requested_kind(request.user_query) == item.candidate.action.kind
+                            else 0
+                        ),
+                    ),
+                )
+                for item in scored
+            ]
+        stage = request.context.study_stage.value.casefold() if request.context.study_stage else ""
+        if self._subjects and "undergrad" in stage:
+            # Scope this discovery list to undergraduate-numbered courses. This
+            # is a selection preference, never a claim about graduate eligibility.
+            scored = [
+                item
+                for item in scored
+                if item.candidate.action.course is None
+                or (course_match := re.search(r"\d{3}", item.candidate.action.course.code)) is None
+                or int(course_match[0]) < 500
+            ]
+        # Repeated performances are separate records, but should occupy only one card.
+        unique: dict[str, Scored] = {}
+        for item in scored:
+            action = item.candidate.action
+            key = str(action.url) if action.event and action.url else action.id
+            previous = unique.get(key)
+            if previous is None or (
+                action.event
+                and action.event.start
+                and previous.candidate.action.event
+                and previous.candidate.action.event.start
+                and action.event.start < previous.candidate.action.event.start
+            ):
+                unique[key] = item
+        selected = self._ranker.select(list(unique.values()), request.limit)
         if selected:
             recommendations = []
             for item in selected:
@@ -227,3 +285,23 @@ class ExplorationRecommendationService:
             }
         )[:5]
         return result.model_copy(update={"exploration_options": options})
+
+    def academic_bonus(self, action: CampusAction, context: RetrievalContext) -> int:
+        if action.course is None:
+            return 0
+        subject = interest_name(self._subjects.get(action.id, ""))
+        interests = [interest_name(v.value) for v in context.interests]
+        bonus = 2 if subject and subject in interests else 0
+        match = re.search(r"\d{3}", action.course.code)
+        if match is None or context.study_stage is None:
+            return bonus
+        level = int(match[0])
+        stage = context.study_stage.value.casefold()
+        undergraduate = "undergrad" in stage or "not started" in stage
+        graduate = "graduate" in stage and "undergrad" not in stage
+        if (undergraduate and level < 500) or (graduate and level >= 500):
+            bonus += 1
+        answers = {a.field: a.status for a in context.answers}
+        if undergraduate and level < 200 and answers.get("completed_courses") == "none":
+            bonus += 1
+        return bonus

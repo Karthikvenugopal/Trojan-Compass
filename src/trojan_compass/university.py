@@ -7,10 +7,11 @@ adds indexed public campus actions without changing either owner's implementatio
 import gzip
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, time
 from importlib.resources import files
 from pathlib import Path
+from types import MappingProxyType
 
 from trojan_compass.contracts import CourseHistoryOption, RetrievalContext, Source
 from trojan_compass.ingestion.loaders import decode
@@ -55,6 +56,8 @@ class UniversityGraphRepository:
         self._overlay = overlay
         self._actions: dict[str, CampusAction] = {}
         self._aliases: dict[str, list[str]] = {}
+        subjects: dict[str, str] = {}
+        self.course_subjects: Mapping[str, str] = MappingProxyType(subjects)
         nodes = {n.id: n for n in batch.nodes}
         topics: dict[str, list[str]] = {}
         evidence: dict[str, dict[str, Source]] = {}
@@ -89,6 +92,7 @@ class UniversityGraphRepository:
             )
             if node.kind == "Course":
                 code = str(attrs["course_code"])
+                subjects[node.id] = str(attrs.get("subject") or "")
                 restrictions = []
                 for key, label in (
                     ("prerequisite_rule", "Published prerequisite rule"),
@@ -234,6 +238,9 @@ class AcademicCourseHistoryService:
 
     def __init__(self, graph: GraphRepository) -> None:
         self._graph = graph
+        self._subjects = (
+            graph.course_subjects if isinstance(graph, UniversityGraphRepository) else {}
+        )
 
     async def suggest(self, context: RetrievalContext, limit: int = 5) -> list[CourseHistoryOption]:
         actions = await self._graph.browse_actions(30_000)
@@ -257,6 +264,13 @@ class AcademicCourseHistoryService:
             ]  # Public course numbering.
         elif "graduate" in stage:
             candidates = [a for a in candidates if a.course and course_number(a.course.code) >= 500]
+        candidates.sort(
+            key=lambda a: (
+                normalized(self._subjects.get(a.id, "")) != normalized(query),
+                course_number(a.course.code) if a.course else 999,
+                a.title,
+            )
+        )
         return [
             CourseHistoryOption(code=a.course.code, title=a.title, sources=a.sources[:2])
             for a in candidates[:limit]

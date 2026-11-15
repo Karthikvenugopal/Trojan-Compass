@@ -338,3 +338,67 @@ def test_intake_answers_do_not_erase_explicit_event_request() -> None:
     assert latest_search_query(messages) == "Find psychology events"
     messages.append(ChatMessage(role="user", content="Actually show me music courses"))
     assert latest_search_query(messages) == "Actually show me music courses"
+
+
+@pytest.mark.parametrize(
+    "topic", ["Psychology", "Music", "Law", "Business", "Architecture", "Social work", "Chemistry"]
+)
+async def test_real_snapshot_has_sourced_undergraduate_paths_across_fields(topic: str) -> None:
+    """Real feed coverage catches plausible-looking choices that a tiny fake misses."""
+    from trojan_compass.composition import seed_repository
+    from trojan_compass.exploration import ExplorationRecommendationService
+    from trojan_compass.recommendations import RecommendationEngine
+    from trojan_compass.university import course_number, public_snapshot
+
+    batch = public_snapshot()
+    assert batch is not None, "The reviewed public snapshot must ship with campus mode"
+    graph = UniversityGraphRepository(seed_repository(), batch)
+    fact = SupportedText(value=topic, evidence=[StudentStatement(message_index=0, quote=topic)])
+    context = RetrievalContext(
+        interests=[fact],
+        program=fact,
+        study_stage=SupportedText(value="Undergraduate", evidence=fact.evidence),
+    )
+    result = await ExplorationRecommendationService(
+        RecommendationEngine(graph), graph, subjects=graph.course_subjects
+    ).recommend(RecommendationRequest(context=context, user_query="Find courses"))
+    assert result.recommendations
+    assert any(r.kind == "course" for r in result.recommendations)
+    for card in result.recommendations:
+        assert card.sources and card.action_url and card.evidence_path
+        if card.kind == "course":
+            assert course_number(card.title) < 500
+        if card.event and card.event.start:
+            assert (card.event.end or card.event.start) >= datetime.now(UTC)
+    events = [r for r in result.recommendations if r.kind == "event"]
+    assert len({str(r.action_url) for r in events}) == len(events)
+
+
+def test_real_campus_default_journey_collects_history_then_finds_intro_psychology() -> None:
+    from trojan_compass.composition import RuntimeSettings, create_configured_app
+
+    app = create_configured_app(RuntimeSettings(mode="campus"), extractor=EmptyExtractor())
+    messages: list[ChatMessage] = []
+    with TestClient(app) as client:
+        for field, value in [
+            ("direction", "Psychology"),
+            ("study_stage", "Undergraduate"),
+            ("program", "Psychology"),
+            ("work_experience", None),
+            ("completed_courses", None),
+        ]:
+            messages.append(edit(field, value))
+            response = client.post(
+                "/api/chat", json={"messages": [m.model_dump() for m in messages]}
+            )
+            assert response.status_code == 200
+            body = ChatResponse.model_validate(response.json())
+            if field != "completed_courses":
+                assert not body.recommendations
+            if field == "work_experience":
+                assert body.course_history_options
+                assert body.course_history_options[0].code.startswith("PSYC 100")
+        assert body.information.ready
+        assert any(r.title.startswith("PSYC 100") for r in body.recommendations)
+        assert all(r.sources for r in body.recommendations)
+        assert not any("CSCI" in r.title for r in body.recommendations)

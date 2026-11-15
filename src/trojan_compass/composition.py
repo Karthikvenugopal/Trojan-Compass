@@ -181,7 +181,15 @@ def create_configured_app(
         mode=settings.mode,
         extractor=extractor,
         recommendations=CoverageRecommendationService(
-            ExplorationRecommendationService(RecommendationEngine(graph), graph), notices, graph
+            ExplorationRecommendationService(
+                RecommendationEngine(graph),
+                graph,
+                subjects=graph.course_subjects
+                if isinstance(graph, UniversityGraphRepository)
+                else None,
+            ),
+            notices,
+            graph,
         ),
         lifespan=lifespan,
         policy=policy,
