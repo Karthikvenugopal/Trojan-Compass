@@ -168,6 +168,16 @@ in [provider setup](docs/PROVIDERS.md); its retention is not claimed to be disab
 No claim is made about the retention settings of the environment running this
 repository or external infrastructure.
 
+## Browser connectivity
+
+The same-origin Vite proxy works without browser CORS. Direct API requests from
+`http://localhost:5173` or `http://127.0.0.1:5173` are also allowed. Set
+`COMPASS_CORS_ORIGINS` to an explicit comma-separated HTTP(S) origin allowlist
+for other deployments; an empty value disables cross-origin access. Wildcards,
+paths and credentials in origins are rejected. A browser connection-refused page
+means the server did not accept a connection, before CORS can be evaluated.
+See [the integration audit](docs/INTEGRATION_AUDIT.md) for checks and known limits.
+
 ## Checks
 
 ```sh

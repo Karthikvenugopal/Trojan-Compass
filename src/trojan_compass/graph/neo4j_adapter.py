@@ -3,13 +3,13 @@
 import asyncio
 import logging
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, time
 from typing import Any, cast
 
 from neo4j import GraphDatabase
 
 from trojan_compass.contracts import Source
-from trojan_compass.ingestion.models import ImportBatch
+from trojan_compass.graph.timestamps import source_timestamp
+from trojan_compass.ingestion.models import ImportBatch, NodeRecord
 from trojan_compass.recommendations.graph import (
     CampusAction,
     CourseInfo,
@@ -64,7 +64,7 @@ class Neo4jGraphRepository(GraphRepository):
                 "kind": item.kind,
                 "name": item.name,
                 "status": item.status,
-                "attributes": item.attributes or {},
+                "attributes": _node_attributes(item),
             }
             for item in batch.nodes
         ]
@@ -138,7 +138,9 @@ class Neo4jGraphRepository(GraphRepository):
             self._find_destination_rows,
             "MATCH (n:Knowledge) "
             "WHERE n.kind IN ['Company','GeneralRole','Team'] "
-            "AND (toLower(n.name)=toLower($name) OR any(alias IN coalesce(n.aliases,[]) "
+            "AND (toLower(n.name)=toLower($name) OR any(alias IN "
+            "CASE WHEN valueType(n.aliases) STARTS WITH 'STRING' "
+            "THEN split(n.aliases,'|') ELSE coalesce(n.aliases,[]) END "
             "WHERE toLower(alias)=toLower($name))) "
             "AND ($kind IS NULL OR n.kind=$kind) "
             "AND ($company IS NULL OR toLower(coalesce(n.company,''))=toLower($company) "
@@ -247,7 +249,7 @@ class Neo4jGraphRepository(GraphRepository):
         records = await asyncio.to_thread(
             self._run,
             "MATCH (a:Knowledge) WHERE a.kind IN "
-            "['Course','Event','EventOccurrence'] "
+            "['Course','CourseOffering','Event','EventOccurrence'] "
             "OPTIONAL MATCH (a)-[:INSTANCE_OF]->(course:Knowledge) "
             "OPTIONAL MATCH (parentEvent:Knowledge)-[:HAS_OCCURRENCE]->(a) "
             "CALL { WITH a, course, parentEvent "
@@ -268,9 +270,11 @@ class Neo4jGraphRepository(GraphRepository):
             "AND ($topic_names IS NULL OR (target.kind='Topic' AND any(topic IN $topic_names "
             "WHERE toLower(topic)=toLower(target.name)))) "
             "AND ($references IS NULL OR (a.kind IN ['Course','CourseOffering'] AND "
-            "any(ref IN $references WHERE toLower(ref)=toLower(coalesce(course.name,a.name)) "
-            "OR toLower(ref)=toLower(coalesce(course.course_code,course.code,"
-            "a.course_code,a.code,'')))) ) "
+            "any(ref IN $references WHERE replace(toLower(ref),' ','')="
+            "replace(toLower(coalesce(course.name,a.name)),' ','') "
+            "OR replace(toLower(ref),' ','')="
+            "replace(toLower(coalesce(course.course_code,course.code,"
+            "a.course_code,a.code,'')),' ',''))) ) "
             "OPTIONAL MATCH (ev:Evidence {id:'evidence-'+edge.id})-[:SUPPORTED_BY]->(s:Source) "
             "RETURN a, course, parentEvent, edge, target, s "
             "ORDER BY a.name",
@@ -333,7 +337,11 @@ def _destination_from_row(row: Any) -> Destination:
         id=node["id"],
         kind=cast(DestinationKind, kind),
         name=node["name"],
-        aliases=list(aliases) if isinstance(aliases, list) else [],
+        aliases=[part.strip() for part in aliases.split("|") if part.strip()]
+        if isinstance(aliases, str)
+        else list(aliases)
+        if isinstance(aliases, list)
+        else [],
         company=row["company_name"],
         base_role_id=row["base_role_id"],
         related_role_ids=[item for item in row["related_role_ids"] if item],
@@ -341,7 +349,7 @@ def _destination_from_row(row: Any) -> Destination:
 
 
 def _source_from_node(node: Any) -> Source:
-    checked = _datetime(node.get("checked_at"))
+    checked = source_timestamp(node.get("checked_at"))
     return Source(url=node["url"], title=node["title"], checked_at=checked)
 
 
@@ -409,15 +417,9 @@ def _action_from_entry(entry: dict[str, Any]) -> CampusAction:
     )
 
 
-def _datetime(value: object) -> datetime | None:
-    if isinstance(value, datetime):
-        return value if value.utcoffset() is not None else value.replace(tzinfo=UTC)
-    if isinstance(value, date):
-        return datetime.combine(value, time.min, tzinfo=UTC)
-    if isinstance(value, str):
-        try:
-            parsed = datetime.fromisoformat(value)
-        except ValueError:
-            return None
-        return parsed if parsed.utcoffset() is not None else None
-    return None
+def _node_attributes(node: NodeRecord) -> dict[str, object]:
+    attributes: dict[str, object] = dict(node.attributes or {})
+    aliases = attributes.get("aliases")
+    if isinstance(aliases, str):
+        attributes["aliases"] = [part.strip() for part in aliases.split("|") if part.strip()]
+    return attributes

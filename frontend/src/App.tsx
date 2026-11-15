@@ -5,7 +5,8 @@ import { MessageComposer } from './components/MessageComposer';
 import { Welcome } from './components/Welcome';
 import { chatApi, ChatApiError, isMockMode } from './lib/api';
 import type { ChatApi } from './lib/api';
-import type { ChatMessage, ChatResponse, DisplayMessage } from './types';
+import type { ChatMessage, DisplayMessage } from './types';
+import { decodeResponse } from './lib/response';
 import './styles.css';
 
 interface AppProps {
@@ -181,20 +182,6 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{status}</div>
     </div>
   );
-}
-
-function decodeResponse(value: unknown): ChatResponse {
-  if (!isRecord(value) || typeof value.message !== 'string') {
-    throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
-  }
-  if (!Array.isArray(value.suggested_replies) || !Array.isArray(value.recommendations) || !Array.isArray(value.limitations)) {
-    throw new ChatApiError('The server response is missing expected fields. Your message is still here; please retry.', 502);
-  }
-  return value as unknown as ChatResponse;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }
 
 function createId(): string {
