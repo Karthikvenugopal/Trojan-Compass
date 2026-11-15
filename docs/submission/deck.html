@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trojan Compass: pitch deck</title>
+<style>
+  :root { --bg:#0c1016; --ink:#f4f1ea; --dim:#9aa3ad; --blue:#58c4dd; --yellow:#ffd866; --green:#83c167; --red:#fc6255; --brown:#c4854a; --teal:#5cd0b3; --line:#27303b; }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: var(--ink); }
+  .slide { position: relative; width: 1920px; height: 1080px; padding: 84px 110px 70px; overflow: hidden; page-break-after: always; break-after: page;
+    background: radial-gradient(1200px 700px at 78% 12%, #141c27 0, var(--bg) 62%); }
+  .slide::after { content: attr(data-n); position: absolute; right: 60px; bottom: 36px; color: #4d5763; font: 20px Georgia, serif; }
+  .kicker { color: var(--blue); font: 600 22px 'Segoe UI', sans-serif; letter-spacing: 5px; text-transform: uppercase; }
+  h1 { margin: 14px 0 0; font: 400 78px/1.12 Cambria, Georgia, serif; letter-spacing: -1px; }
+  h2 { margin: 12px 0 0; font: 400 60px/1.15 Cambria, Georgia, serif; letter-spacing: -.5px; }
+  em { font-style: italic; color: var(--yellow); }
+  .b { color: var(--blue); } .y { color: var(--yellow); } .g { color: var(--green); } .r { color: var(--red); } .br { color: var(--brown); } .t { color: var(--teal); }
+  p.lead { margin: 26px 0 0; max-width: 1350px; color: #cfd5dc; font-size: 34px; line-height: 1.45; }
+  .foot { position: absolute; left: 110px; bottom: 38px; color: #5f6975; font-size: 19px; letter-spacing: 1px; }
+  .cols { display: grid; gap: 44px; margin-top: 46px; }
+  .card { padding: 30px 32px; border: 1.5px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.025); }
+  .card h3 { margin: 0 0 10px; font: 600 30px 'Segoe UI', sans-serif; }
+  .card p, .card li { margin: 0; color: #c3cad2; font-size: 25px; line-height: 1.5; }
+  .card ul { margin: 0; padding-left: 26px; }
+  .num { font: 400 96px/1 Cambria, Georgia, serif; }
+  .num small { display: block; margin-top: 10px; color: var(--dim); font: 400 24px 'Segoe UI', sans-serif; letter-spacing: .5px; }
+  .math { font: italic 400 34px Cambria, Georgia, serif; }
+  svg text { font-family: 'Segoe UI', sans-serif; }
+  .shot { position: absolute; border: 1.5px solid #323c48; border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6); overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; }
+  .note { position: absolute; color: #cfd5dc; font-size: 27px; line-height: 1.5; }
+  .note b { color: var(--yellow); font-weight: 600; }
+  .pill { display: inline-block; margin: 0 10px 12px 0; padding: 9px 20px; border: 1.5px solid var(--line); border-radius: 999px; color: #d8dde3; font-size: 24px; }
+  .step { display: flex; align-items: center; gap: 22px; }
+  .step .dot { flex: 0 0 62px; width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; font: 400 32px Cambria, serif; color: #0c1016; }
+  .arrow { color: #55606d; font-size: 44px; text-align: center; }
+  table { border-collapse: collapse; width: 100%; margin-top: 34px; font-size: 27px; }
+  td { padding: 15px 18px; border-bottom: 1px solid var(--line); color: #cfd5dc; vertical-align: top; }
+  td:first-child { width: 330px; color: var(--blue); font-weight: 600; }
+  @media screen { body { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; } }
+</style>
+</head>
+<body>
+
+<!-- 1 Title -->
+<section class="slide" data-n="1">
+  <svg width="1920" height="1080" style="position:absolute;inset:0" viewBox="0 0 1920 1080">
+    <g stroke="#2b3644" stroke-width="2.5" fill="none">
+      <path d="M1180 300 L1420 210 L1660 330 L1560 560 L1320 620 L1180 300 M1420 210 L1320 620 M1660 330 L1320 620 M1560 560 L1740 760 L1470 850 L1320 620 M1740 760 L1660 330"/>
+    </g>
+    <g stroke="#58c4dd" stroke-width="4" fill="none" stroke-linecap="round"><path d="M1180 300 L1420 210 L1320 620 L1560 560 L1740 760"/></g>
+    <g>
+      <circle cx="1180" cy="300" r="20" fill="#fc6255"/><circle cx="1420" cy="210" r="16" fill="#ffd866"/><circle cx="1660" cy="330" r="13" fill="#ffd866"/>
+      <circle cx="1320" cy="620" r="18" fill="#58c4dd"/><circle cx="1560" cy="560" r="16" fill="#83c167"/><circle cx="1740" cy="760" r="14" fill="#c4854a"/><circle cx="1470" cy="850" r="12" fill="#58c4dd"/>
+    </g>
+    <g fill="#9aa3ad" font-size="22"><text x="1100" y="270">interest</text><text x="1395" y="180">skill</text><text x="1345" y="655">course</text><text x="1585" y="545">professor</text><text x="1765" y="765">research</text></g>
+  </svg>
+  <div class="kicker" style="margin-top:170px">AI@USC Hackathon · 2026</div>
+  <h1 style="font-size:124px;margin-top:22px">Trojan <em>Compass</em></h1>
+  <p class="lead" style="font-size:42px;max-width:900px">Find your path at USC:<br>courses, professors, research and the skills to learn, <span class="b">connected</span>.</p>
+  <p class="lead" style="position:absolute;left:110px;bottom:100px;font-size:27px;color:#9aa3ad">Periyakaruppan Nagappan · Riddhi Gupta · Karthik · Abhishek Nair</p>
+</section>
+
+<!-- 2 Problem -->
+<section class="slide" data-n="2">
+  <div class="kicker">The problem</div>
+  <h2>“What should I take <em>next</em>?”</h2>
+  <p class="lead">USC has the answer. It is just scattered across a schedule of classes, department pages, faculty directories, Handshake and a dozen office websites.</p>
+  <div class="cols" style="grid-template-columns:repeat(4,1fr);margin-top:70px">
+    <div class="num b">7,306<small>courses across three terms</small></div>
+    <div class="num y">26<small>schools, 244 programs</small></div>
+    <div class="num g">5,046<small>instructors</small></div>
+    <div class="num r">0<small>places that connect them to <i>your</i> interest</small></div>
+  </div>
+  <p class="lead" style="margin-top:70px;font-size:30px;color:#9aa3ad">A keyword search finds courses that <i>contain your words</i>. A student who says “agentic RAG” needs <span class="y">information retrieval</span>, and the course catalog never says “RAG”.</p>
+</section>
+
+<!-- 3 Insight -->
+<section class="slide" data-n="3">
+  <div class="kicker">The idea</div>
+  <h2>A campus is a <em>graph</em>.</h2>
+  <svg width="1700" height="520" viewBox="0 0 1700 520" style="margin-top:36px">
+    <defs><marker id="a" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="#6b7785"/></marker></defs>
+    <g stroke="#6b7785" stroke-width="3" fill="none" marker-end="url(#a)">
+      <path d="M215 240 L420 240" stroke-dasharray="10 8"/><path d="M620 240 L835 240" stroke-dasharray="10 8"/><path d="M1045 240 L1250 240"/><path d="M1450 240 L1560 150"/>
+      <path d="M930 420 L930 300"/><path d="M560 300 L700 420" stroke="#6b7785"/>
+    </g>
+    <g font-size="27" text-anchor="middle" fill="#0c1016" font-weight="600">
+      <rect x="30" y="195" width="185" height="90" rx="45" fill="#fc6255"/><text x="122" y="250">Interest</text>
+      <rect x="435" y="195" width="185" height="90" rx="45" fill="#ffd866"/><text x="527" y="250">Skill</text>
+      <rect x="850" y="195" width="195" height="90" rx="45" fill="#58c4dd"/><text x="947" y="250">Course</text>
+      <rect x="1265" y="195" width="185" height="90" rx="45" fill="#83c167"/><text x="1357" y="250">Professor</text>
+      <rect x="1500" y="60" width="185" height="90" rx="45" fill="#c4854a"/><text x="1592" y="115">Research</text>
+      <rect x="840" y="425" width="210" height="80" rx="40" fill="#58c4dd" opacity=".55"/><text x="945" y="474">Prerequisite</text>
+      <rect x="610" y="425" width="185" height="80" rx="40" fill="#5cd0b3"/><text x="702" y="474">Event</text>
+    </g>
+    <g font-size="23" fill="#9aa3ad" text-anchor="middle" font-style="italic" font-family="Cambria, Georgia, serif">
+      <text x="318" y="222">needs</text><text x="728" y="222">taught in</text><text x="1148" y="222">taught by</text><text x="1440" y="165">researches</text><text x="1010" y="368">comes first</text><text x="545" y="388">practised at</text>
+    </g>
+  </svg>
+  <p class="lead" style="margin-top:6px">Don’t search the catalog. <span class="b">Walk the graph</span> from what a student says to what they should do, and show every step of the walk.</p>
+</section>
+
+<!-- 4 The graph in numbers -->
+<section class="slide" data-n="4">
+  <div class="kicker">Built from real, public USC data</div>
+  <h2>39,115 edges, each one <em>traceable</em>.</h2>
+  <table>
+    <tr><td>Course</td><td><span class="math">7,306</span> &nbsp; from USC’s public Schedule of Classes: Spring 2026, Fall 2026, Spring 2027. Undergraduate, master’s and doctoral, all 26 schools.</td></tr>
+    <tr><td>Skill ← teaches</td><td><span class="math">10,558</span> skills, <span class="math">20,020</span> links. An LLM reads each <i>official</i> course description; links are labeled “inferred”.</td></tr>
+    <tr><td>Prerequisite</td><td><span class="math">3,434</span> links, straight from the registrar’s data.</td></tr>
+    <tr><td>Professor ← taught by</td><td><span class="math">5,180</span> people, <span class="math">14,526</span> links; research areas for Viterbi faculty from official directory profiles.</td></tr>
+    <tr><td>Event</td><td><span class="math">68</span> Handshake events. Handshake’s API is private, so these are <span class="y">clearly labeled sample data</span>.</td></tr>
+    <tr><td>Campus knowledge</td><td>~200 official pages (registrar, health, dining, transit, OIS…) plus <span class="g">live</span> library hours.</td></tr>
+  </table>
+</section>
+
+<!-- 5 How it works -->
+<section class="slide" data-n="5">
+  <div class="kicker">How it works</div>
+  <h2>From a sentence to a <em>path</em>.</h2>
+  <div class="cols" style="grid-template-columns:1fr 60px 1fr 60px 1fr 60px 1fr;gap:10px;align-items:stretch;margin-top:56px">
+    <div class="card"><h3 class="r">1 · Listen</h3><p>An LLM extracts interests, skills and background. Every fact must quote the student’s own words, checked mechanically.</p></div>
+    <div class="arrow" style="align-self:center">→</div>
+    <div class="card"><h3 class="y">2 · Link</h3><p>The student’s phrases are matched to <b>skill nodes</b>. The LLM may only choose nodes that exist in the graph.</p></div>
+    <div class="arrow" style="align-self:center">→</div>
+    <div class="card"><h3 class="b">3 · Walk</h3><p>Skills → courses → prerequisites → professors → research → events. Ranked by fit, level and next-term seats.</p></div>
+    <div class="arrow" style="align-self:center">→</div>
+    <div class="card"><h3 class="g">4 · Show</h3><p>A few cards with sources, the walked graph, a roadmap to save and <b>one next step</b>.</p></div>
+  </div>
+  <p class="lead" style="margin-top:60px;font-size:30px">“<span class="r">agentic RAG</span>” → <span class="y">information retrieval</span> → <span class="b">CSCI 572</span> → <span class="g">its Spring 2027 instructor</span> → <i>“Add CSCI 572 to your Spring 2027 plan: 177 of 360 seats open.”</i></p>
+  <p class="lead" style="font-size:26px;color:#9aa3ad">About 3 seconds per answer. Stateless: no account, no stored profile, nothing kept after the request.</p>
+</section>
+
+<!-- 6 Three ways in -->
+<section class="slide" data-n="6">
+  <div class="kicker">Designed for students who aren’t sure yet</div>
+  <h2>Three ways in, <em>one</em> roadmap out.</h2>
+  <div class="shot" style="left:110px;top:300px;width:1010px"><img src="screenshots/01-welcome.png" alt="Welcome screen"></div>
+  <div class="note" style="left:1190px;top:320px;width:620px">
+    <p class="step"><span class="dot" style="background:var(--red)">1</span><span><b>I’m not sure where to start</b><br>easy questions; “I don’t know” is always OK</span></p>
+    <p class="step"><span class="dot" style="background:var(--yellow)">2</span><span><b>I have an interest</b><br>say it in your own words, narrow it together</span></p>
+    <p class="step"><span class="dot" style="background:var(--blue)">3</span><span><b>I know what I want</b><br>name a goal, get a direct path</span></p>
+    <p style="margin-top:34px;color:#9aa3ad;font-size:24px">Optional: paste or upload a resume. It is read in the browser and never stored.</p>
+  </div>
+</section>
+
+<!-- 7 Demo: recommendations -->
+<section class="slide" data-n="7">
+  <div class="kicker">Live prototype · recommendations</div>
+  <h2 style="font-size:50px">“AI in healthcare”, from a CS master’s student</h2>
+  <div class="shot" style="left:110px;top:250px;width:1180px"><img src="screenshots/04-recommendations.png" alt="Recommendations"></div>
+  <div class="note" style="left:1350px;top:300px;width:470px">
+    <p><b>Real courses</b>, next term, with seats and meeting times.</p>
+    <p><b>Why this helps</b> ties each card to the skill it teaches.</p>
+    <p><b>Honest limits</b> are stated up front: snapshot date, inferred links, sample events.</p>
+  </div>
+</section>
+
+<!-- 8 Demo: graph -->
+<section class="slide" data-n="8">
+  <div class="kicker">Live prototype · the knowledge graph</div>
+  <h2 style="font-size:50px">Every recommendation shows its <em>path</em>.</h2>
+  <div class="shot" style="left:110px;top:250px;width:1180px"><img src="screenshots/06-graph-selected.png" alt="Graph view"></div>
+  <div class="note" style="left:1350px;top:300px;width:470px">
+    <p>Select any node to <b>trace the walk</b>: interest → skill → course → professor.</p>
+    <p>Dashed lines are <b>inferred</b>; solid lines come straight from an official source.</p>
+    <p>A <b>list view</b> gives the same graph to screen readers.</p>
+  </div>
+</section>
+
+<!-- 9 Demo: roadmap -->
+<section class="slide" data-n="9">
+  <div class="kicker">Live prototype · roadmap and next step</div>
+  <h2 style="font-size:50px">What I know → what to learn → <em>what to do now</em>.</h2>
+  <div class="shot" style="left:110px;top:250px;width:1180px"><img src="screenshots/12-notsure-roadmap.png" alt="Roadmap"></div>
+  <div class="note" style="left:1350px;top:300px;width:470px">
+    <p><b>One next step</b>: the prerequisite first, otherwise the best open course for next term.</p>
+    <p>Courses in order, <b>people and research</b> to explore, events.</p>
+    <p><b>Save</b> it as a file or print it. Nothing stays on our server.</p>
+  </div>
+</section>
+
+<!-- 10 Demo: campus Q&A -->
+<section class="slide" data-n="10">
+  <div class="kicker">Live prototype · everyday questions</div>
+  <h2 style="font-size:50px">“Is any library open <em>right now</em>?”</h2>
+  <div class="shot" style="left:110px;top:250px;width:1180px"><img src="screenshots/10-campus-questions.png" alt="Campus questions"></div>
+  <div class="note" style="left:1350px;top:300px;width:470px">
+    <p>Answers come only from <b>evidence</b>: live library hours, course records, ~200 official USC pages.</p>
+    <p>Each answer <b>links its source</b>.</p>
+    <p>If the evidence doesn’t cover it, the assistant says so.</p>
+  </div>
+</section>
+
+<!-- 11 Trust -->
+<section class="slide" data-n="11">
+  <div class="kicker">Why you can trust it</div>
+  <h2>Grounded by <em>construction</em>.</h2>
+  <div class="cols" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card"><h3 class="b">Sources on everything</h3><p>Every card and answer links the official page it came from, with the date it was checked.</p></div>
+    <div class="card"><h3 class="y">The model can’t invent</h3><p>It can only pick nodes that exist in the graph, and every student fact must be a verbatim quote.</p></div>
+    <div class="card"><h3 class="g">Private by default</h3><p>No login, no database of students, no logs of conversations. The browser holds the chat; refresh clears it.</p></div>
+  </div>
+  <div class="cols" style="grid-template-columns:repeat(3,1fr);margin-top:36px">
+    <div class="card"><h3 class="r">Says what it doesn’t know</h3><p>Seats are a snapshot. Skill links are inferred. Eligibility needs confirming. All stated in the reply.</p></div>
+    <div class="card"><h3 class="t">Mock data is labeled</h3><p>Handshake events are sample data with fictional employers, marked on every card.</p></div>
+    <div class="card"><h3 class="br">Tested</h3><p>234 backend tests, 36 interface tests, type-checked, plus scripted browser journeys for every path.</p></div>
+  </div>
+</section>
+
+<!-- 12 Stack -->
+<section class="slide" data-n="12">
+  <div class="kicker">Tech stack</div>
+  <h2>Small, fast, <em>replaceable</em> parts.</h2>
+  <table>
+    <tr><td>Interface</td><td>React + TypeScript + Vite. Hand-built SVG graph view, accessible list view, in-browser PDF resume parsing.</td></tr>
+    <tr><td>API</td><td>Python, FastAPI, Pydantic contracts. One stateless <span class="math">POST /api/chat</span>.</td></tr>
+    <tr><td>Language model</td><td>OpenAI GPT-4.1-mini or Google Gemini, structured JSON output only: extraction, routing, entity linking, grounded answers.</td></tr>
+    <tr><td>Knowledge graph</td><td>In-memory graph built at startup in 1.3 s; BM25 retrieval; the same import format loads into Neo4j for production.</td></tr>
+    <tr><td>Data pipeline</td><td>Scripts that fetch the Schedule of Classes, faculty directories and official pages, tag skills, and rebuild everything on demand.</td></tr>
+  </table>
+  <p style="margin-top:40px"><span class="pill">FastAPI</span><span class="pill">React</span><span class="pill">TypeScript</span><span class="pill">Pydantic</span><span class="pill">OpenAI / Gemini</span><span class="pill">Neo4j-ready</span><span class="pill">BM25</span><span class="pill">Playwright</span></p>
+</section>
+
+<!-- 13 Challenges and next -->
+<section class="slide" data-n="13">
+  <div class="kicker">What was hard, and what’s next</div>
+  <h2>From prototype to <em>campus tool</em>.</h2>
+  <div class="cols" style="grid-template-columns:1fr 1fr">
+    <div class="card"><h3 class="r">Challenges</h3><ul>
+      <li>No official course API: we found and used the public endpoints behind classes.usc.edu.</li>
+      <li>Students don’t use catalog words. Exact matching failed; graph linking fixed it.</li>
+      <li>Keeping an LLM honest: strict schemas, verbatim-quote checks, graph-only choices.</li>
+      <li>Handshake is private, so events are mocked in its export format.</li>
+    </ul></div>
+    <div class="card"><h3 class="g">Next</h3><ul>
+      <li>Live Handshake and USC events feeds through official partnerships.</li>
+      <li>Research coverage beyond Viterbi: labs, papers, open positions.</li>
+      <li>Degree requirements, so a path also counts toward graduation.</li>
+      <li>Nightly refresh and Neo4j for a campus-wide deployment.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 14 Thanks -->
+<section class="slide" data-n="14">
+  <svg width="1920" height="1080" style="position:absolute;inset:0;opacity:.55" viewBox="0 0 1920 1080">
+    <g stroke="#2b3644" stroke-width="2.5" fill="none"><path d="M200 820 L520 700 L860 860 L1240 720 L1620 840 M520 700 L700 480 L1040 520 L1240 720 M700 480 L960 300 L1040 520 M960 300 L1300 280 L1240 720"/></g>
+    <g><circle cx="200" cy="820" r="12" fill="#fc6255"/><circle cx="520" cy="700" r="14" fill="#ffd866"/><circle cx="860" cy="860" r="11" fill="#58c4dd"/><circle cx="1240" cy="720" r="15" fill="#58c4dd"/><circle cx="1620" cy="840" r="12" fill="#c4854a"/><circle cx="700" cy="480" r="13" fill="#ffd866"/><circle cx="1040" cy="520" r="14" fill="#83c167"/><circle cx="960" cy="300" r="12" fill="#58c4dd"/><circle cx="1300" cy="280" r="13" fill="#83c167"/></g>
+  </svg>
+  <div class="kicker" style="margin-top:120px">Trojan Compass</div>
+  <h1 style="font-size:104px">Every Trojan deserves a <em>map</em>.</h1>
+  <p class="lead" style="font-size:36px">Thank you.</p>
+  <p class="lead" style="position:absolute;left:110px;bottom:150px;font-size:30px">Periyakaruppan Nagappan · Riddhi Gupta · Karthik · Abhishek Nair</p>
+  <p class="lead" style="position:absolute;left:110px;bottom:92px;font-size:26px;color:#9aa3ad">github.com/Karthikvenugopal/Trojan-Compass</p>
+</section>
+
+</body>
+</html>

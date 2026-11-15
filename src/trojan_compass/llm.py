@@ -47,6 +47,7 @@ class OpenAIStructuredLLM:
                     json={
                         "model": self._model,
                         "store": False,
+                        "temperature": 0,
                         "max_completion_tokens": 2048,
                         "messages": [
                             {"role": "system", "content": system},
@@ -96,6 +97,7 @@ class GeminiStructuredLLM:
                         "contents": [{"role": "user", "parts": [{"text": user}]}],
                         "generationConfig": {
                             "candidateCount": 1,
+                            "temperature": 0,
                             "maxOutputTokens": 2048,
                             "responseMimeType": "application/json",
                             "responseJsonSchema": schema.model_json_schema(),

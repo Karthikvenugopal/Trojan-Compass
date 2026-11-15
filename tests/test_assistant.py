@@ -219,3 +219,12 @@ def test_quotes_tolerate_garbled_punctuation_but_not_new_words(quote: str) -> No
     content = "Programming — apps or websites"
     assert quoted(quote, content) is (quote != "Programming websites")
     assert not quoted("Programming games or websites", content)
+
+
+def test_extraction_keeps_first_of_duplicate_skills() -> None:
+    from trojan_compass.extraction import parse_context
+
+    skill = {"name": "Python", "status": "known", "evidence": [{"message_index": 0, "quote": "x"}]}
+    raw = json.dumps({"skills": [skill, {**skill, "name": "python", "status": "learning"}]})
+    context = parse_context(raw)
+    assert [(s.name, s.status) for s in context.skills] == [("Python", "known")]

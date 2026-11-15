@@ -799,7 +799,8 @@ def student_level(context: RetrievalContext) -> str | None:
     parts = [context.program.value] if context.program else []
     parts += [e.value for e in context.experiences]
     parts += [g.value for g in context.goals]
-    text = " ".join(parts).casefold()
+    # "M.S." and "Ph.D." read the same as "MS" and "PhD".
+    text = " ".join(parts).casefold().replace(".", "")
     if re.search(r"\b(ph\.?d|doctoral|doctorate)\b", text):
         return "doctoral"
     if re.search(r"\b(master'?s?|m\.?s\.?|mscs|msc|mba|graduate student|grad student)\b", text):

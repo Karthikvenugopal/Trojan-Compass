@@ -72,6 +72,23 @@ def parse_context(raw: str) -> RetrievalContext:
         for answer in data.get("answers") or []:
             if isinstance(answer, dict) and answer.get("status") != "provided":
                 answer["value"] = None
+        # A resume often names a skill twice ("Python" under skills and in a project).
+        # Keep the first mention instead of rejecting the whole extraction.
+        seen: set[str] = set()
+        skills = []
+        for skill in data.get("skills") or []:
+            name = str(skill.get("name", "")).casefold() if isinstance(skill, dict) else ""
+            if name and name not in seen:
+                seen.add(name)
+                skills.append(skill)
+        if "skills" in data:
+            data["skills"] = skills
+        fields: dict[str, object] = {}
+        for answer in data.get("answers") or []:
+            if isinstance(answer, dict) and answer.get("field"):
+                fields[str(answer["field"]).casefold()] = answer
+        if "answers" in data:
+            data["answers"] = list(fields.values())
     return RetrievalContext.model_validate(data)
 
 
@@ -93,9 +110,15 @@ def quoted(quote: str, content: str) -> bool:
     for part in parts:
         found = text.find(f" {part} ", position)
         if found < 0:
-            return False
+            break
         position = found + len(part) + 1
-    return True
+    else:
+        return True
+    # List-style text (a resume's "Skills Python, PyTorch, SQL") gets quoted with items
+    # skipped: "Skills PyTorch". Accept it when every quoted word is the student's own
+    # and they appear in the same order; invented or reordered words still fail.
+    remaining = iter(text.split())
+    return all(word in remaining for part in parts for word in part.split())
 
 
 def _words(value: str) -> str:

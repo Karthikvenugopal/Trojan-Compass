@@ -8,6 +8,36 @@ suggested replies, recommendations and limitations. It never requires a session
 identifier or returns a student profile. The frontend owns the conversation in
 memory; each request re-derives temporary retrieval context from that conversation.
 
+## Knowledge-graph pathways (hackathon build)
+
+In `campus` mode the server builds a knowledge graph at startup (about 1.3 s) and
+recommends by walking it:
+
+    student words -> Skill -> Course -> prerequisite Course -> Professor -> research
+                                  \-> Event
+
+| Node / edge | Count | Source |
+| --- | --- | --- |
+| Course | 7,306 | USC Schedule of Classes, Spring 2026 to Spring 2027 (`scripts/fetch_usc_catalog.py`) |
+| Skill, TEACHES | 10,558 skills, 20,020 links | inferred by an LLM from official descriptions (`scripts/tag_course_skills.py`) |
+| HAS_PREREQUISITE | 3,434 | Schedule of Classes |
+| Professor, TAUGHT_BY | 5,180 people, 14,526 links | Schedule of Classes instructors |
+| RESEARCHES | 972 | Viterbi faculty directories (`scripts/fetch_faculty_research.py`, `scripts/tag_faculty_research.py`) |
+| Event, COVERS | 68 events | **mock** Handshake data, fictional employers (`scripts/generate_handshake_mock.py`) |
+
+Each recommendation turn links the student's phrases to skill nodes (the LLM may only
+pick nodes that exist; a lexical fallback covers provider failures), ranks courses by
+skill fit, text relevance, level and next-term availability, and returns cards, the
+walked subgraph (`graph`), a `roadmap` and one `next_step`. The frontend shows the graph
+with an accessible list view and a roadmap that saves as Markdown or prints.
+
+The welcome screen offers three entry paths and an optional resume paste/upload (PDF or
+text, parsed in the browser, sent only as a chat message). Follow-ups: "Explore further",
+"Explain these simply" and "Change direction".
+
+The submission pack (deck, demo video, screenshots, Devpost text) is in
+[`docs/submission/`](docs/submission/README.md).
+
 ## Run
 
 Python 3.11+:
