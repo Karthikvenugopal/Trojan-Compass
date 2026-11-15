@@ -99,7 +99,8 @@ PYTHON
 
 PYTHONPATH="$compass_root/src${PYTHONPATH:+:$PYTHONPATH}" \
   "$compass_python" -m uvicorn trojan_compass.api:app_from_environment \
-  --factory --env-file "$compass_root/.env" --host 127.0.0.1 --port 8000 --no-access-log &
+  --factory --env-file "$compass_root/.env" --host 127.0.0.1 --port 8000 --no-access-log \
+  --reload --reload-dir "$compass_root/src" &
 compass_backend_pid=$!
 compass_wait_ready backend http://127.0.0.1:8000/health
 

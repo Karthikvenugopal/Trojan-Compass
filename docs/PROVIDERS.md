@@ -27,12 +27,20 @@ Pydantic JSON Schema. The full conversation is encoded as untrusted user data;
 the extraction rules remain in system instructions. Only user quotations can
 support facts. Local Pydantic validation still enforces schema keywords that the
 provider may not constrain. Blocked/truncated/malformed responses or invalid
-provenance yield a safe 503 with an invalid-output category; HTTP and connection
+provenance are validated locally. Exact quotes with a uniquely identifiable student
+source may have a miscounted index repaired. Repeated fields are reduced to their
+latest supported evidence; same-turn conflicts, ambiguous quotations and assistant-only
+claims are rejected. Unanswered fields carry no facts or evidence. HTTP and connection
 failures use safe actionable categories without raw provider content. Thinking parts
 are ignored; tool outputs are not accepted. The API key is sent in a header, not
 the URL. No Interactions/chat sessions, previous-response IDs, explicit context
-caching, search grounding, tools, model-generated code, prompt logging or retries
-are configured.
+caching, search grounding, tools, model-generated code, prompt logging or transport retries
+are configured. For invalid extraction output only, one additional call to the same
+provider re-extracts the complete indexed conversation with static validation feedback.
+No exception payload or prior invalid output is replayed. The second output must pass
+all checks; there is no provider failover. Authentication, quota, network failures and
+refusals are not retried. The chat request retains its overall 40-second deadline.
+A validation repair can increase provider usage and sends the conversation twice.
 
 ## Provider retention is separate from application persistence
 

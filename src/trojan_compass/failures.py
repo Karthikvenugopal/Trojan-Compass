@@ -7,6 +7,11 @@ import httpx
 
 class FailureReason(StrEnum):
     INVALID_OUTPUT = "invalid_model_output"
+    SCHEMA = "invalid_model_structure"
+    EVIDENCE = "invalid_model_evidence"
+    CONFLICT = "conflicting_model_fields"
+    TRUNCATED = "incomplete_model_output"
+    REFUSAL = "model_refusal"
     AUTH = "provider_authentication"
     QUOTA = "provider_quota"
     RATE_LIMIT = "provider_rate_limit"
@@ -32,6 +37,27 @@ def provider_reason(error: httpx.HTTPStatusError) -> FailureReason:
 
 
 FAILURE_MESSAGES = {
+    FailureReason.SCHEMA: (
+        "The AI returned an invalid context structure after validation repair. "
+        "Your message is preserved. Error: invalid_model_structure."
+    ),
+    FailureReason.EVIDENCE: (
+        "The AI could not tie its interpretation to your actual words "
+        "after validation repair. Your message is preserved. "
+        "Error: invalid_model_evidence."
+    ),
+    FailureReason.CONFLICT: (
+        "The AI returned conflicting interpretations after validation repair. "
+        "Your message is preserved. Error: conflicting_model_fields."
+    ),
+    FailureReason.TRUNCATED: (
+        "The AI response was cut off before extraction completed. "
+        "Your message is preserved. Error: incomplete_model_output."
+    ),
+    FailureReason.REFUSAL: (
+        "The AI provider declined this extraction request. "
+        "Your message is preserved. Error: model_refusal."
+    ),
     FailureReason.AUTH: (
         "The AI provider rejected the server credentials. Update the server API key; retrying "
         "this message will not fix that."

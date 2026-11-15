@@ -323,3 +323,7 @@ Imports merge on stable identifiers and can be repeated to update shared records
 [`docs/DATA_IMPORT.md`](docs/DATA_IMPORT.md) for templates, required fields, source refresh
 limits, and database query-log privacy settings. See
 [`docs/GRAPH_INTEGRATION.md`](docs/GRAPH_INTEGRATION.md) for the graph/recommendation contract.
+
+The development launcher reloads backend Python source changes automatically. Restart
+an older running launcher once with `bash scripts/dev.sh` to enable this. Changes to
+`.env` still require a restart.

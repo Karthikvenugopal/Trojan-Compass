@@ -211,7 +211,9 @@ async def test_provider_receives_all_turns_and_returns_fresh_corrected_snapshot(
 
     def respond(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
-        assert json.loads(payload["messages"][1]["content"]) == [m.model_dump() for m in messages]
+        assert json.loads(payload["messages"][1]["content"]) == [
+            {**m.model_dump(), "message_index": i} for i, m in enumerate(messages)
+        ]
         assert payload["store"] is False
         assert "thread" not in payload
         assert payload["response_format"]["json_schema"]["strict"] is True

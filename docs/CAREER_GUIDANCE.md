@@ -112,3 +112,22 @@ constraints. Retrieval still waits for the minimum checklist. Free-form provider
 failures return safe categories (authentication, quota, rate limit, connection,
 timeout, configuration or invalid output) rather than a repeated generic error.
 These classifications reveal no student text or raw provider response.
+
+## Extraction validation repair
+
+Provider input includes explicit original message indices. Exact student quotations
+may repair an index only when they match one student turn unambiguously; assistant
+suggestions and elided negations cannot establish evidence. Duplicate snapshots use
+the latest supported field, while conflicting same-turn values fail closed. No
+relevant constraints are dropped. Non-answered fields carry no evidence.
+
+Invalid structured output gets at most one same-provider re-extraction, with static
+feedback and a larger output budget. It still passes every schema and provenance
+check, under the request deadline. There is no retry of credentials, quota or network
+failures, no cross-provider fallback and no application persistence. See the provider
+retention and usage implications in [PROVIDERS.md](PROVIDERS.md). Remaining failures
+identify structure, evidence, conflicts, truncation or refusal without student content.
+
+The dev launcher watches backend source changes. An already-running server must be
+restarted once to enable this; later Python changes reload automatically. Environment
+configuration changes still require restarting the launcher.

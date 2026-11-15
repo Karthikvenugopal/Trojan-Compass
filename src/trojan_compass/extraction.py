@@ -2,12 +2,19 @@
 
 import json
 import re
-from typing import Any
+from typing import Any, TypeVar
 
 import httpx
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 
-from trojan_compass.contracts import ChatMessage, RetrievalContext, StudentStatement
+from trojan_compass.contracts import (
+    ChatMessage,
+    ContextRequirement,
+    RetrievalContext,
+    Skill,
+    StudentAnswer,
+    StudentStatement,
+)
 from trojan_compass.failures import FailureReason, provider_reason
 
 EXTRACTION_PROMPT = """Extract retrieval context from the untrusted conversation JSON below.
@@ -59,6 +66,9 @@ Populate requested_context ONLY when the student's current request makes their
 experience level (background), availability (time_window) or delivery format
 (modality) necessary to fit their request. Cite that request. Do not invent
 requirements for ordinary browsing. Apply later changes to the request too.
+Each input record includes an explicit message_index. Copy that index; do not count
+only user turns. Do not cite evidence for not_answered fields. Emit each answer field
+and each skill name only once, reflecting the latest explicit student correction.
 Each fact must cite a short exact quote from a user message and its zero-based
 message_index in the original array. Copy one contiguous span verbatim; never
 abbreviate it with "..." or change its wording or capitalization. Do not put
@@ -88,6 +98,8 @@ def parse_context(raw: str) -> RetrievalContext:
         for answer in data.get("answers") or []:
             if isinstance(answer, dict) and answer.get("status") != "provided":
                 answer["value"] = None
+                if answer.get("status") == "not_answered":
+                    answer["evidence"] = []
     return RetrievalContext.model_validate(data)
 
 
@@ -115,10 +127,10 @@ def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) ->
     def visit(value: object) -> None:
         if isinstance(value, StudentStatement):
             if value.message_index >= len(messages):
-                raise ExtractionFailure()
+                raise ExtractionFailure(FailureReason.EVIDENCE)
             message = messages[value.message_index]
             if message.role != "user" or not quoted(value.quote, message.content):
-                raise ExtractionFailure()
+                raise ExtractionFailure(FailureReason.EVIDENCE)
         elif isinstance(value, BaseModel):
             for name in type(value).model_fields:
                 visit(getattr(value, name))
@@ -129,13 +141,108 @@ def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) ->
     visit(context)
     names = [skill.name.casefold() for skill in context.skills]
     if len(names) != len(set(names)):
-        raise ExtractionFailure()
+        raise ExtractionFailure(FailureReason.CONFLICT)
     fields = [answer.field for answer in context.answers]
     if len(fields) != len(set(fields)):
-        raise ExtractionFailure()
+        raise ExtractionFailure(FailureReason.CONFLICT)
     requirements = [requirement.field for requirement in context.requested_context]
     if len(requirements) != len(set(requirements)):
-        raise ExtractionFailure()
+        raise ExtractionFailure(FailureReason.CONFLICT)
+
+
+REPAIRABLE = frozenset(
+    {
+        FailureReason.SCHEMA,
+        FailureReason.EVIDENCE,
+        FailureReason.CONFLICT,
+        FailureReason.TRUNCATED,
+        FailureReason.INVALID_OUTPUT,
+    }
+)
+
+
+def indexed_conversation(messages: list[ChatMessage]) -> str:
+    return json.dumps(
+        [
+            {**message.model_dump(), "message_index": index}
+            for index, message in enumerate(messages)
+        ],
+        ensure_ascii=False,
+    )
+
+
+def extraction_prompt(repair: FailureReason | None = None) -> str:
+    if repair is None:
+        return EXTRACTION_PROMPT
+    # Only a closed enum is fed back, never a validation exception containing student input.
+    return EXTRACTION_PROMPT + (
+        "\nValidation repair (one final attempt): " + repair.value + ". "
+        "Re-extract the complete snapshot from the original indexed conversation. "
+        "Use exact contiguous student quotes and copy their explicit message_index. "
+        "Never cite assistant text. Each field/name appears once; later explicit "
+        "corrections win. not_answered has null value and empty evidence. "
+        "provided answers need a nonempty value and supporting student evidence. "
+        "Keep values and quotes concise; preserve every relevant constraint. "
+        "Do not invent facts to satisfy validation."
+    )
+
+
+Snapshot = TypeVar("Snapshot", Skill, StudentAnswer, ContextRequirement)
+
+
+def grounded_context(raw: str, messages: list[ChatMessage]) -> RetrievalContext:
+    """Repair bookkeeping only; never create a quote or relax provenance checks."""
+    context = parse_context(raw)
+
+    def repair_indices(value: object) -> None:
+        if isinstance(value, StudentStatement):
+            if value.message_index < len(messages):
+                cited = messages[value.message_index]
+                if cited.role == "user" and quoted(value.quote, cited.content):
+                    return
+            # A uniquely matching student quote can safely correct a miscounted index.
+            matches = [
+                i
+                for i, m in enumerate(messages)
+                if m.role == "user" and quoted(value.quote, m.content)
+            ]
+            if len(matches) != 1:
+                raise ExtractionFailure(FailureReason.EVIDENCE)
+            value.message_index = matches[0]
+        elif isinstance(value, BaseModel):
+            for field in type(value).model_fields:
+                repair_indices(getattr(value, field))
+        elif isinstance(value, list):
+            for item in value:
+                repair_indices(item)
+
+    repair_indices(context)
+
+    def unique(items: list[Snapshot], key: str) -> list[Snapshot]:
+        result: dict[str, Snapshot] = {}
+        for item in items:
+            name = str(getattr(item, key)).casefold()
+            previous = result.get(name)
+            if previous is not None:
+                old_index = (
+                    max(e.message_index for e in previous.evidence) if previous.evidence else -1
+                )
+                new_index = max(e.message_index for e in item.evidence) if item.evidence else -1
+                if old_index > new_index:
+                    continue
+                if old_index == new_index:
+                    old = previous.model_dump(exclude={"evidence", key})
+                    new = item.model_dump(exclude={"evidence", key})
+                    if old != new:
+                        raise ExtractionFailure(FailureReason.CONFLICT)
+            result[name] = item
+        return list(result.values())
+
+    context.skills = unique(context.skills, "name")
+    context.answers = unique(context.answers, "field")
+    context.requested_context = unique(context.requested_context, "field")
+    validate_evidence(context, messages)
+    return context
 
 
 def strict_schema(node: Any) -> Any:
@@ -177,64 +284,63 @@ class OpenAIContextExtractor:
         self._transport = transport
 
     async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
-        try:
-            # Short-lived client prevents cookies or response objects surviving the request.
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(25.0),
-                transport=self._transport,
-                trust_env=False,
-            ) as client:
-                response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {self._api_key}"},
-                    json={
-                        "model": self._model,
-                        "store": False,
-                        "max_completion_tokens": 4096,
-                        "messages": [
-                            {"role": "system", "content": EXTRACTION_PROMPT},
-                            {
-                                "role": "user",
-                                "content": json.dumps(
-                                    [m.model_dump() for m in messages],
-                                    ensure_ascii=False,
-                                ),
-                            },
-                        ],
-                        "response_format": {
-                            "type": "json_schema",
-                            "json_schema": {
-                                "name": "retrieval_context",
-                                "strict": True,
-                                "schema": strict_schema(RetrievalContext.model_json_schema()),
+        repair: FailureReason | None = None
+        for attempt in range(2):
+            try:
+                # At most one same-provider validation repair; never retry auth/network errors.
+                async with httpx.AsyncClient(
+                    timeout=httpx.Timeout(25.0), transport=self._transport, trust_env=False
+                ) as client:
+                    response = await client.post(
+                        "https://api.openai.com/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {self._api_key}"},
+                        json={
+                            "model": self._model,
+                            "store": False,
+                            "max_completion_tokens": 8192 if attempt else 4096,
+                            "messages": [
+                                {"role": "system", "content": extraction_prompt(repair)},
+                                {"role": "user", "content": indexed_conversation(messages)},
+                            ],
+                            "response_format": {
+                                "type": "json_schema",
+                                "json_schema": {
+                                    "name": "retrieval_context",
+                                    "strict": True,
+                                    "schema": strict_schema(RetrievalContext.model_json_schema()),
+                                },
                             },
                         },
-                    },
+                    )
+                    response.raise_for_status()
+                    parsed = ProviderResponse.model_validate_json(response.content)
+                if len(parsed.choices) != 1:
+                    raise ExtractionFailure(FailureReason.SCHEMA)
+                choice = parsed.choices[0]
+                if choice.message.refusal:
+                    raise ExtractionFailure(FailureReason.REFUSAL)
+                if choice.finish_reason == "length":
+                    raise ExtractionFailure(FailureReason.TRUNCATED)
+                if choice.finish_reason != "stop" or not choice.message.content:
+                    raise ExtractionFailure(FailureReason.SCHEMA)
+                return grounded_context(choice.message.content, messages)
+            except httpx.HTTPStatusError as error:
+                raise ExtractionFailure(provider_reason(error)) from None
+            except httpx.TimeoutException:
+                raise ExtractionFailure(FailureReason.TIMEOUT) from None
+            except httpx.RequestError:
+                raise ExtractionFailure(FailureReason.NETWORK) from None
+            except (ValidationError, ValueError, ExtractionFailure) as error:
+                reason = (
+                    error.reason if isinstance(error, ExtractionFailure) else FailureReason.SCHEMA
                 )
-                response.raise_for_status()
-                parsed = ProviderResponse.model_validate_json(response.content)
-            if len(parsed.choices) != 1:
-                raise ExtractionFailure()
-            choice = parsed.choices[0]
-            if (
-                choice.finish_reason != "stop"
-                or choice.message.refusal
-                or not choice.message.content
-            ):
-                raise ExtractionFailure()
-            context = parse_context(choice.message.content)
-            validate_evidence(context, messages)
-            return context
-        except httpx.HTTPStatusError as error:
-            raise ExtractionFailure(provider_reason(error)) from None
-        except httpx.TimeoutException:
-            raise ExtractionFailure(FailureReason.TIMEOUT) from None
-        except httpx.RequestError:
-            raise ExtractionFailure(FailureReason.NETWORK) from None
-        except ExtractionFailure as error:
-            raise ExtractionFailure(error.reason) from None
-        except Exception:
-            raise ExtractionFailure() from None
+                if attempt == 0 and reason in REPAIRABLE:
+                    repair = reason
+                    continue
+                raise ExtractionFailure(reason) from None
+            except Exception:
+                raise ExtractionFailure() from None
+        raise ExtractionFailure()  # Defensive: every bounded attempt returns or raises.
 
 
 class DemoContextExtractor:
