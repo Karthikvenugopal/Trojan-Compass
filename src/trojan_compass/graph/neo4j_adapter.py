@@ -262,7 +262,8 @@ class Neo4jGraphRepository(GraphRepository):
             "WHERE toLower(topic)=toLower(target.name)))) "
             "AND ($references IS NULL OR (a.kind IN ['Course','CourseOffering'] AND "
             "any(ref IN $references WHERE toLower(ref)=toLower(coalesce(course.name,a.name)) "
-            "OR toLower(ref)=toLower(coalesce(course.course_code,course.code,a.course_code,a.code,''))))) "
+            "OR toLower(ref)=toLower(coalesce(course.course_code,course.code,"
+            "a.course_code,a.code,'')))) ) "
             "OPTIONAL MATCH (ev:Evidence {id:'evidence-'+edge.id})-[:SUPPORTED_BY]->(s:Source) "
             "RETURN a, course, parentEvent, edge, target, s "
             "ORDER BY a.name",
