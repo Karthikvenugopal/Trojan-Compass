@@ -1,10 +1,13 @@
 """Import → extract → normalize → deduplicate → validate → upsert stages."""
 
 from dataclasses import replace
-from typing import Protocol
+from typing import Protocol, get_args
+
+from pydantic import HttpUrl
 
 from trojan_compass.ingestion.models import (
     ImportBatch,
+    NodeKind,
     NodeRecord,
     RelationshipRecord,
     SourceRecord,
@@ -84,6 +87,10 @@ class IngestionPipeline:
         if len(node_ids) != len(batch.nodes) + len(batch.sources):
             raise ValueError("Node and source IDs must be unique")
         for node in batch.nodes:
+            if node.kind not in get_args(NodeKind):
+                raise ValueError("Unsupported node kind; only shared knowledge nodes are allowed")
+            if {"id", "kind", "name", "status"}.intersection(node.attributes or {}):
+                raise ValueError("Attributes cannot overwrite reserved node identity fields")
             if not node.id.strip() or not node.name.strip():
                 raise ValueError("Node IDs and names must be non-empty")
             if node.kind == "CourseOffering" and not node.attributes:
@@ -95,9 +102,19 @@ class IngestionPipeline:
             if node.status not in ("active", "cancelled", "postponed", "unknown"):
                 raise ValueError(f"Unsupported status for node {node.id}: {node.status}")
         for source in batch.sources:
-            if not source.url.startswith(("https://", "http://")) or not source.excerpt.strip():
-                raise ValueError("Sources need an HTTP(S) URL and supporting excerpt")
+            try:
+                HttpUrl(source.url)
+                if not source.id.strip() or not source.excerpt.strip():
+                    raise ValueError()
+            except ValueError:
+                raise ValueError("Sources need an ID, HTTP(S) URL and supporting excerpt") from None
         for edge in batch.relationships:
+            if edge.fact_type not in ("explicit", "inferred"):
+                raise ValueError("Facts must be marked explicit or inferred")
+            if edge.requirement_type not in (None, "required", "preferred"):
+                raise ValueError("Requirements must be marked required or preferred")
+            if edge.prerequisite_type not in (None, "formal", "helpful"):
+                raise ValueError("Course prerequisites must be formal or helpful")
             if edge.kind not in cls.ALLOWED_KINDS:
                 raise ValueError(f"Unsupported relationship type: {edge.kind}")
             if edge.source_id not in node_ids or edge.target_id not in node_ids:

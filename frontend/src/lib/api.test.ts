@@ -45,3 +45,18 @@ describe('stateless chat API adapter', () => {
     await expect(realChatApi.send(request, signal)).rejects.toMatchObject({ status: 422, code: 'invalid_conversation' });
   });
 });
+
+it('normalizes a trailing slash in a configured cross-origin API base URL', async () => {
+  vi.stubEnv('VITE_API_BASE_URL', 'http://127.0.0.1:8000/');
+  vi.resetModules();
+  try {
+    const api = await import('./api');
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(fakeResponse(200, response));
+    vi.stubGlobal('fetch', fetchMock);
+    await api.realChatApi.send(request, signal);
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8000/api/chat', expect.any(Object));
+  } finally {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  }
+});

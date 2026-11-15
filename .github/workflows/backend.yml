@@ -73,6 +73,17 @@ jobs:
               health = client.get('http://127.0.0.1:5173/health')
               assert health.status_code == 200
               assert health.json()['mode'] == 'demo'
+              origin = 'http://localhost:5173'
+              preflight = client.options('http://127.0.0.1:8000/api/chat', headers={
+                  'Origin': origin, 'Access-Control-Request-Method': 'POST',
+                  'Access-Control-Request-Headers': 'content-type',
+              })
+              assert preflight.status_code == 200
+              assert preflight.headers['access-control-allow-origin'] == origin
+              direct = client.post('http://127.0.0.1:8000/api/chat', headers={'Origin': origin},
+                  json={'messages': [{'role': 'user', 'content': 'Show a programming course'}]})
+              assert direct.status_code == 200
+              assert direct.headers['access-control-allow-origin'] == origin
               reply = client.post('http://127.0.0.1:5173/api/chat', json={
                   'messages': [{'role': 'user', 'content': 'Show a programming course'}],
               })
@@ -100,3 +111,26 @@ jobs:
       - name: Show startup diagnostics on failure
         if: failure()
         run: cat /tmp/compass-startup.log 2>/dev/null || true
+  graph:
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:2026.10.2
+        env:
+          NEO4J_AUTH: neo4j/integration-test-only
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p integration-test-only 'RETURN 1'"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e . pytest pytest-asyncio
+      - run: python -m pytest tests/test_live_graph.py -q
+        env:
+          COMPASS_TEST_NEO4J: '1'

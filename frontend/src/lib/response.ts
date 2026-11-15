@@ -1,0 +1,42 @@
+import { ChatApiError } from './api';
+import type { ChatResponse, Recommendation } from '../types';
+
+/** Validate untrusted HTTP data before React renders nested recommendation fields. */
+export function decodeResponse(value: unknown): ChatResponse {
+  if (!record(value) || !text(value.message) || !strings(value.suggested_replies)
+      || !strings(value.limitations) || !Array.isArray(value.recommendations)
+      || !value.recommendations.every(recommendation)) {
+    throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
+  }
+  return value as unknown as ChatResponse;
+}
+
+function recommendation(value: unknown): value is Recommendation {
+  if (!record(value) || !text(value.id) || !text(value.title) || !text(value.summary)
+      || (value.kind !== 'course' && value.kind !== 'event')) return false;
+  for (const field of ['why_relevant', 'benefits', 'prerequisites_or_access', 'unknowns', 'evidence_path']) {
+    if (!strings(value[field])) return false;
+  }
+  if (!Array.isArray(value.evidence_path) || value.evidence_path.length === 0
+      || !Array.isArray(value.sources) || value.sources.length === 0
+      || !value.sources.every(source => record(source) && url(source.url)
+        && text(source.title) && nullableText(source.checked_at))) return false;
+  if (value.action_url !== null && !url(value.action_url)) return false;
+  if (!nullableText(value.modality) || !nullableText(value.status)) return false;
+  if (value.event !== null && (!record(value.event) || !nullableText(value.event.start)
+      || !nullableText(value.event.end) || !nullableText(value.event.timezone))) return false;
+  if (value.course !== null && (!record(value.course) || !nullableText(value.course.term)
+      || !nullableText(value.course.modality))) return false;
+  return true;
+}
+
+function record(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+function text(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
+function nullableText(value: unknown): value is string | null { return value === null || text(value); }
+function strings(value: unknown): value is string[] { return Array.isArray(value) && value.every(text); }
+function url(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+}

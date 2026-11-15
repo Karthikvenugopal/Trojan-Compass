@@ -6,6 +6,7 @@ from typing import Literal
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Lifespan, Message, Receive, Scope, Send
@@ -17,6 +18,7 @@ from trojan_compass.contracts import (
     ContextExtractor,
     RecommendationService,
 )
+from trojan_compass.cors import configured_origins, validate_origins
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
 from trojan_compass.gemini import GeminiContextExtractor
 from trojan_compass.services import ChatService, ChatUnavailable, DemoRecommendationService
@@ -113,6 +115,7 @@ def create_app(
     recommendations: RecommendationService | None = None,
     mode: AppMode = "demo",
     lifespan: Lifespan[FastAPI] | None = None,
+    cors_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
@@ -124,6 +127,17 @@ def create_app(
     )
     app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)
     app.add_middleware(PrivateBoundary)
+    # CORS wraps the privacy boundary so even early 413/500 responses get the
+    # allowed origin header. Otherwise the browser masks the real safe error.
+    origins = configured_origins() if cors_origins is None else validate_origins(cors_origins)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+        max_age=0,
+    )
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:

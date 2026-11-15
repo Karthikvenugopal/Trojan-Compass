@@ -151,3 +151,31 @@ describe('Trojan Compass conversation', () => {
     expect(screen.getByText('Interest → Skill → Course')).toBeInTheDocument();
   });
 });
+
+it('recovers from a malformed recommendation instead of crashing the conversation', async () => {
+  const user = userEvent.setup();
+  const send = vi.fn<ChatApi['send']>()
+    .mockResolvedValueOnce({ ...result(), recommendations: [{}] } as ChatResponse)
+    .mockResolvedValueOnce(result());
+  render(<App api={apiWith(send)} mockMode={false} />);
+  const input = screen.getByRole('textbox', { name: 'Your message' });
+  await user.type(input, 'Synthetic interest');
+  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('unreadable response');
+  expect(input).toHaveValue('Synthetic interest');
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByRole('heading', { name: 'Intro example course' })).toBeInTheDocument();
+  expect(send.mock.calls[1]?.[0].messages).toEqual([{ role: 'user', content: 'Synthetic interest' }]);
+});
+
+it('preserves source review dates in a Pacific browser timezone', async () => {
+  vi.stubEnv('TZ', 'America/Los_Angeles');
+  try {
+    const user = userEvent.setup();
+    const reviewed = { ...course, sources: [{ ...course.sources[0]!, checked_at: '2026-11-14T00:00:00Z' }] };
+    const send = vi.fn<ChatApi['send']>().mockResolvedValue(result('Synthetic response', [reviewed]));
+    render(<App api={apiWith(send)} mockMode={false} />);
+    await user.click(screen.getByRole('button', { name: 'I have an interest to explore.' }));
+    expect(await screen.findByText('Checked Nov 14, 2026')).toBeInTheDocument();
+  } finally { vi.unstubAllEnvs(); }
+});
