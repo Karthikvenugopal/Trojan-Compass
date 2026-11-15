@@ -114,8 +114,13 @@ class ControlledIntakeParser:
                 if re.search(correction, normalized):
                     return None
                 if not any(
-                    (context.interests, context.completed_courses, context.experiences,
-                     context.program, context.study_stage)
+                    (
+                        context.interests,
+                        context.completed_courses,
+                        context.experiences,
+                        context.program,
+                        context.study_stage,
+                    )
                 ):
                     return None
                 # Demo intake is deliberately tolerant of unrelated follow-up turns:

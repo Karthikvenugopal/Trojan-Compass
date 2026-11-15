@@ -263,7 +263,8 @@ class CatalogRecommendationService:
         # constraints as the graph path. No student query/results are cached.
         hits = self._index.search(phrases, max(30, request.limit * 3), exclude)
         completed_names = [
-            re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", name.casefold())).strip()
+            re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", name.casefold()))
+            .strip()
             .removesuffix(" course")
             for name in completed_course_names(context)
         ]
