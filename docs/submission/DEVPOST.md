@@ -90,5 +90,5 @@ reply: seats are a snapshot, skill links are inferred, eligibility must be confi
 
 - Code: https://github.com/Karthikvenugopal/Trojan-Compass (branch `feat/knowledge-graph-roadmap`)
 - Slide deck: `docs/submission/TrojanCompass-deck.pdf`
-- Demo video: `docs/submission/TrojanCompass-demo.webm`
+- Demo video: `docs/submission/TrojanCompass-demo.mp4`
 - Screenshots: `docs/submission/screenshots/`

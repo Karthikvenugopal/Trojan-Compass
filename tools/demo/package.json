@@ -3,5 +3,8 @@
   "private": true,
   "type": "module",
   "description": "Playwright scripts that drive the running app for screenshots and the demo video.",
-  "dependencies": { "playwright-core": "1.49.1" }
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "playwright-core": "1.49.1"
+  }
 }

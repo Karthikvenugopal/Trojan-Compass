@@ -1,0 +1,22 @@
+[
+  {"id": "overview", "caption": "Trojan Compass: any interest, turned into a clear path at USC.",
+   "text": "Trojan Compass turns any student's interest into a clear path at USC: the skills to learn, the courses that teach them, the professors behind them, and one next step."},
+  {"id": "users", "caption": "For every student who has asked: what should I take next?",
+   "text": "Who is it for? Every USC student who has asked, what should I take next. First-years who aren't sure yet. Transfer and graduate students who are new to campus. And the advisors and student leaders who guide them. Today the answer is scattered across the schedule of classes, faculty pages, Handshake, and a dozen office websites."},
+  {"id": "welcome", "caption": "Three ways in. Every question is optional.",
+   "text": "A student starts in one of three ways: not sure where to start, an interest to explore, or a clear goal. Every question is optional."},
+  {"id": "chat", "caption": "A master's student is curious about AI in healthcare.",
+   "text": "Here, a master's student is curious about A I in healthcare, and shares a little background."},
+  {"id": "results", "caption": "Real USC courses for next term, with seats, reasons and official sources.",
+   "text": "In seconds, they get real USC courses for next term, with open seats, meeting times, the reason each one fits, and a link to the official source."},
+  {"id": "graph", "caption": "A knowledge graph of 7,306 real USC courses. Every suggestion shows its path.",
+   "text": "Behind every suggestion is a knowledge graph, built from more than seven thousand real USC courses. The student can trace the path from their interest, to a skill, to a course, to the professor who teaches it."},
+  {"id": "roadmap", "caption": "A roadmap to keep, with one concrete next step.",
+   "text": "It becomes a roadmap they can save: what I know, what to learn, the courses and research to explore, and one concrete next step."},
+  {"id": "questions", "caption": "Plain-language explanations and everyday campus questions.",
+   "text": "They can ask for a simpler explanation, or everyday questions, like whether a library is open right now, answered from live, official USC pages."},
+  {"id": "usg", "caption": "Designed for USG to run as a student service.",
+   "text": "For Undergraduate Student Government, this is designed to adopt. It runs on public USC data, so no special access is needed to start. It needs no login, stores no student data, and refreshes with one script. USG can host it as a student service, add real Handshake and club events through official partnerships, and bring it to orientation and advising."},
+  {"id": "close", "caption": "",
+   "text": "Trojan Compass. Every Trojan deserves a map."}
+]
