@@ -37,6 +37,10 @@ added. Real provider credentials remain in ignored server-only configuration.
 The graph/frontend owners were notified on their existing PRs before boundary
 changes. Shared request/response types and UI design are unchanged.
 
+- **Evidence dates and event wording:** source-review date sentinels are rendered
+  as dates in UTC so a midnight review date does not appear a day earlier in a
+  Pacific browser. Broad event wording no longer asserts "upcoming" without a date.
+
 ## Verification
 
 Python regression tests cover CORS preflight and rejected origins, privacy-safe

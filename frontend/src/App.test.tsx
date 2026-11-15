@@ -167,3 +167,15 @@ it('recovers from a malformed recommendation instead of crashing the conversatio
   expect(await screen.findByRole('heading', { name: 'Intro example course' })).toBeInTheDocument();
   expect(send.mock.calls[1]?.[0].messages).toEqual([{ role: 'user', content: 'Synthetic interest' }]);
 });
+
+it('preserves source review dates in a Pacific browser timezone', async () => {
+  vi.stubEnv('TZ', 'America/Los_Angeles');
+  try {
+    const user = userEvent.setup();
+    const reviewed = { ...course, sources: [{ ...course.sources[0]!, checked_at: '2026-11-14T00:00:00Z' }] };
+    const send = vi.fn<ChatApi['send']>().mockResolvedValue(result('Synthetic response', [reviewed]));
+    render(<App api={apiWith(send)} mockMode={false} />);
+    await user.click(screen.getByRole('button', { name: 'I have an interest to explore.' }));
+    expect(await screen.findByText('Checked Nov 14, 2026')).toBeInTheDocument();
+  } finally { vi.unstubAllEnvs(); }
+});

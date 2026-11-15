@@ -61,3 +61,23 @@ def test_aware_source_timestamp_preserves_its_instant() -> None:
     stamp = datetime.fromisoformat("2026-11-14T12:00:00-08:00")
     assert source_timestamp(stamp) == stamp
     assert source_timestamp(stamp.isoformat()) == stamp
+
+
+@pytest.mark.asyncio
+async def test_unknown_event_dates_do_not_become_an_upcoming_claim() -> None:
+    from trojan_compass.composition import seed_repository
+    from trojan_compass.contracts import RecommendationRequest, RetrievalContext
+    from trojan_compass.recommendations import RecommendationEngine
+
+    result = await RecommendationEngine(seed_repository()).recommend(
+        RecommendationRequest(
+            context=RetrievalContext(),
+            user_query="Synthetic broad discovery",
+        )
+    )
+    events = [rec for rec in result.recommendations if rec.kind == "event"]
+    assert events
+    for event in events:
+        assert event.event and event.event.start is None
+        assert "upcoming" not in " ".join(event.why_relevant + event.evidence_path).casefold()
+        assert event.unknowns

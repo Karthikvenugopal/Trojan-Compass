@@ -178,16 +178,13 @@ class Explainer:
 
 
 def _broad_step(action: CampusAction) -> str:
-    return (
-        "introductory course with no listed prerequisites"
-        if action.course
-        else "upcoming campus event"
-    )
+    return "introductory course with no listed prerequisites" if action.course else "campus event"
 
 
 def _broad_reason(action: CampusAction) -> str:
+    article = "an" if action.course else "a"
     return (
-        f"A general starting point: an {_broad_step(action)}. It isn't matched to your "
+        f"A general starting point: {article} {_broad_step(action)}. It isn't matched to your "
         "background yet."
     )
 

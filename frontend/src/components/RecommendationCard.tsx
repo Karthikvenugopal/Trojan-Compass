@@ -67,7 +67,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
           <ul>{recommendation.sources.map((source, index) => (
             <li key={`${source.url}-${index}`}>
               <a href={source.url} target="_blank" rel="noreferrer">{source.title} <ExternalLink size={12} aria-hidden="true" /></a>
-              {source.checked_at && <span>Checked {formatDate(source.checked_at, null)}</span>}
+              {source.checked_at && <span>Checked {formatDate(source.checked_at.slice(0, 10), 'UTC')}</span>}
             </li>
           ))}</ul>
         </section>
