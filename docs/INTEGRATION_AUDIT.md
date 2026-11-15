@@ -30,7 +30,8 @@ added. Real provider credentials remain in ignored server-only configuration.
   documented UTC-midnight date sentinels; unspecified timestamp zones stay unknown.
 - **Graph read behavior:** CourseOffering was excluded by the initial query even
   though the query later tried to read offerings. Offerings are now included;
-  course-code spacing is normalized, and pipe-separated imported aliases become
+  the subquery filter now has a valid WITH scope, course-code spacing is normalized,
+  and pipe-separated imported aliases become
   Neo4j lists while legacy string aliases remain readable.
 
 The graph/frontend owners were notified on their existing PRs before boundary

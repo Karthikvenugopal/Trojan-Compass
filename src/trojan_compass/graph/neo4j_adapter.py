@@ -266,6 +266,7 @@ class Neo4jGraphRepository(GraphRepository):
             "WHERE a.kind='EventOccurrence' "
             "AND type(edge) IN ['COVERS','PRACTICES','INTRODUCES'] "
             "RETURN edge, target } "
+            "WITH a, course, parentEvent, edge, target "
             "WHERE ($skill_ids IS NULL OR target.id IN $skill_ids) "
             "AND ($topic_names IS NULL OR (target.kind='Topic' AND any(topic IN $topic_names "
             "WHERE toLower(topic)=toLower(target.name)))) "
