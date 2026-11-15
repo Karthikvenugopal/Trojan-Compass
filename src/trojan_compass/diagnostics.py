@@ -253,16 +253,15 @@ def dummy_probe(base_url: str | None = None) -> dict[str, object]:
 
 async def local_semantic_probe(llm: "StructuredLLM") -> dict[str, object]:
     """Opt-in real local inference on synthetic dialogue; return booleans/timing only."""
-    from trojan_compass.contracts import ChatMessage
-    from trojan_compass.extraction import ExtractionFailure, grounded_context
+    from trojan_compass.ai_chat import AIChatService
+    from trojan_compass.assistant import CampusAssistant
+    from trojan_compass.career_guidance import EvidenceCareerGuide, PathLibrary
+    from trojan_compass.composition import seed_repository
+    from trojan_compass.contracts import ChatMessage, ChatRequest
+    from trojan_compass.extraction import ExtractionFailure
     from trojan_compass.llm import LLMFailure
-    from trojan_compass.planner_wire import (
-        QUESTION_REVIEW_PROMPT,
-        PlannerOutput,
-        QuestionReview,
-        apply_question_review,
-    )
-    from trojan_compass.readiness import request_information
+    from trojan_compass.services import ChatUnavailable, DemoRecommendationService
+    from trojan_compass.university import AcademicCourseHistoryService
 
     started = time.monotonic()
     messages = [
@@ -290,51 +289,54 @@ async def local_semantic_probe(llm: "StructuredLLM") -> dict[str, object]:
         ),
         ChatMessage(role="user", content="No"),
     ]
-    payload = {
-        "conversation": [{**m.model_dump(), "message_index": i} for i, m in enumerate(messages)],
-        "candidate_facts": [],
-        "proposed_question": {"field": "target", "text": "What is your career goal?"},
-        "occupations": {"software-developer": "Software developer"},
-        "question_answer_turns": [
-            {
-                "question": messages[i - 1].content,
-                "asked_field": messages[i - 1].asked_field,
-                "reply": message.content,
-                "reply_index": i,
-            }
-            for i, message in enumerate(messages)
-            if i > 0 and message.role == "user"
-        ],
-    }
     try:
-        review = await llm.complete(QUESTION_REVIEW_PROMPT, json.dumps(payload), QuestionReview)
-        wire = apply_question_review(PlannerOutput(intent="ask"), review)
-        context = grounded_context(wire.context(messages).model_dump_json(), messages)
-        info = request_information(context, messages, ai_owned=True)
+        # Exercise the actual production planning boundary, including its search-only
+        # schema when the model proposes optional intake after the minimum is known.
+        # No recommendation, graph retrieval or composition method is invoked.
+        graph = seed_repository()
+        library = PathLibrary.load()
+        planner = AIChatService(
+            llm,
+            DemoRecommendationService(),
+            library,
+            EvidenceCareerGuide(graph, library),
+            AcademicCourseHistoryService(graph),
+            CampusAssistant(llm),
+            "Synthetic planning diagnostic",
+        )
+        decision, info = await planner._decide(ChatRequest(messages=messages))
+        context = info.context
         checks = {
             "combined_stage": bool(
-                context.study_stage and "undergrad" in context.study_stage.value.casefold()
+                context.academic_level and context.academic_level.value == "undergraduate"
             ),
             "combined_program": bool(
-                context.program and "electrical" in context.program.value.casefold()
+                context.program
+                and (
+                    "electrical" in context.program.value.casefold()
+                    or re.search(r"\bee\b", context.program.value.casefold()) is not None
+                )
             ),
             "goal_interpreted": bool(
                 context.target and "software" in context.target.name.casefold()
             ),
             "unrelated_experience_preserved": any(
-                "theatre" in item.value.casefold() for item in context.experiences
+                proof.message_index == 0 for item in context.experiences for proof in item.evidence
             ),
             "negative_reply_scoped": any(
-                f.message_index == 8 and f.field in {"experience", "work_experience"}
-                for f in wire.facts
+                proof.message_index == 8
+                for proof in [
+                    *(e for item in context.experiences for e in item.evidence),
+                    *info.answer("work_experience").evidence,
+                ]
             ),
             "course_preserved": any(
                 "EE109" in re.sub(r"[^A-Z0-9]", "", item.value.upper())
                 for item in context.completed_courses
             ),
-            "no_inferred_skill_mastery": not context.skills,
-            "no_repeated_question": review.next_step == "search"
-            and review.question is None
+            "no_inferred_skill_mastery": all(skill.status == "unknown" for skill in context.skills),
+            "no_repeated_question": decision.intent == "search"
+            and decision.question is None
             and info.snapshot().ready,
         }
         return {
@@ -342,7 +344,7 @@ async def local_semantic_probe(llm: "StructuredLLM") -> dict[str, object]:
             "checks": checks,
             "elapsed_seconds": round(time.monotonic() - started, 2),
         }
-    except (LLMFailure, ExtractionFailure) as error:
+    except (LLMFailure, ExtractionFailure, ChatUnavailable) as error:
         return {
             "passed": False,
             "error_code": error.reason.value,

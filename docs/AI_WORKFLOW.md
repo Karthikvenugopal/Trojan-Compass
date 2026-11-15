@@ -10,16 +10,19 @@ failure never selects it. Default application composition is tested separately.
 ## Request lifecycle
 
 1. Validate the active frontend conversation and its byte/character limits.
-2. Make a structured AI decision from the complete indexed conversation. The model
-   emits compact, quoted student facts, applies corrections, chooses one useful next question
+2. Make one structured `AuditedDecision` from the complete indexed conversation.
+   The model first fills every named answer-audit slot, including explicit uncertainty,
+   then classifies academic level, emits quoted facts and chooses one useful next question
    or search, writes semantic retrieval terms and selects possible occupation IDs
    from the shared public evidence catalog. It chooses the order and wording of
    questions, handles uncertain students and skips discovery when facts are supplied.
 3. Check quotation provenance, typed corrections and readiness. The student's fixed
    minimum checklist remains direction, study stage, program, experience and completed
    courses. Provided/unknown/none all count as answered; not_answered does not. The
-   model chooses additional material fields. A career target cannot become mandatory.
-   Code rejects early searches and repeated questions; it does not choose the question.
+   model chooses the order and wording of unanswered core questions. A career target
+   cannot become mandatory. Once the minimum is resolved, retrieve before optional
+   discovery. Additional required questions must come from retrieval evidence.
+   Code rejects early searches, optional intake loops and repeated questions.
 4. Ask turns return the AI's question/choices. Search turns call the existing owners'
    typed, read-only recommendation/graph/catalog interfaces. Model-selected occupation
    scopes retrieve source-backed skills, learning, teaching faculty and research
@@ -52,10 +55,10 @@ steps and fallback suggestions are not published by AIChatService.
 
 An invalid planning decision may get one same-provider validation repair using the
 original conversation and static feedback. Auth/quota/connection/timeouts are not
-retried or sent to another provider. Normal ask turns use planning plus an independent semantic-review call; search
-turns use planning plus composition. A review that resolves the last missing fact
-can proceed to retrieval/composition in that turn. Bounded validation retries may
-add calls; the overall request deadline still applies. Cloud requests are bounded by a 75-second lifecycle;
+retried or sent to another provider. Normal ask turns use one audit-first decision;
+search turns use decision plus composition. The previous proposal/reviewer chain is
+not used by live chat. Bounded validation repairs can add calls; the overall deadline
+still applies. Cloud requests are bounded by a 75-second lifecycle;
 local Ollama requests have a 180-second lifecycle to allow local inference. A provider
 or validation failure returns a safe error, never a scripted imitation of AI advice.
 
@@ -134,28 +137,34 @@ model output appear in errors/logs. Provenance is checked before applying ordere
 fact corrections, so output ordering or a repairable index mistake cannot reinstate
 an old program value.
 
-## Preventing repeated ask-backs with AI semantic review
+## Intake, visible context and academic fit
 
-Before an ask-back is returned, a separate focused LLM call reviews the proposed
-question against the entire student conversation. It can identify additional facts
-in a combined answer, interpret abbreviations and scoped short replies, remove
-unsupported proposal facts and choose a different question or proceed to search.
-Python applies explicit model edits and validates their evidence; it contains no
-new abbreviation map or yes/no-to-profile decision rules. This extra AI call is a
-reliability/latency tradeoff, not a claim that a small model cannot make mistakes.
+The live model assesses named fields before generating a question. This avoids a
+second model pass anchoring its extraction to a first pass's missing-field guesses.
+Unknown/none stay explicit answers; absent fields stay not_answered. The model owns
+semantic interpretation of abbreviations, contextual negatives, and interests stated
+in questions. Python verifies evidence and the finite minimum; there is no new live
+abbreviation or phrase dictionary. The older QuestionReview wire remains only for
+compatibility fixtures; the semantic diagnostic now exercises AuditedDecision.
 
-AI-declared asked_field metadata accompanies assistant questions in the active
-frontend conversation. Question/reply pairs are rebuilt for each request; metadata
-is context, never evidence of student facts. Only actual user quotes support facts.
-An extracted typed career target now resolves the target answered-state as well as
-broad direction, fixing a bookkeeping omission that permitted repeated goal questions.
+Assistant messages carry optional ordered shown_resources metadata (id/title/kind/
+section), derived from actual displayed plan actions and recommendation cards. The
+metadata stays in frontend memory and travels with each request. It lets the model
+resolve ordinal follow-ups without server sessions. It is untrusted assistant context,
+never evidence of student skills, interests or course completion; factual follow-ups
+must retrieve current source records. User messages cannot supply this metadata.
 
-Run `bash scripts/check-system.sh --ollama` in the host terminal for an opt-in real
-local-model semantic check. It uses a synthetic dialogue (combined academic answer,
-career abbreviation, prior volunteering and a scoped negative work reply) and prints
-only boolean checks, safe error codes and elapsed time. No student conversation or
-raw model reply is printed/saved. Mocked CI tests verify the checks and wiring;
-they do not prove that the installed local model passes this semantic evaluation.
+academic_level is a typed, evidenced LLM classification, separate from the student's
+free-text study_stage/year. Scoped graduate/doctoral course candidates require a
+supported graduate/doctoral classification; unknown education does not confer graduate
+access. The legacy offline demo maps only its existing canonical stage-button labels.
+Completed-course titles are compared exactly after punctuation/spacing cleanup, with
+public graph identities used where available. Partial titles never exclude a distinct
+advanced course merely because one title contains another.
+
+Run bash scripts/check-system.sh --ollama for an opt-in synthetic local semantic
+check. It prints only boolean checks, timing and safe error codes. No student text
+or model response is printed/saved. Model quality still requires real inference.
 
 ## Fixed boundaries versus model decisions
 
@@ -200,3 +209,15 @@ An optional uncertain answer must remain unknown on later turns and must not be
 requested again. The LLM owns that semantic classification; there is no new phrase
 dictionary. Prompts also tell it to avoid extending minimum intake for optional
 preferences and to use plain-language reply buttons instead of internal enums.
+
+## Guide delivery boundary
+
+After the AI planner chooses search, CompleteGuideAnswer constrains question to null.
+The composer delivers the plan; it cannot independently restart intake. A material,
+unanswered graph clarification uses a separate response schema. Exact resource IDs,
+request-local action handles and case-normalized skill names resolve to source records.
+A source-backed resource explicitly referenced by an AI-authored step is itself an
+AI selection and is included with its original source/access/status metadata. Invalid
+or fabricated references remain rejected; no fuzzy semantic matching is performed.
+Earlier course-history checkboxes and confirmation buttons are disabled along with
+other earlier reply controls.

@@ -124,8 +124,10 @@ def test_stemming_joins_word_forms() -> None:
 async def test_completed_course_title_is_used_as_background_for_next_course(
     index: CatalogIndex,
 ) -> None:
-    context = RetrievalContext(completed_courses=[text("Information Retrieval")])
-    assert query_phrases(context) == ["Information Retrieval"]
+    context = RetrievalContext(
+        completed_courses=[text("Information Retrieval and Web Search Engines")]
+    )
+    assert query_phrases(context) == ["Information Retrieval and Web Search Engines"]
     result = await CatalogRecommendationService(Empty(), index).recommend(request(context))
     assert all(
         card.title != "CSCI 572: Information Retrieval and Web Search Engines"
@@ -367,3 +369,61 @@ async def test_completed_public_alias_cannot_reappear_through_catalog(tmp_path: 
         Empty(), CatalogIndex.load(path), graph=graph
     ).recommend(request(context))
     assert result.recommendations == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stage", ["Freshman", "Sophomore", "Senior", "UG CS"])
+async def test_unclassified_student_stage_does_not_admit_graduate_courses(
+    index: CatalogIndex, stage: str
+) -> None:
+    context = RetrievalContext(
+        interests=[text("natural language processing")], study_stage=text(stage)
+    )
+    result = await CatalogRecommendationService(Empty(), index).recommend(request(context))
+    assert not result.recommendations
+
+
+@pytest.mark.asyncio
+async def test_supported_graduate_classification_allows_graduate_courses(
+    index: CatalogIndex,
+) -> None:
+    from trojan_compass.contracts import SupportedAcademicLevel
+
+    context = RetrievalContext(
+        interests=[text("natural language processing")],
+        study_stage=text("MS student"),
+        academic_level=SupportedAcademicLevel(
+            value="graduate", evidence=statement(quote="MS student")
+        ),
+    )
+    result = await CatalogRecommendationService(Empty(), index).recommend(request(context))
+    assert any("CSCI 544" in r.title for r in result.recommendations)
+
+
+@pytest.mark.asyncio
+async def test_completed_title_does_not_exclude_a_distinct_advanced_successor(
+    tmp_path: Path,
+) -> None:
+    payload = {
+        **CATALOG,
+        "courses": [
+            course(
+                "TEST 101", "Data Structures", "Data structures algorithms.", level="undergraduate"
+            ),
+            course(
+                "TEST 201",
+                "Advanced Data Structures",
+                "Advanced data structures algorithms.",
+                level="undergraduate",
+            ),
+        ],
+    }
+    path = tmp_path / "synthetic-catalog.json"
+    path.write_text(json.dumps(payload))
+    context = RetrievalContext(
+        interests=[text("data structures algorithms")], completed_courses=[text("Data Structures")]
+    )
+    result = await CatalogRecommendationService(Empty(), CatalogIndex.load(path)).recommend(
+        request(context)
+    )
+    assert [r.id for r in result.recommendations] == ["usc-catalog-test201"]

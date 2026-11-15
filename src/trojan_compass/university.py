@@ -310,11 +310,16 @@ class AcademicCourseHistoryService:
                 <= set(re.findall(r"[a-z]+", (self._subjects.get(a.id) or a.title).casefold()))
             ]
         stage = context.study_stage.value.casefold() if context.study_stage else ""
-        if "undergrad" in stage or "not started" in stage:
+        level = context.academic_level.value if context.academic_level else None
+        if (
+            level in {"undergraduate", "not_started"}
+            or "undergrad" in stage
+            or "not started" in stage
+        ):
             candidates = [
                 a for a in candidates if a.course and course_number(a.course.code) < 500
             ]  # Public course numbering.
-        elif "graduate" in stage:
+        elif level in {"graduate", "doctoral"} or "graduate" in stage:
             candidates = [a for a in candidates if a.course and course_number(a.course.code) >= 500]
         candidates.sort(
             key=lambda a: (

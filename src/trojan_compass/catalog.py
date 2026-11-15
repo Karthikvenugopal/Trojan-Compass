@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from trojan_compass.academic import course_level_allowed
 from trojan_compass.contracts import (
     CourseDetails,
     Recommendation,
@@ -263,10 +264,7 @@ class CatalogRecommendationService:
         # constraints as the graph path. No student query/results are cached.
         hits = self._index.search(phrases, max(30, request.limit * 3), exclude)
         completed_names = [
-            re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", name.casefold()))
-            .strip()
-            .removesuffix(" course")
-            for name in completed_course_names(context)
+            normalized_course_title(name) for name in completed_course_names(context)
         ]
         hits = [
             hit
@@ -274,13 +272,11 @@ class CatalogRecommendationService:
             if not any(
                 name
                 and len(name.split()) >= 2
-                and (name in hit.course.title.casefold() or hit.course.title.casefold() in name)
+                and name == normalized_course_title(hit.course.title)
                 for name in completed_names
             )
         ]
-        stage = context.study_stage.value.casefold() if context.study_stage else ""
-        if "undergrad" in stage:
-            hits = [h for h in hits if h.course.level not in ("graduate", "doctoral")]
+        hits = [h for h in hits if course_level_allowed(h.course.level, context)]
         hits = [h for h in hits if h.course.offerings]
         canonical_ids: dict[str, str] = {}
         if self._graph is not None and hits:
@@ -415,6 +411,11 @@ class CatalogRecommendationService:
             modality=", ".join(best.modes) if best and best.modes else None,
             status=term.split("(", 1)[1].split(";")[0].rstrip(")") if term else None,
         )
+
+
+def normalized_course_title(value: str) -> str:
+    """Exact title identity after punctuation/spacing cleanup, never a substring."""
+    return " ".join(re.findall(r"[a-z0-9]+", value.casefold())).removesuffix(" course")
 
 
 def query_phrases(context: RetrievalContext) -> list[str]:

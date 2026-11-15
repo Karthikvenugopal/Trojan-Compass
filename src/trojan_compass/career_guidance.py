@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import Field
 
+from trojan_compass.academic import course_level_allowed
 from trojan_compass.catalog import CatalogCourse, CatalogIndex, tokenize
 from trojan_compass.contracts import (
     CareerGuidance,
@@ -342,7 +343,6 @@ class EvidenceCareerGuide:
         actions: list[GuidanceAction] = []
         selected: list[CatalogCourse] = []
         seen: set[str] = set()
-        stage = context.study_stage.value.casefold() if context.study_stage else ""
         for skill in skills:
             if skill.status == "known":
                 continue
@@ -357,7 +357,7 @@ class EvidenceCareerGuide:
                 if h.course.offerings
                 and wanted_tokens.intersection(tokenize(h.course.search_text))
                 and h.course.code not in seen
-                and not ("undergrad" in stage and h.course.level in ("graduate", "doctoral"))
+                and course_level_allowed(h.course.level, context)
             ]
             # Basic course numbering is an ordering hint, never eligibility or mastery.
             candidates.sort(

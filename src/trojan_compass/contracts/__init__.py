@@ -44,14 +44,26 @@ class InformationEdit(Contract):
         return self
 
 
+class ShownResource(Contract):
+    """Ordered assistant display context, never evidence about the student."""
+
+    id: Text
+    title: Text
+    kind: Literal["course", "event", "faculty", "research"]
+    section: Literal["plan", "recommendations"]
+
+
 class ChatMessage(Contract):
     role: Literal["user", "assistant"]
     content: Annotated[str, Field(min_length=1, max_length=20400, strict=True)]
     edit: InformationEdit | None = None
     asked_field: InformationKey | None = None
+    shown_resources: list[ShownResource] = Field(default_factory=list, max_length=24)
 
     @model_validator(mode="after")
     def student_edit(self) -> Self:
+        if self.role == "user" and self.shown_resources:
+            raise ValueError("Shown resources belong only to assistant turns")
         if self.role == "user" and self.asked_field is not None:
             raise ValueError("Only assistant questions can declare their asked field")
         # Full background is kept in the active conversation, never a backend file/session.
@@ -126,6 +138,14 @@ class Constraints(Contract):
     additional_preferences: list[SupportedText] = Field(default_factory=list)
 
 
+AcademicLevel = Literal["undergraduate", "graduate", "doctoral", "not_started", "unknown"]
+
+
+class SupportedAcademicLevel(Contract):
+    value: AcademicLevel
+    evidence: list[StudentStatement] = Field(min_length=1, max_length=8)
+
+
 class RetrievalContext(Contract):
     interests: list[SupportedText] = Field(default_factory=list)
     skills: list[Skill] = Field(default_factory=list)
@@ -133,6 +153,7 @@ class RetrievalContext(Contract):
     completed_courses: list[SupportedText] = Field(default_factory=list)
     program: SupportedText | None = None
     study_stage: SupportedText | None = None
+    academic_level: SupportedAcademicLevel | None = None
     goals: list[SupportedText] = Field(default_factory=list)
     target: Target | None = None
     constraints: Constraints = Field(default_factory=Constraints)

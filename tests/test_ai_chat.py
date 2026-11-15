@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from trojan_compass.ai_chat import (
     AIChatService,
@@ -40,7 +40,15 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.failures import FailureReason
 from trojan_compass.llm import LLMFailure, Model, StructuredLLM
-from trojan_compass.planner_wire import PlannerOutput, QuestionReview
+from trojan_compass.planner_wire import (
+    AuditedDecision,
+    IntakeAudit,
+    PlannerOutput,
+    QuestionReview,
+    RetrievalPlan,
+    SkillEvidenceReview,
+    apply_question_review,
+)
 from trojan_compass.services import ChatUnavailable
 from trojan_compass.university import (
     AcademicCourseHistoryService,
@@ -49,6 +57,21 @@ from trojan_compass.university import (
 )
 
 Reply = BaseModel | LLMFailure | Callable[[dict[str, Any]], BaseModel]
+
+
+def missing_audit(extra: str | None = None) -> list[StudentAnswer]:
+    fields = [
+        "direction",
+        "study_stage",
+        "program",
+        "work_experience",
+        "completed_courses",
+        "time_window",
+    ]
+    return [
+        StudentAnswer(field=field, status="not_answered")
+        for field in dict.fromkeys([*fields, *([extra] if extra else [])])
+    ]
 
 
 def wire_fixture(decision: ConversationDecision) -> PlannerOutput:
@@ -116,8 +139,45 @@ def wire_fixture(decision: ConversationDecision) -> PlannerOutput:
             ),
             "search_query": decision.search_query or (route.search_query if route else ""),
             "occupation_ids": decision.occupation_ids,
+            "target": context.target.model_dump() if context.target else None,
             "course_codes": route.course_codes if route else [],
             "needs_library_hours": route.needs_library_hours if route else False,
+        }
+    )
+
+
+def audited_fixture(wire: PlannerOutput, messages: list[ChatMessage]) -> AuditedDecision:
+    """Encode a synthetic typed snapshot in the production audit-first protocol."""
+    from trojan_compass.readiness import request_information
+
+    context = wire.context(messages)
+    info = request_information(context, messages, ai_owned=True)
+    audit = IntakeAudit.from_answers([info.answer(row.field) for row in missing_audit()])
+    return AuditedDecision.model_validate(
+        {
+            **wire.model_dump(exclude={"target"}),
+            "facts": [
+                f.model_dump()
+                for f in wire.facts
+                if not f.field.startswith("target")
+                and f.field
+                not in {
+                    "direction",
+                    "study_stage",
+                    "program",
+                    "work_experience",
+                    "completed_courses",
+                    "background",
+                    "time_window",
+                    "modality",
+                    "direction_detail",
+                    "target",
+                    "academic_level",
+                }
+            ],
+            "current_target": context.target.model_dump() if context.target else None,
+            "answer_audit": audit.model_dump(),
+            "academic_level": context.academic_level.value if context.academic_level else None,
         }
     )
 
@@ -132,24 +192,47 @@ class FakeReasoner:
         self.schemas.append(schema.__name__)
         payload = json.loads(user)
         self.payloads.append(payload)
-        if schema is QuestionReview and (
-            not self.replies or not isinstance(self.replies[0], QuestionReview)
+        if schema is SkillEvidenceReview and (
+            not self.replies or not isinstance(self.replies[0], SkillEvidenceReview)
         ):
-            # Existing orchestration fixtures explicitly model a confirming second
-            # AI. Semantic-review behavior has dedicated patch fixtures below.
             return schema.model_validate(
                 {
-                    "next_step": "ask",
-                    "question": payload["proposed_question"],
+                    "assessments": [
+                        {
+                            "basis": "explicit_uncertainty"
+                            if c["status"] == "unknown"
+                            else "direct_skill_statement",
+                            "fact_index": c["fact_index"],
+                            "status": c["status"],
+                            "evidence": [
+                                {"message_index": c["message_index"], "quote": c["quote"]}
+                            ],
+                        }
+                        for c in payload["claims"]
+                    ]
                 }
             )
         reply = self.replies.pop(0)
         if isinstance(reply, LLMFailure):
             raise reply
         result = reply(payload) if callable(reply) else reply
-        if schema is PlannerOutput and isinstance(result, ConversationDecision):
-            result = wire_fixture(result)
-        return schema.model_validate(result.model_dump())
+        if schema is RetrievalPlan and isinstance(result, ConversationDecision):
+            result = RetrievalPlan(
+                search_query=result.search_query, occupation_ids=result.occupation_ids
+            )
+        if schema is AuditedDecision:
+            if isinstance(result, ConversationDecision):
+                result = wire_fixture(result)
+            if isinstance(result, PlannerOutput):
+                messages = [
+                    ChatMessage.model_validate({k: v for k, v in m.items() if k != "message_index"})
+                    for m in payload["conversation"]
+                ]
+                result = audited_fixture(result, messages)
+        try:
+            return schema.model_validate(result.model_dump())
+        except ValidationError:
+            raise LLMFailure(FailureReason.SCHEMA) from None
 
 
 class RetrievalSpy:
@@ -292,7 +375,7 @@ async def test_first_turn_uses_ai_question_instead_of_a_canned_script() -> None:
         ChatRequest(messages=[ChatMessage(role="user", content="I'm not sure where to start.")])
     )
     assert response.message.startswith("What are you studying or considering?")
-    assert llm.schemas == ["PlannerOutput", "QuestionReview"]
+    assert llm.schemas == ["AuditedDecision"]
     assert not spy.calls and not response.recommendations
     assert all(field.value is None for field in response.information.fields)
     assert not response.information.ready
@@ -317,7 +400,7 @@ async def test_rich_answer_skips_script_and_ai_selects_sourced_software_plan(
     response = await make_service(llm, spy, catalog).chat(
         ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
     )
-    assert llm.schemas == ["PlannerOutput", "GuidedAnswer"]
+    assert llm.schemas == ["AuditedDecision", "CompleteGuideAnswer"]
     assert response.information.ready and len(spy.calls) == 1
     assert response.guidance and response.guidance.suggested_paths[0].title == "Software developer"
     assert not any("Mechanical" in path.title for path in response.guidance.suggested_paths)
@@ -471,7 +554,7 @@ async def test_composer_cannot_publish_invented_resources_urls_or_plan_reference
             ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
         )
     assert caught.value.reason == FailureReason.EVIDENCE
-    assert llm.schemas == ["PlannerOutput", "GuidedAnswer", "GuidedAnswer"]
+    assert llm.schemas == ["AuditedDecision", "CompleteGuideAnswer", "CompleteGuideAnswer"]
     assert len(spy.calls) == 1
 
 
@@ -531,7 +614,7 @@ async def test_unknown_optional_timeframe_survives_and_composer_cannot_reask_it(
     )
 
     def repair(payload: dict[str, Any]) -> GuidedAnswer:
-        assert payload["validation_feedback"]["issue"] == "asked_answered_field"
+        assert payload["validation_feedback"]["issue"] == "invalid_model_structure"
         field = next(f for f in payload["information"]["fields"] if f["field"] == "time_window")
         assert field["status"] == "unknown"
         return GuidedAnswer(
@@ -556,13 +639,14 @@ async def test_composition_transport_failure_is_not_retried() -> None:
             ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
         )
     assert caught.value.reason == FailureReason.NETWORK
-    assert llm.schemas == ["PlannerOutput", "GuidedAnswer"]
+    assert llm.schemas == ["AuditedDecision", "CompleteGuideAnswer"]
 
 
 @pytest.mark.asyncio
-async def test_retrieved_course_can_be_planned_without_an_occupation_and_handles_stay_local() -> (
-    None
-):
+@pytest.mark.parametrize("summarized", [True, False])
+async def test_retrieved_course_can_be_planned_without_an_occupation_and_handles_stay_local(
+    summarized: bool,
+) -> None:
     rec = Recommendation(
         id="synthetic-course-101",
         kind="course",
@@ -590,7 +674,9 @@ async def test_retrieved_course_can_be_planned_without_an_occupation_and_handles
             message="Consider the sourced course.",
             headline="Explore",
             mode="explore",
-            actions=[ResourceChoice(id=action["id"], why_relevant="A sourced learning option")],
+            actions=[ResourceChoice(id=action["id"], why_relevant="A sourced learning option")]
+            if summarized
+            else [],
             steps=[
                 PlanStep(
                     id="try",
@@ -627,7 +713,14 @@ async def test_request_isolation_rederives_context_for_a_fresh_student() -> None
     assert not fresh.information.ready and not fresh.guidance
     assert len(spy.calls) == 1
     assert llm.payloads[-1]["conversation"] == [
-        {"role": "user", "content": "Hi", "edit": None, "asked_field": None, "message_index": 0}
+        {
+            "role": "user",
+            "content": "Hi",
+            "edit": None,
+            "asked_field": None,
+            "shown_resources": [],
+            "message_index": 0,
+        }
     ]
     assert "context" not in llm.payloads[-1]
 
@@ -669,7 +762,7 @@ def test_default_live_factory_uses_ai_even_for_welcome_buttons(
             "/api/chat",
             json={"messages": [{"role": "user", "content": "I'm not sure where to start."}]},
         )
-    assert response.status_code == 200 and llm.schemas == ["PlannerOutput", "QuestionReview"]
+    assert response.status_code == 200 and llm.schemas == ["AuditedDecision"]
     assert response.json()["message"].startswith("What would you enjoy trying")
 
 
@@ -709,7 +802,7 @@ async def test_reported_multiturn_programming_journey_uses_ai_selected_software(
     spy = RetrievalSpy()
     response = await make_service(llm, spy, catalog).chat(ChatRequest(messages=messages))
     assert response.guidance and response.guidance.suggested_paths[0].id == "software-developer"
-    assert llm.schemas == ["PlannerOutput", "GuidedAnswer"]
+    assert llm.schemas == ["AuditedDecision", "CompleteGuideAnswer"]
     assert len(llm.payloads[0]["conversation"]) == len(turns)
     assert spy.calls[0].context.completed_courses[0].value == "CSCI 102L"
     assert spy.calls[0].context.interests[0].value == "Computer programming"
@@ -848,7 +941,7 @@ async def test_factual_campus_question_uses_ai_without_requiring_career_checklis
         ChatRequest(messages=[ChatMessage(role="user", content="What does CSCI 103L cover?")])
     )
     assert response.sources and not spy.calls
-    assert llm.schemas == ["PlannerOutput", "CampusAnswer"]
+    assert llm.schemas == ["AuditedDecision", "CampusAnswer"]
 
 
 @pytest.mark.asyncio
@@ -866,8 +959,8 @@ async def test_native_local_transport_drives_both_ai_stages(catalog: CatalogInde
         payload = json.loads(request.content)
         calls.append(payload["format"]["title"])
         generated = (
-            wire_fixture(search())
-            if payload["format"]["title"] == "PlannerOutput"
+            audited_fixture(wire_fixture(search()), [ChatMessage(role="user", content=STUDENT)])
+            if payload["format"]["title"] == "AuditedDecision"
             else composed(json.loads(payload["messages"][1]["content"]))
         )
         return httpx.Response(
@@ -883,34 +976,36 @@ async def test_native_local_transport_drives_both_ai_stages(catalog: CatalogInde
     response = await make_service(llm, RetrievalSpy(), catalog).chat(
         ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
     )
-    assert calls == ["PlannerOutput", "GuidedAnswer"]
+    assert calls == ["AuditedDecision", "CompleteGuideAnswer"]
     assert response.guidance and response.guidance.suggested_paths[0].id == "software-developer"
 
 
 @pytest.mark.asyncio
-async def test_ai_skill_question_and_choices_are_in_active_conversation() -> None:
+async def test_optional_intake_cannot_delay_search_after_the_minimum_is_known() -> None:
     question = Clarification(
-        text="Which part of writing code feels comfortable to you?",
-        options=["I have tried small programs", "I am still learning", "I’m not sure"],
-        requested_fields=["skills.programming"],
-        reason="Prioritize a useful learning step.",
+        text="Which format do you prefer?",
+        options=["Online", "Not sure"],
+        requested_fields=["modality"],
+        reason="Optional",
     )
+    optional = ConversationDecision(context=prepared(), intent="ask", question=question)
     llm = FakeReasoner(
         [
+            optional,
             search(),
             GuidedAnswer(
-                message="We can build on your course without assuming mastery.",
-                headline="Check your starting point",
-                mode="explore",
-                question=question,
+                message="A sourced direction to explore.", headline="Explore", mode="explore"
             ),
         ]
     )
-    response = await make_service(llm, RetrievalSpy()).chat(
+    spy = RetrievalSpy()
+    response = await make_service(llm, spy).chat(
         ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
     )
-    assert question.text in response.message  # Frontend transmits message text on the next turn.
-    assert response.suggested_replies == question.options
+    assert response.asked_field is None
+    assert len(spy.calls) == 1
+    assert "validated_context" in llm.payloads[1]
+    assert llm.schemas == ["AuditedDecision", "RetrievalPlan", "CompleteGuideAnswer"]
 
 
 @pytest.mark.asyncio
@@ -987,6 +1082,7 @@ async def test_llm_review_finds_second_fact_in_a_combined_answer_without_code_al
     missed.context.study_stage = fact("Undergraduate", "UG", 2)
     reviewed = QuestionReview(
         next_step="ask",
+        answer_audit=IntakeAudit.from_answers(missing_audit("program")),
         add_facts=[
             StudentFact(
                 field="program",
@@ -1006,16 +1102,18 @@ async def test_llm_review_finds_second_fact_in_a_combined_answer_without_code_al
             reason="Understand preparation.",
         ),
     )
-    llm = FakeReasoner([missed, reviewed])
+    llm = FakeReasoner(
+        [audited_fixture(apply_question_review(wire_fixture(missed), reviewed), messages)]
+    )
     spy = RetrievalSpy()
     response = await make_service(llm, spy).chat(ChatRequest(messages=messages))
-    assert llm.schemas == ["PlannerOutput", "QuestionReview"]
+    assert llm.schemas == ["AuditedDecision"]
     assert response.asked_field == "work_experience"
     fields = {field.field: field for field in response.information.fields}
     assert fields["program"].value == "Electrical Engineering"
     assert fields["study_stage"].status == "provided"
     assert not spy.calls
-    assert llm.payloads[1]["question_answer_turns"][0]["reply"] == "UG EE at USC"
+    assert llm.payloads[0]["question_answer_turns"][0]["reply"] == "UG EE at USC"
 
 
 @pytest.mark.asyncio
@@ -1045,6 +1143,7 @@ async def test_llm_review_resolves_goal_abbreviation_and_scoped_no_then_searches
     )
     reviewed = QuestionReview(
         next_step="search",
+        answer_audit=IntakeAudit.from_answers(missing_audit("target")),
         search_query="software development",
         occupation_ids=["software-developer"],
         add_facts=[
@@ -1066,8 +1165,7 @@ async def test_llm_review_resolves_goal_abbreviation_and_scoped_no_then_searches
     )
     llm = FakeReasoner(
         [
-            missed,
-            reviewed,
+            audited_fixture(apply_question_review(wire_fixture(missed), reviewed), messages),
             GuidedAnswer(
                 message=(
                     "Your software goal is clear. We can explore a first project "
@@ -1080,7 +1178,7 @@ async def test_llm_review_resolves_goal_abbreviation_and_scoped_no_then_searches
     )
     spy = RetrievalSpy()
     response = await make_service(llm, spy).chat(ChatRequest(messages=messages))
-    assert llm.schemas == ["PlannerOutput", "QuestionReview", "GuidedAnswer"]
+    assert llm.schemas == ["AuditedDecision", "CompleteGuideAnswer"]
     assert response.information.ready and response.asked_field is None
     assert len(spy.calls) == 1
     assert spy.calls[0].context.target and spy.calls[0].context.target.name == "Software engineer"
@@ -1100,3 +1198,43 @@ def test_ai_extracted_target_counts_as_answered_without_reinterpreting_its_text(
     info = request_information(ctx, [ChatMessage(role="user", content="Synthetic research role")])
     assert info.answer("target").status == "provided"
     assert info.answer("direction").status == "provided"
+
+
+@pytest.mark.asyncio
+async def test_llm_skill_review_rejects_mastery_inferred_only_from_coursework() -> None:
+    from trojan_compass.contracts import Skill
+
+    context = prepared()
+    context.skills = [Skill(name="Programming", status="known", evidence=quote("CSCI 103L"))]
+    messages = [ChatMessage(role="user", content=STUDENT)]
+    proposed = audited_fixture(
+        wire_fixture(search().model_copy(update={"context": context})), messages
+    )
+    claim = next(i for i, f in enumerate(proposed.facts) if f.field.startswith("skills."))
+    review = SkillEvidenceReview.model_validate(
+        {
+            "assessments": [
+                {
+                    "basis": "course_completion",
+                    "fact_index": claim,
+                    "status": "unknown",
+                    "evidence": [],
+                }
+            ]
+        }
+    )
+    llm = FakeReasoner(
+        [
+            proposed,
+            review,
+            GuidedAnswer(
+                message="Coursework records exposure, not mastery.",
+                headline="Explore",
+                mode="explore",
+            ),
+        ]
+    )
+    spy = RetrievalSpy()
+    await make_service(llm, spy).chat(ChatRequest(messages=messages))
+    assert not spy.calls[0].context.skills
+    assert llm.schemas == ["AuditedDecision", "SkillEvidenceReview", "CompleteGuideAnswer"]

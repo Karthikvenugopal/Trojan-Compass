@@ -432,3 +432,50 @@ def test_no_experience_does_not_erase_a_skill_explicitly_stated_in_the_same_turn
     info = request_information(context, [user("I know Python. I have no experience.")])
     assert info.context.skill_status("Python") == "known"
     assert info.answer("background").status == "provided"
+
+
+def test_ai_readiness_summaries_do_not_replace_granular_records() -> None:
+    from trojan_compass.readiness import request_information as ai_information
+
+    messages = [
+        user("I volunteer at a theatre and completed TEST 101."),
+        ChatMessage(role="assistant", content="Any related software experience?"),
+        user("No"),
+    ]
+    experience = SupportedText(
+        value="Theatre volunteering", evidence=said("I volunteer at a theatre", 0)
+    )
+    completed = SupportedText(value="TEST 101", evidence=said("TEST 101", 0))
+    context = RetrievalContext(
+        experiences=[experience],
+        completed_courses=[completed],
+        answers=[
+            StudentAnswer(
+                field="work_experience",
+                status="provided",
+                value="No software-related work experience",
+                evidence=said("No", 2),
+            ),
+        ],
+    )
+    info = ai_information(context, messages, ai_owned=True)
+    assert info.context.experiences == [experience]
+    assert info.context.completed_courses == [completed]
+    assert info.answer("work_experience").evidence == said("No", 2)
+
+
+def test_ai_typed_reset_still_clears_detailed_records() -> None:
+    from trojan_compass.readiness import request_information as ai_information
+
+    context = RetrievalContext(
+        experiences=[
+            SupportedText(value="Synthetic volunteering", evidence=said("I volunteered", 0))
+        ]
+    )
+    messages = [
+        user("I volunteered"),
+        user("Clear my experience", InformationEdit(field="work_experience", status="none")),
+    ]
+    info = ai_information(context, messages, ai_owned=True)
+    assert info.context.experiences == []
+    assert info.answer("work_experience").status == "none"

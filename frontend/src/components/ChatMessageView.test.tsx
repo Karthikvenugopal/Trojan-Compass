@@ -29,3 +29,22 @@ it('disables suggested replies from earlier turns', () => {
   }} />);
   expect(screen.getByRole('button', { name: 'Building things' })).toBeDisabled();
 });
+
+it('disables selected course controls after their question becomes an earlier turn', async () => {
+  const user = userEvent.setup();
+  const send = vi.fn();
+  const message = {
+    id: 'course-question', role: 'assistant' as const, content: 'Completed courses?',
+    course_history_options: [{ code: 'TEST 101', title: 'Synthetic course',
+      sources: [{ title: 'Synthetic source', url: 'https://example.org/', checked_at: null }] }],
+  };
+  const view = render(<ChatMessageView message={message} isBusy={false} onSuggestedReply={send} />);
+  await user.click(screen.getByRole('checkbox'));
+  expect(screen.getByRole('button', { name: 'Confirm completed courses' })).toBeEnabled();
+  view.rerender(<ChatMessageView message={message} isBusy={false} isLatest={false} onSuggestedReply={send} />);
+  expect(screen.getByRole('checkbox')).toBeDisabled();
+  const confirm = screen.getByRole('button', { name: 'Confirm completed courses' });
+  expect(confirm).toBeDisabled();
+  await user.click(confirm);
+  expect(send).not.toHaveBeenCalled();
+});

@@ -72,7 +72,10 @@ describe('Trojan Compass conversation', () => {
     expect(send).toHaveBeenCalledTimes(2);
     expect(send.mock.calls[1]?.[0].messages).toEqual([
       { role: 'user', content: 'I have an interest to explore.' },
-      { role: 'assistant', content: 'What have you tried?' },
+      { role: 'assistant', content: 'What have you tried?', shown_resources: [
+        { id: course.id, title: course.title, kind: 'course', section: 'recommendations' },
+        { id: event.id, title: event.title, kind: 'event', section: 'recommendations' },
+      ] },
       { role: 'user', content: 'I am new to this' },
     ]);
   });
@@ -324,4 +327,36 @@ it('keeps the AI-declared question field with conversation turns for a scoped re
   expect(await screen.findByText('That answer is recorded.')).toBeInTheDocument();
   expect(send.mock.calls[1][0].messages[1]).toEqual({ role: 'assistant', content: 'Any related research work?', asked_field: 'work_experience' });
   expect(send.mock.calls[1][0].messages[2]).toEqual({ role: 'user', content: 'No' });
+});
+
+
+it('preserves ordered plan and recommendation cards in follow-up history', async () => {
+  const user = userEvent.setup();
+  const planned: ChatResponse = {
+    ...result('Here is your working plan.', [course]),
+    guidance: {
+      mode: 'explore', goal: null, headline: 'Try this path', suggested_paths: [], skills: [],
+      steps: [], next_question: null, limitations: [],
+      actions: ['First course', 'Second course'].map((title, i) => ({
+        id: `plan-${i}`, kind: 'course', title, summary: 'Synthetic learning option.',
+        why_relevant: 'An option to explore.', skill_names: [],
+        url: `https://example.org/course/${i}`, sources: course.sources,
+        availability: 'snapshot', checks: ['Check access'], term: null,
+      })),
+    },
+  };
+  const send = vi.fn<ChatApi['send']>().mockResolvedValueOnce(planned).mockResolvedValueOnce(result('Follow-up received.', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'Help me plan{Enter}');
+  await screen.findByText('Here is your working plan.');
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'Tell me about the second course{Enter}');
+  await screen.findByText('Follow-up received.');
+  const history = send.mock.calls[1]?.[0].messages;
+  expect(history?.[1]?.shown_resources).toEqual([
+    { id: 'plan-0', title: 'First course', kind: 'course', section: 'plan' },
+    { id: 'plan-1', title: 'Second course', kind: 'course', section: 'plan' },
+    { id: course.id, title: course.title, kind: 'course', section: 'recommendations' },
+  ]);
+  expect(history?.[0]?.shown_resources).toBeUndefined();
+  expect(history?.[2]?.shown_resources).toBeUndefined();
 });

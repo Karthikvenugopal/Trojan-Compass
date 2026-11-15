@@ -181,6 +181,19 @@ class ControlledIntakeParser:
                 continue
             if field == "study_stage":
                 context.study_stage = SupportedText(value=text, evidence=evidence)
+                # Offline fixture controls have exact canonical labels. Live
+                # chat classifies education using the LLM, never this adapter.
+                from trojan_compass.contracts import SupportedAcademicLevel
+
+                fixture_levels = {
+                    "Graduate student": "graduate",
+                    "Undergraduate": "undergraduate",
+                    "Not started at USC yet": "not_started",
+                }
+                if text in fixture_levels:
+                    context.academic_level = SupportedAcademicLevel.model_validate(
+                        {"value": fixture_levels[text], "evidence": evidence}
+                    )
                 continue
             if field == "work_experience":
                 if normalized not in {"i have no experience", "no experience"}:

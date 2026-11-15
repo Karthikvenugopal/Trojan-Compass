@@ -325,6 +325,7 @@ def clear_field(context: RetrievalContext, field: str) -> None:
         context.completed_courses = []
     elif field == "study_stage":
         context.study_stage = None
+        context.academic_level = None
     elif field in ("time_window", "modality"):
         setattr(context.constraints, field, None)
     elif field == "program":
@@ -366,6 +367,8 @@ def prune_before_edit(context: RetrievalContext, field: str, boundary: int) -> N
     elif field == "study_stage":
         if not current(context.study_stage):
             context.study_stage = None
+        if not current(context.academic_level):
+            context.academic_level = None
     elif field == "target":
         if context.target and not current(context.target):
             context.target = None
@@ -552,6 +555,20 @@ def request_information(
         old = answers.get(answer.field)
         if old is not None and latest(old) > latest(answer):
             continue
+        detailed = {
+            "direction": context.interests + context.goals,
+            "direction_detail": context.interests,
+            "work_experience": context.experiences,
+            "completed_courses": context.completed_courses,
+            "background": context.skills,
+        }
+        if ai_owned and answer.field in detailed and detailed[answer.field]:
+            # A readiness summary is not an instruction to collapse or erase
+            # independent records from the fresh model extraction. Typed resets
+            # already pruned old facts above; natural retractions belong in extraction.
+            if answer.status == "provided":
+                answers[answer.field] = answer
+            continue
         if (
             answer.field in ("background", "work_experience", "completed_courses")
             and answer.status in ("none", "unknown")
@@ -580,7 +597,8 @@ def request_information(
             if answer.field == "direction":
                 context.interests = [supported]
             elif answer.field == "direction_detail":
-                context.interests = [v for v in context.interests if not broad_theme(v.value)]
+                if not ai_owned:
+                    context.interests = [v for v in context.interests if not broad_theme(v.value)]
                 context.interests.append(supported)
             elif answer.field == "target" and context.target is None:
                 context.interests.append(supported)

@@ -39,6 +39,14 @@ export interface ChatMessage {
   content: string;
   edit?: InformationEdit;
   asked_field?: string | null;
+  shown_resources?: ShownResource[];
+}
+
+export interface ShownResource {
+  id: string;
+  title: string;
+  kind: 'course' | 'event' | 'faculty' | 'research';
+  section: 'plan' | 'recommendations';
 }
 
 export type AnswerStatus = 'not_answered' | 'unknown' | 'none' | 'provided';

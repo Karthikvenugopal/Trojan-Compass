@@ -56,7 +56,18 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         content = `Use my LinkedIn profile as background.\n${background.text.trim()}`;
       }
       if (requestGeneration !== generationRef.current || controller.signal.aborted) return;
-      const history: ChatMessage[] = messages.map(({ role, content: messageContent, edit: priorEdit, asked_field }) => ({ role, content: messageContent, ...(priorEdit ? { edit: priorEdit } : {}), ...(asked_field ? { asked_field } : {}) }));
+      const history: ChatMessage[] = messages.map(message => {
+        const shown_resources = message.role === 'assistant' ? [
+          ...(message.guidance?.actions ?? []).map(({ id, title, kind }) => ({ id, title, kind, section: 'plan' as const })),
+          ...(message.recommendations ?? []).map(({ id, title, kind }) => ({ id, title, kind, section: 'recommendations' as const })),
+        ] : [];
+        return {
+          role: message.role, content: message.content,
+          ...(message.edit ? { edit: message.edit } : {}),
+          ...(message.asked_field ? { asked_field: message.asked_field } : {}),
+          ...(shown_resources.length ? { shown_resources } : {}),
+        };
+      });
       const requestMessages: ChatMessage[] = [...history, { role: 'user', content, ...(edit ? { edit } : {}) }];
       const charCount = requestMessages.reduce((total, item) => total + Array.from(item.content).length, 0);
       const bodyBytes = new TextEncoder().encode(JSON.stringify({ messages: requestMessages })).byteLength;

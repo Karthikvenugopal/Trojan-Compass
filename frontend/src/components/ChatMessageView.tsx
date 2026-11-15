@@ -51,7 +51,7 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy, isLatest = 
           <button type="button" className="text-button" onClick={() => setShowAll(true)}>Show {recommendations.length - 3} more recommendations</button>
         )}
         {isAssistant && !!message.course_history_options?.length && (
-          <fieldset className="course-history-choices" disabled={isBusy}>
+          <fieldset className="course-history-choices" disabled={isBusy || !isLatest}>
             <legend>Recognize any? Select only courses you completed.</legend>
             <p>These sourced examples are memory aids. You can type other courses below.</p>
             {message.course_history_options.map(course => <div key={course.code}>
@@ -60,7 +60,7 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy, isLatest = 
                   ? [...current, course.code] : current.filter(code => code !== course.code))} /> {course.title}</label>
               {' '}<a href={course.sources[0].url} target="_blank" rel="noopener noreferrer">USC source</a>
             </div>)}
-            <button type="button" disabled={isBusy || !selectedCourses.length}
+            <button type="button" disabled={isBusy || !isLatest || !selectedCourses.length}
               onClick={() => onSuggestedReply(`I have completed these courses: ${selectedCourses.join(', ')}.`)}>
               Confirm completed courses
             </button>

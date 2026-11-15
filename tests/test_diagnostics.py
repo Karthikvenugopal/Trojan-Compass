@@ -190,11 +190,11 @@ async def test_local_semantic_probe_checks_real_semantic_outputs_without_printin
 
     from trojan_compass.diagnostics import local_semantic_probe
     from trojan_compass.llm import Model
-    from trojan_compass.planner_wire import QuestionReview, StudentFact
+    from trojan_compass.planner_wire import AuditedDecision, IntakeAudit, PlannerOutput, StudentFact
 
     class SemanticModel:
         async def complete(self, system: str, user: str, schema: type[Model]) -> Model:
-            assert schema is QuestionReview
+            assert schema is AuditedDecision
             facts = [
                 ("study_stage", "Undergraduate", 2, "UG"),
                 ("program", "Electrical Engineering", 2, "EE"),
@@ -203,19 +203,44 @@ async def test_local_semantic_probe_checks_real_semantic_outputs_without_printin
                 ("experience", "Theatre volunteering", 0, "I volunteer at a theatre."),
                 ("experience", "No related software work experience", 8, "No"),
             ]
-            answer: BaseModel = QuestionReview(
-                next_step="search",
+            from trojan_compass.readiness import request_information
+
+            messages = [
+                ChatMessage.model_validate({k: v for k, v in m.items() if k != "message_index"})
+                for m in json.loads(user)["conversation"]
+            ]
+            fact_records = [
+                StudentFact(
+                    field=field, status="provided", value=value, message_index=index, quote=quote
+                )
+                for field, value, index, quote in facts
+            ]
+            context = PlannerOutput(intent="search", facts=fact_records).context(messages)
+            info = request_information(context, messages, ai_owned=True)
+            answer: BaseModel = AuditedDecision(
+                intent="search",
+                academic_level="undergraduate",
+                current_target=context.target,
+                answer_audit=IntakeAudit.from_answers(
+                    [
+                        info.answer(f)
+                        for f in [
+                            "direction",
+                            "study_stage",
+                            "program",
+                            "work_experience",
+                            "completed_courses",
+                            "time_window",
+                        ]
+                    ]
+                ),
                 search_query="software development",
                 occupation_ids=["software-developer"],
-                add_facts=[
-                    StudentFact(
-                        field=field,
-                        status="provided",
-                        value=value,
-                        message_index=index,
-                        quote=quote,
-                    )
-                    for field, value, index, quote in facts
+                facts=[
+                    f.model_dump()
+                    for f in fact_records
+                    if f.field not in {"study_stage", "program"}
+                    and not f.field.startswith("target")
                 ],
             )
             return schema.model_validate(answer.model_dump())
