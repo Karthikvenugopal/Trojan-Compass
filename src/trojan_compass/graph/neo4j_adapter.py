@@ -235,9 +235,7 @@ class Neo4jGraphRepository(GraphRepository):
         """Return a stable, bounded selection of shared actions for broad requests."""
         if limit <= 0:
             return []
-        actions = await self._actions(
-            {"skill_ids": None, "topic_names": None, "references": None}
-        )
+        actions = await self._actions({"skill_ids": None, "topic_names": None, "references": None})
         return sorted(actions, key=lambda action: (action.title.casefold(), action.id))[:limit]
 
     async def find_courses(self, references: Sequence[str]) -> list[CampusAction]:
