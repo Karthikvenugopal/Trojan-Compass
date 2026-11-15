@@ -5,9 +5,21 @@ build-backend = "hatchling.build"
 [project]
 name = "trojan-compass"
 version = "0.2.0"
-description = "Stateless USC course and event chat orchestration"
+description = "Stateless Trojan Compass backend and shared campus/career graph"
 requires-python = ">=3.11"
-dependencies = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "httpx>=0.28,<1", "uvicorn>=0.34,<1"]
+dependencies = [
+    "fastapi>=0.115,<1",
+    "pydantic>=2.10,<3",
+    "httpx>=0.28,<1",
+    "uvicorn>=0.34,<1",
+    "neo4j>=5.28,<7",
+]
+
+[project.scripts]
+trojan-compass-import = "trojan_compass.ingestion.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trojan_compass"]
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "mypy>=1.15,<3", "ruff>=0.11,<1"]

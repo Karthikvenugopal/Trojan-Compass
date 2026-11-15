@@ -1,0 +1,5 @@
+record_type,id,kind,name,status,attributes,url,title,checked_at,excerpt,valid_from,valid_until,source_id,target_id,evidence_source_id,fact_type,requirement_type,prerequisite_type
+source,src-example,,,,,https://example.edu/official-page,Official page title,2026-11-14,Supporting text copied from page,,,,,,,
+node,course-id,Course,Course name,unknown,{"course_code":"CSCI 103L"},,,,,,,,,,,
+node,skill-id,Skill,Programming,unknown,{},,,,,,,,,,,
+relationship,edge-id,TEACHES,,,,,,,Exact supporting excerpt,,,course-id,skill-id,src-example,explicit,,
