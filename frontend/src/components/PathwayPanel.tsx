@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { ArrowRight, Download, List, Map as MapIcon, Printer, Waypoints } from 'lucide-react';
+import { ArrowRight, Download, Flag, List, Map as MapIcon, Printer, Waypoints } from 'lucide-react';
 import type { Pathway, Roadmap } from '../types';
 import { GraphList, GraphView } from './GraphView';
 
 /** Plain-text roadmap a student can keep; built in the browser, nothing is uploaded. */
 export function roadmapMarkdown(roadmap: Roadmap): string {
   const lines = [`# My USC roadmap: ${roadmap.focus}`, '', '_Made with Trojan Compass. Confirm seats, prerequisites and dates on the linked official pages._', ''];
+  if (roadmap.next_step) {
+    lines.push('## My next step', `**${roadmap.next_step.title}**`, '', roadmap.next_step.detail + (roadmap.next_step.url ? ` ${roadmap.next_step.url}` : ''), '', ...roadmap.next_step.then.map(item => `- ${item}`), '');
+  }
   lines.push('## What I know', ...(roadmap.known.length ? roadmap.known.map(item => `- ${item}`) : ['- Starting fresh']), '');
   lines.push('## What to learn', ...roadmap.to_learn.map(skill => `- **${skill.name}**${skill.why ? `: ${skill.why}` : ''}`), '');
   lines.push('## Courses to explore', ...roadmap.courses.map((course, index) =>
@@ -55,6 +58,18 @@ export function PathwayPanel({ pathway }: { pathway: Pathway }) {
               <button type="button" onClick={() => window.print()}><Printer size={14} aria-hidden="true" /> Print</button>
             </div>
           </header>
+          {roadmap.next_step && (
+            <div className="next-step-banner" role="note" aria-label="Your next step">
+              <span className="next-step-icon" aria-hidden="true"><Flag size={18} /></span>
+              <div>
+                <span className="next-step-kicker">Your next step</span>
+                <h3>{roadmap.next_step.title}</h3>
+                <p>{roadmap.next_step.detail}</p>
+                {roadmap.next_step.then.length > 0 && <ul>{roadmap.next_step.then.map(item => <li key={item}>{item}</li>)}</ul>}
+                {roadmap.next_step.url && <a href={roadmap.next_step.url} target="_blank" rel="noopener noreferrer">Open the official page <ArrowRight size={13} aria-hidden="true" /></a>}
+              </div>
+            </div>
+          )}
           <div className="roadmap-columns">
             <div className="roadmap-column">
               <h3>What I know</h3>

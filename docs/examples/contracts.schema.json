@@ -1045,6 +1045,55 @@
         "title": "GraphNode",
         "type": "object"
       },
+      "NextStep": {
+        "additionalProperties": false,
+        "description": "The single most useful action to take now, with what follows it.",
+        "properties": {
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "detail": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "then": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Then",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "detail"
+        ],
+        "title": "NextStep",
+        "type": "object"
+      },
       "PathwayGraph": {
         "additionalProperties": false,
         "properties": {
@@ -1279,6 +1328,17 @@
             "maxItems": 4,
             "title": "Events",
             "type": "array"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/NextStep"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -1908,6 +1968,55 @@
         "title": "InformationSnapshot",
         "type": "object"
       },
+      "NextStep": {
+        "additionalProperties": false,
+        "description": "The single most useful action to take now, with what follows it.",
+        "properties": {
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "detail": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "then": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Then",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "detail"
+        ],
+        "title": "NextStep",
+        "type": "object"
+      },
       "PathwayGraph": {
         "additionalProperties": false,
         "properties": {
@@ -2142,6 +2251,17 @@
             "maxItems": 4,
             "title": "Events",
             "type": "array"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/NextStep"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [

@@ -116,6 +116,7 @@ export interface Roadmap {
   courses: { code: string; title: string; term: string | null; note: string | null; url: string | null }[];
   people: { name: string; role: string | null; research: string | null; url: string | null }[];
   events: { title: string; when: string | null; url: string | null }[];
+  next_step?: { title: string; detail: string; url: string | null; then: string[] } | null;
 }
 
 export interface Pathway {

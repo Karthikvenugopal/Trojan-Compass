@@ -236,6 +236,15 @@ class RoadmapEvent(Contract):
     url: HttpUrl | None = None
 
 
+class NextStep(Contract):
+    """The single most useful action to take now, with what follows it."""
+
+    title: Text
+    detail: Text
+    url: HttpUrl | None = None
+    then: list[Text] = Field(default_factory=list, max_length=3)
+
+
 class Roadmap(Contract):
     """What I know -> what to learn -> courses, people and events to explore."""
 
@@ -245,6 +254,7 @@ class Roadmap(Contract):
     courses: list[RoadmapCourse] = Field(default_factory=list, max_length=8)
     people: list[RoadmapPerson] = Field(default_factory=list, max_length=6)
     events: list[RoadmapEvent] = Field(default_factory=list, max_length=4)
+    next_step: NextStep | None = None
 
 
 class RecommendationRequest(Contract):

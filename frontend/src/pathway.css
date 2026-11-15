@@ -94,3 +94,12 @@
 .conversation { position: relative; }
 .page-heading.compact { display: none; }
 .page-heading.compact + .chat-panel .conversation, .page-heading.compact ~ .chat-panel .conversation { max-height: min(72vh, 800px); }
+
+/* Recommended next step: the one action to take now. */
+.next-step-banner { display: flex; gap: 13px; margin: 4px 0 14px; padding: 15px 17px; border: 1px solid #ecd58a; border-left: 5px solid #ffcc00; border-radius: 12px; background: linear-gradient(120deg, #fffbea, #fff 75%); }
+.next-step-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: 10px; color: #7a5c00; background: #ffe680; }
+.next-step-kicker { color: #7a5c00; font: 800 10px Manrope, sans-serif; letter-spacing: 1.2px; text-transform: uppercase; }
+.next-step-banner h3 { margin: 3px 0 4px; font: 800 15px/1.35 Manrope, sans-serif; letter-spacing: -.2px; }
+.next-step-banner p { margin: 0; color: #55535d; font-size: 12px; line-height: 1.55; }
+.next-step-banner ul { margin: 7px 0 0; padding-left: 17px; color: #55535d; font-size: 11.5px; line-height: 1.5; }
+.next-step-banner a { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; color: var(--cardinal-dark); font-size: 11.5px; font-weight: 750; }

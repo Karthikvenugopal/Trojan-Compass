@@ -23,6 +23,7 @@ from trojan_compass.contracts import (
     EventSchedule,
     GraphEdge,
     GraphNode,
+    NextStep,
     PathwayGraph,
     Recommendation,
     RecommendationRequest,
@@ -143,6 +144,8 @@ class PathwayRecommendationService:
         people = self._people(top, targets)
         graph = self._subgraph(focus, phrases, targets, known_ids, ranked[:5], people, events)
         roadmap = self._roadmap(focus, context, targets, ranked[:5], people, events, completed)
+        step = self._next_step(ranked, people, events, completed)
+        roadmap = roadmap.model_copy(update={"next_step": step})
 
         names = ", ".join(t.skill.name for t in targets[:3])
         first = top[0].course
@@ -154,6 +157,8 @@ class PathwayRecommendationService:
             summary += f", followed by {top[1].course.code} ({top[1].course.title})"
         summary += ". The map below shows how your interest connects to skills, courses, "
         summary += "professors and events."
+        if step is not None:
+            summary += f" Your next step: {step.title}."
 
         used = {t.skill.id for t in targets}
         more = [
@@ -589,6 +594,77 @@ class PathwayRecommendationService:
                 edge(targets[0].skill.id, event.id, "related event", inferred=True)
         return PathwayGraph(nodes=list(nodes.values()), edges=list(edges.values()))
 
+    def _next_step(
+        self,
+        ranked: list[Ranked],
+        people: list[tuple[Professor, str, str | None]],
+        events: list[CampusEvent],
+        completed: frozenset[str],
+    ) -> NextStep | None:
+        """One concrete action: the prerequisite first, else the best open course."""
+        if not ranked:
+            return None
+        graph = self._graph
+        best = ranked[0]
+        code = best.course.code
+        then: list[str] = []
+        required = None
+        for group in graph.prerequisites.get(normalize_code(code), []):
+            if any(normalize_code(option) in completed for option in group):
+                continue
+            option = next((o for o in group if graph.course(o)), None)
+            required = graph.course(option) if option else None
+            if required is not None:
+                break
+        if required is not None:
+            offering = best_offering(required, graph.upcoming_term)
+            when = f" It is offered in {offering.label}." if offering else ""
+            seats = seats_text(offering)
+            title = f"Start with {required.code}: {required.title}"
+            detail = (
+                f"It is a prerequisite for {code}, your best match.{when}"
+                + (f" {seats.capitalize()} when the schedule was fetched." if seats else "")
+                + " If you have already taken an equivalent course, ask the department "
+                "about a prerequisite waiver."
+            )
+            url = offering.source_url if offering else None
+            then.append(f"Then take {code}: {best.course.title}.")
+        else:
+            offering = best.offering
+            if offering is not None and offering.active_sections and offering.seats_remaining:
+                title = f"Add {code} to your {offering.label} plan"
+                meets = f" It meets {offering.schedule[0]}." if offering.schedule else ""
+                detail = (
+                    f"{seats_text(offering).capitalize()} when the schedule was fetched.{meets} "
+                    "Check registration restrictions and D-clearance on the listing before "
+                    "you register."
+                )
+            elif offering is not None and offering.active_sections:
+                title = f"Watch {code} for an open seat"
+                detail = (
+                    f"{code} was full in {offering.label} when the schedule was fetched. "
+                    "Join the waitlist if one is offered and keep a backup."
+                )
+            else:
+                title = f"Ask when {code} is next offered"
+                detail = (
+                    "No upcoming section was listed in the fetched terms. The department "
+                    "office or your advisor can confirm the next offering."
+                )
+            url = next(iter(offering.syllabus_urls), None) if offering else None
+            url = url or (offering.source_url if offering else None)
+            if len(ranked) > 1:
+                backup = ranked[1].course
+                then.append(f"Keep {backup.code}: {backup.title} as your second choice.")
+        researcher = next((p for p, _, course in people if course is None), None)
+        if researcher is not None:
+            areas = ", ".join(graph.skills[a].name for a in researcher.areas[:2])
+            then.append(f"Read about {researcher.name}'s research ({areas}).")
+        if events:
+            event = events[0]
+            then.append(f"RSVP for {event.title} on {event.start:%b %d} (sample event).")
+        return NextStep(title=title, detail=detail, url=url, then=then[:3])
+
     def _roadmap(
         self,
         focus: str,
@@ -673,6 +749,12 @@ class PathwayRecommendationService:
 
 
 # ---- helpers ----------------------------------------------------------
+
+
+def seats_text(offering: Offering | None) -> str:
+    if offering is None or not offering.seats_total:
+        return ""
+    return f"{offering.seats_remaining or 0} of {offering.seats_total} seats were open"
 
 
 def direction_phrases(context: RetrievalContext, user_query: str) -> list[str]:

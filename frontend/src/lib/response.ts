@@ -37,6 +37,8 @@ function roadmap(value: unknown): boolean {
   if (!record(value) || !text(value.focus) || !strings(value.known)) return false;
   const lists = ['to_learn', 'courses', 'people', 'events'];
   if (!lists.every(key => Array.isArray(value[key]) && (value[key] as unknown[]).every(record))) return false;
+  const step = value.next_step;
+  if (step != null && !(record(step) && text(step.title) && text(step.detail) && optionalUrl(step.url) && strings(step.then))) return false;
   const items = (key: string) => value[key] as Record<string, unknown>[];
   return items('to_learn').every(item => text(item.name) && optionalText(item.why))
     && items('courses').every(item => text(item.code) && text(item.title) && optionalText(item.term)

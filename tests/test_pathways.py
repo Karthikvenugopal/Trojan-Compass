@@ -219,6 +219,13 @@ async def test_pathway_walks_graph_and_returns_cards_graph_and_roadmap(
     assert [c.code for c in roadmap.courses[:2]] == ["CSCI 270", "CSCI 572"]
     assert roadmap.courses[0].note == "Take first: prerequisite for CSCI 572"
     assert {p.name for p in roadmap.people} == {"Ada Lovelace", "Grace Hopper"}
+    step = roadmap.next_step
+    assert step is not None
+    assert step.title == "Start with CSCI 270: Introduction to Algorithms"
+    assert "prerequisite for CSCI 572" in step.detail
+    assert step.then[0] == "Then take CSCI 572: Information Retrieval and Web Search Engines."
+    assert any("Grace Hopper" in item for item in step.then)
+    assert result.summary is not None and "Your next step: Start with CSCI 270" in result.summary
     assert result.follow_ups[-2:] == [EXPLAIN_REPLY, CHANGE_REPLY]
     assert result.summary is not None and "CSCI 572" in result.summary
 
@@ -244,6 +251,10 @@ async def test_completed_courses_are_skipped_and_prerequisite_marked_done(
     assert first.prerequisites_or_access[0].endswith("(you've taken this)")
     assert result.roadmap is not None
     assert "CSCI 270" not in [c.code for c in result.roadmap.courses]
+    step = result.roadmap.next_step
+    assert step is not None and step.title == "Add CSCI 572 to your Fall 2026 plan"
+    assert step.detail.startswith("20 of 100 seats were open")
+    assert str(step.url).startswith("https://usc.simplesyllabus.com/")
 
 
 async def test_no_direction_or_no_graph_match_uses_the_fallback(graph: KnowledgeGraph) -> None:
