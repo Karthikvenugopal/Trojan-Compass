@@ -1,11 +1,11 @@
 """Synthetic journeys through readiness, corrections and request-local snapshots."""
 
 import pytest
+from compact_checklist import ChatService, create_app, request_information
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from test_chat import FakeExtractor, resource
 
-from trojan_compass.api import create_app
 from trojan_compass.contracts import (
     ChatMessage,
     ChatRequest,
@@ -21,8 +21,7 @@ from trojan_compass.contracts import (
     SupportedText,
 )
 from trojan_compass.extraction import ExtractionFailure, validate_evidence
-from trojan_compass.readiness import DIRECTION_QUESTION, request_information
-from trojan_compass.services import ChatService
+from trojan_compass.readiness import DIRECTION_QUESTION
 
 
 def user(text: str, edit: InformationEdit | None = None) -> ChatMessage:

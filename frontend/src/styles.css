@@ -183,3 +183,10 @@ a { color: inherit; }
 .answer-controls select:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .information-privacy { margin: 13px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+.course-history-choices { margin: 1rem 0; padding: 1rem; border: 1px solid #e3dbce; border-radius: 12px; }
+.course-history-choices legend { font-weight: 600; }
+.course-history-choices p, .course-history-choices a { font-size: .85rem; }
+.course-history-choices div { margin: .7rem 0; }
+.course-history-choices input { accent-color: #990000; margin-right: .4rem; }
+.course-history-choices button { padding: .65rem .9rem; margin-top: .5rem; }

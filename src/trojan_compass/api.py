@@ -16,13 +16,19 @@ from trojan_compass.contracts import (
     ChatRequest,
     ChatResponse,
     ContextExtractor,
+    CourseHistoryService,
     RecommendationService,
 )
 from trojan_compass.cors import configured_origins, validate_origins
 from trojan_compass.diagnostics import dummy_response
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
 from trojan_compass.gemini import GeminiContextExtractor
-from trojan_compass.services import ChatService, ChatUnavailable, DemoRecommendationService
+from trojan_compass.services import (
+    AskBackPolicy,
+    ChatService,
+    ChatUnavailable,
+    DemoRecommendationService,
+)
 
 if TYPE_CHECKING:
     from trojan_compass.assistant import CampusAssistant
@@ -120,6 +126,8 @@ def create_app(
     mode: AppMode = "demo",
     lifespan: Lifespan[FastAPI] | None = None,
     cors_origins: tuple[str, ...] | None = None,
+    policy: AskBackPolicy | None = None,
+    course_history: CourseHistoryService | None = None,
     assistant: "CampusAssistant | None" = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
@@ -129,6 +137,8 @@ def create_app(
     service = ChatService(
         extractor or DemoContextExtractor(),
         recommendations or DemoRecommendationService(),
+        policy=policy,
+        course_history=course_history,
         assistant=assistant,
     )
     app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)

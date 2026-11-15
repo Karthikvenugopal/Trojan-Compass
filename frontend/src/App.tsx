@@ -67,6 +67,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         recommendations: response.recommendations,
         limitations: response.limitations,
         suggested_replies: response.suggested_replies,
+        course_history_options: response.course_history_options,
         sources: response.sources,
       };
       setMessages((current) => [...current, userMessage, assistantMessage]);

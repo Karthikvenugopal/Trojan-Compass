@@ -13,7 +13,7 @@ InformationKey = Annotated[
     Field(
         max_length=120,
         pattern=(
-            r"^(direction|direction_detail|background|program|preferences|time_window|"
+            r"^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|"
             r"modality|target|skills\..{1,100})$"
         ),
     ),
@@ -123,10 +123,11 @@ class RetrievalContext(Contract):
     experiences: list[SupportedText] = Field(default_factory=list)
     completed_courses: list[SupportedText] = Field(default_factory=list)
     program: SupportedText | None = None
+    study_stage: SupportedText | None = None
     goals: list[SupportedText] = Field(default_factory=list)
     target: Target | None = None
     constraints: Constraints = Field(default_factory=Constraints)
-    answers: list[StudentAnswer] = Field(default_factory=list, max_length=32)
+    answers: list[StudentAnswer] = Field(default_factory=list, max_length=128)
     requested_context: list[ContextRequirement] = Field(default_factory=list, max_length=4)
 
     def skill_status(self, name: str) -> SkillStatus:
@@ -211,6 +212,20 @@ class ContextExtractor(Protocol):
         ...
 
 
+class CourseHistoryOption(Contract):
+    """A sourced course to ask about, never an assertion the student completed it."""
+
+    code: Text
+    title: Text
+    sources: list[Source] = Field(min_length=1)
+
+
+class CourseHistoryService(Protocol):
+    async def suggest(
+        self, context: RetrievalContext, limit: int = 5
+    ) -> list[CourseHistoryOption]: ...
+
+
 class InformationField(InformationEdit):
     label: Text
     category: Literal["fixed", "request"]
@@ -231,5 +246,6 @@ class ChatResponse(Contract):
     recommendations: list[Recommendation] = Field(default_factory=list)
     limitations: list[Text] = Field(default_factory=list)
     information: InformationSnapshot = Field(default_factory=InformationSnapshot)
+    course_history_options: list[CourseHistoryOption] = Field(default_factory=list, max_length=8)
     # Official pages a direct campus/course answer relied on (empty for card replies).
     sources: list[Source] = Field(default_factory=list, max_length=5)

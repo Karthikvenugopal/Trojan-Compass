@@ -202,14 +202,14 @@ async def test_curated_clarification_without_results_is_kept(index: CatalogIndex
     ("quote", "ok"),
     [
         ("Agentic RAGs", True),
-        ("I have tried learning...Information REtrieval", True),
-        ("I have tried learning … Information REtrieval", True),
+        ("I have tried learning...Information REtrieval", False),
+        ("I have tried learning … Information REtrieval", False),
         ("Information REtrieval...I have tried", False),  # parts out of order
         ("I have studied...Information REtrieval", False),  # part not verbatim
         ("...", False),
     ],
 )
-def test_ellipsis_quotes_must_still_be_verbatim_and_ordered(quote: str, ok: bool) -> None:
+def test_quotes_require_contiguous_student_words(quote: str, ok: bool) -> None:
     content = "I have tried learning normal Agentic RAGs and Information REtrieval from Yt Videos"
     assert quoted(quote, content) is ok
 
@@ -231,3 +231,121 @@ async def test_reason_credits_the_phrase_that_best_explains_the_match(
     result = await CatalogRecommendationService(Empty(), index).recommend(request(context))
     ir = next(r for r in result.recommendations if r.title.startswith("CSCI 572"))
     assert "Information REtrieval" in ir.why_relevant[0]
+
+
+@pytest.mark.parametrize("quote", ["I ... know Python", "I … know Python"])
+def test_quotation_cannot_erase_a_student_negation(quote: str) -> None:
+    assert not quoted(quote, "I do not know Python")
+
+
+async def test_undergraduate_catalog_search_does_not_add_graduate_courses(
+    index: CatalogIndex,
+) -> None:
+    context = RetrievalContext(
+        interests=[text("information retrieval")], study_stage=text("Undergraduate")
+    )
+    result = await CatalogRecommendationService(Empty(), index).recommend(request(context))
+    assert result.recommendations == []
+
+
+async def test_event_request_does_not_get_replaced_by_catalog_courses(index: CatalogIndex) -> None:
+    req = request(RetrievalContext(interests=[text("information retrieval")]))
+    req.user_query = "Find events"
+    assert not (await CatalogRecommendationService(Empty(), index).recommend(req)).recommendations
+
+
+async def test_catalog_missing_format_and_remaining_seats_stay_unknown(tmp_path: Path) -> None:
+    raw = course(
+        "TEST 101", "Information Retrieval", "Information retrieval methods.", level="undergraduate"
+    )
+    raw["offerings"]["20263"].update(modes=[], seats_remaining=None)
+    path = tmp_path / "public.json"
+    path.write_text(json.dumps({**CATALOG, "courses": [raw]}))
+    result = await CatalogRecommendationService(Empty(), CatalogIndex.load(path)).recommend(
+        request(RetrievalContext(interests=[text("information retrieval")]))
+    )
+    card = result.recommendations[0]
+    assert card.course and card.course.modality is None
+    assert "remaining seats unknown" in (card.course.term or "")
+
+
+async def test_catalog_keeps_recorded_graph_prerequisite_blocks(index: CatalogIndex) -> None:
+    from trojan_compass.contracts import Source
+    from trojan_compass.graph.fake import FakeGraphRepository
+    from trojan_compass.recommendations.graph import (
+        CampusAction,
+        CourseInfo,
+        Prerequisite,
+        SkillNode,
+    )
+
+    graph = FakeGraphRepository().with_action(
+        CampusAction(
+            id="synthetic",
+            kind="course",
+            title="Information Retrieval",
+            summary="Synthetic",
+            sources=[Source(url="https://example.org", title="Synthetic source")],
+            course=CourseInfo(
+                code="CSCI 572",
+                prerequisites=[
+                    Prerequisite(description="Python", skill=SkillNode(id="python", name="Python"))
+                ],
+            ),
+        )
+    )
+    context = RetrievalContext(
+        interests=[text("information retrieval")],
+        skills=[Skill(name="Python", status="not_yet_learned", evidence=statement())],
+    )
+    result = await CatalogRecommendationService(Empty(), index, graph=graph).recommend(
+        request(context)
+    )
+    assert all(not r.title.startswith("CSCI 572") for r in result.recommendations)
+
+
+async def test_completed_public_alias_cannot_reappear_through_catalog(tmp_path: Path) -> None:
+    from datetime import date
+
+    from trojan_compass.graph.fake import FakeGraphRepository
+    from trojan_compass.ingestion.loaders import decode
+    from trojan_compass.public_import import UniversityBatchBuilder
+    from trojan_compass.university import UniversityGraphRepository
+
+    builder = UniversityBatchBuilder(date(2026, 11, 15))
+    builder.course(
+        dict(
+            prefix="PSYC",
+            classNumber="100",
+            suffix="L",
+            fullCourseName="PSYC 100",
+            name="Introduction to Psychology",
+        ),
+        dict(prefix="DRNS", name="Dornsife"),
+        dict(name="Psychology"),
+        "20263",
+    )
+    graph = UniversityGraphRepository(FakeGraphRepository(), decode(builder.batch()))
+    path = tmp_path / "synthetic-public-catalog.json"
+    path.write_text(
+        json.dumps(
+            {
+                **CATALOG,
+                "courses": [
+                    course(
+                        "PSYC 100",
+                        "Introduction to Psychology",
+                        "Psychology human behavior",
+                        level="undergraduate",
+                    )
+                ],
+            }
+        )
+    )
+    context = RetrievalContext(
+        interests=[text("psychology")], completed_courses=[text("PSYC 100L")]
+    )
+    result = await CatalogRecommendationService(
+        Empty(), CatalogIndex.load(path), graph=graph
+    ).recommend(request(context))
+    assert result.recommendations == []

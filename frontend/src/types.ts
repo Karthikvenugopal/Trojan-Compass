@@ -65,7 +65,14 @@ export interface ChatRequest {
   messages: ChatMessage[];
 }
 
+export interface CourseHistoryOption {
+  code: string;
+  title: string;
+  sources: Source[];
+}
+
 export interface ChatResponse {
+  course_history_options?: CourseHistoryOption[];
   message: string;
   suggested_replies: string[];
   recommendations: Recommendation[];
@@ -77,6 +84,7 @@ export interface ChatResponse {
 
 export interface DisplayMessage extends ChatMessage {
   id: string;
+  course_history_options?: CourseHistoryOption[];
   recommendations?: Recommendation[];
   limitations?: string[];
   suggested_replies?: string[];

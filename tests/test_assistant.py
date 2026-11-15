@@ -219,3 +219,170 @@ def test_quotes_tolerate_garbled_punctuation_but_not_new_words(quote: str) -> No
     content = "Programming — apps or websites"
     assert quoted(quote, content) is (quote != "Programming websites")
     assert not quoted("Programming games or websites", content)
+
+
+async def test_cancelled_routing_does_not_start_or_leave_extraction_work() -> None:
+    import asyncio
+
+    started = asyncio.Event()
+    extract_calls = 0
+
+    class SlowLLM:
+        async def complete(self, system: str, user: str, schema: type[Any]) -> Any:
+            started.set()
+            await asyncio.Event().wait()
+
+    class Extractor:
+        async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
+            nonlocal extract_calls
+            extract_calls += 1
+            return RetrievalContext()
+
+    service = ChatService(Extractor(), NoRecommendations(), assistant=CampusAssistant(SlowLLM()))
+    task = asyncio.create_task(
+        service.chat(ChatRequest(messages=ask("Synthetic campus question?")))
+    )
+    await started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert extract_calls == 0
+
+
+async def test_empty_evidence_does_not_call_answer_model() -> None:
+    from trojan_compass.assistant import UNAVAILABLE
+
+    llm = FakeLLM(
+        route("campus_question"),
+        CampusAnswer(answer="Unsupported hours are 24/7", source_ids=["invented"], follow_ups=[]),
+    )
+    response = await CampusAssistant(llm).answer(ask("Synthetic question?"), llm.route)
+    assert response.message == UNAVAILABLE
+    assert response.sources == []
+    assert llm.evidence == []
+
+
+async def test_answer_without_a_valid_evidence_citation_is_not_returned() -> None:
+    from trojan_compass.assistant import UNAVAILABLE
+
+    llm = FakeLLM(
+        route("campus_question", search_query="student health hours"),
+        CampusAnswer(answer="Unsupported medical advice", source_ids=["invented"], follow_ups=[]),
+    )
+    response = await CampusAssistant(llm, knowledge=knowledge()).answer(
+        ask("Synthetic question?"), llm.route
+    )
+    assert response.message == UNAVAILABLE
+    assert response.sources == []
+
+
+async def test_onboarding_answers_do_not_get_rerouted_out_of_the_checklist() -> None:
+    from trojan_compass.readiness import PROGRAM_QUESTION
+
+    class NeverRoute:
+        async def complete(self, system: str, user: str, schema: type[Any]) -> Any:
+            raise AssertionError("Onboarding should bypass routing")
+
+    service = ChatService(
+        OneCardExtractor(), NoRecommendations(), assistant=CampusAssistant(NeverRoute())
+    )
+    response = await service.chat(
+        ChatRequest(
+            messages=[
+                ChatMessage(role="user", content="Hi"),
+                ChatMessage(role="assistant", content=PROGRAM_QUESTION),
+                ChatMessage(role="user", content="None"),
+            ]
+        )
+    )
+    assert any(f.field == "program" and f.status == "none" for f in response.information.fields)
+    assert not response.recommendations
+
+
+def test_real_catalog_and_five_field_intake_work_through_the_http_api() -> None:
+    from fastapi.testclient import TestClient
+
+    from trojan_compass.composition import RuntimeSettings, create_configured_app
+    from trojan_compass.contracts import ChatResponse, InformationEdit
+    from trojan_compass.readiness import DEFAULT_FIXED_FIELDS
+
+    root = Path(__file__).resolve().parents[1]
+    settings = RuntimeSettings(mode="campus", catalog_path=root / "data/usc/catalog.json")
+    app = create_configured_app(settings, extractor=OneCardExtractor())
+    messages = []
+    with TestClient(app) as client:
+        for index, (field, value) in enumerate(
+            [
+                ("direction", "Psychology"),
+                ("study_stage", "Undergraduate"),
+                ("program", "Psychology"),
+                ("work_experience", None),
+                ("completed_courses", None),
+            ]
+        ):
+            messages.append(
+                ChatMessage(
+                    role="user",
+                    content=f"Update {field}: {value or 'None'}",
+                    edit=InformationEdit.model_validate(
+                        dict(field=field, status="provided" if value else "none", value=value)
+                    ),
+                )
+            )
+            reply = client.post("/api/chat", json={"messages": [m.model_dump() for m in messages]})
+            assert reply.status_code == 200
+            body = ChatResponse.model_validate(reply.json())
+            assert body.information.missing_fields == list(DEFAULT_FIXED_FIELDS[index + 1 :])
+            if index < 4:
+                assert not body.recommendations
+        assert body.information.ready and body.recommendations
+        assert all("Level: graduate" not in card.benefits for card in body.recommendations)
+        assert all(card.sources for card in body.recommendations)
+        assert any("PSYC 100" in card.title for card in body.recommendations)
+
+
+async def test_recommendation_requests_cannot_bypass_intake_via_the_campus_router() -> None:
+    class NeverRoute:
+        async def complete(self, system: str, user: str, schema: type[Any]) -> Any:
+            raise AssertionError("A recommendation request belongs to intake")
+
+    service = ChatService(
+        OneCardExtractor(), NoRecommendations(), assistant=CampusAssistant(NeverRoute())
+    )
+    response = await service.chat(ChatRequest(messages=ask("Recommend psychology courses")))
+    assert not response.recommendations
+    assert response.information.missing_fields
+
+
+def test_malformed_library_transitions_are_unknown_instead_of_closed() -> None:
+    html = HOURS_HTML.replace(LEAVEY, "malformed").replace("1794643200|Closed|closed", "")
+    snapshot = parse_library_hours(html, datetime.fromtimestamp(1794680000, UTC))
+    assert snapshot.libraries == ()
+
+
+async def test_cancelled_extraction_is_awaited_inside_the_request() -> None:
+    import asyncio
+
+    started = asyncio.Event()
+    cleaned = asyncio.Event()
+
+    class Extractor:
+        async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cleaned.set()
+            return RetrievalContext()
+
+    llm = FakeLLM(route("recommendation"))
+    task = asyncio.create_task(
+        ChatService(Extractor(), NoRecommendations(), assistant=CampusAssistant(llm)).chat(
+            ChatRequest(messages=ask("Synthetic query"))
+        )
+    )
+    await started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert cleaned.is_set()

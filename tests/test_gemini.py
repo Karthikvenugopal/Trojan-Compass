@@ -6,10 +6,11 @@ from typing import Any
 
 import httpx
 import pytest
+from compact_checklist import create_configured_app
 from fastapi.testclient import TestClient
 
 from trojan_compass.api import configured_extractor
-from trojan_compass.composition import RuntimeSettings, create_configured_app
+from trojan_compass.composition import RuntimeSettings
 from trojan_compass.contracts import (
     ChatMessage,
     ChatResponse,

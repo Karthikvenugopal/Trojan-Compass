@@ -4,9 +4,10 @@ Only language extraction is faked. These catch suggested choices that cannot
 progress through real data, which isolated orchestration fakes cannot detect.
 """
 
+from compact_checklist import create_configured_app
 from fastapi.testclient import TestClient
 
-from trojan_compass.composition import RuntimeSettings, create_configured_app
+from trojan_compass.composition import RuntimeSettings
 from trojan_compass.contracts import (
     ChatMessage,
     ChatResponse,

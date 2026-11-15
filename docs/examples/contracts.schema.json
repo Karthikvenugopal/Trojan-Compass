@@ -43,7 +43,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -209,7 +209,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -393,6 +393,17 @@
         ],
         "default": null
       },
+      "study_stage": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SupportedText"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
       "goals": {
         "items": {
           "$ref": "#/$defs/SupportedText"
@@ -418,7 +429,7 @@
         "items": {
           "$ref": "#/$defs/StudentAnswer"
         },
-        "maxItems": 32,
+        "maxItems": 128,
         "title": "Answers",
         "type": "array"
       },
@@ -545,6 +556,17 @@
             ],
             "default": null
           },
+          "study_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SupportedText"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "goals": {
             "items": {
               "$ref": "#/$defs/SupportedText"
@@ -570,7 +592,7 @@
             "items": {
               "$ref": "#/$defs/StudentAnswer"
             },
-            "maxItems": 32,
+            "maxItems": 128,
             "title": "Answers",
             "type": "array"
           },
@@ -628,7 +650,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -1204,6 +1226,39 @@
         "title": "CourseDetails",
         "type": "object"
       },
+      "CourseHistoryOption": {
+        "additionalProperties": false,
+        "description": "A sourced course to ask about, never an assertion the student completed it.",
+        "properties": {
+          "code": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/Source"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "sources"
+        ],
+        "title": "CourseHistoryOption",
+        "type": "object"
+      },
       "EventSchedule": {
         "additionalProperties": false,
         "properties": {
@@ -1256,7 +1311,7 @@
         "properties": {
           "field": {
             "maxLength": 120,
-            "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
             "title": "Field",
             "type": "string"
           },
@@ -1332,7 +1387,7 @@
           "missing_fields": {
             "items": {
               "maxLength": 120,
-              "pattern": "^(direction|direction_detail|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+              "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
               "type": "string"
             },
             "title": "Missing Fields",
@@ -1575,6 +1630,14 @@
       },
       "information": {
         "$ref": "#/$defs/InformationSnapshot"
+      },
+      "course_history_options": {
+        "items": {
+          "$ref": "#/$defs/CourseHistoryOption"
+        },
+        "maxItems": 8,
+        "title": "Course History Options",
+        "type": "array"
       },
       "sources": {
         "items": {

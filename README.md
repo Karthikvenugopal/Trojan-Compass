@@ -20,7 +20,7 @@ uvicorn trojan_compass.api:app_from_environment --factory --no-access-log
 ```
 
 Default `COMPASS_MODE=demo` makes **no LLM or KG calls**. Try “Help me get started”,
-then “I'm not sure”. The demo asks one question and shows a fixed CSCI 102 example
+then answer the core checklist (unknown or None are valid). The demo shows a fixed CSCI 102 example
 with its official source, unknowns and a demo label. It does not interpret a
 student's background or claim personalized ranking. No current event fixture is
 available. The public course page was checked on 2026-11-14; it is a static fixture,
@@ -93,17 +93,19 @@ set it to `true`. No frontend environment file contains backend/provider credent
 The backend `.env.example` documents variables; it is not automatically loaded.
 Configure them in your server environment and restart both servers after changes.
 
-Before searching, chat collects two minimum answers: **an area to explore** and
-**relevant skills/experience/coursework**. An explicit “I don’t know” or “None”
-resolves either question. Broad themes such as “Building things” get a concrete
-follow-up before background and search. Already supplied answers are skipped.
-Dates, format and recorded prerequisites add questions only when they matter.
+Before recommendation search, chat collects five core answers: **direction, study
+stage, program/major, work/project experience, and completed courses**. Explicit
+“I don’t know” or “None” counts as an answer. It skips facts already supplied and
+asks one focused question at a time. A broad theme may get one refinement. Timing,
+format and graph prerequisites add questions only when material. No career target
+is required. Real course examples can help students recall their course history;
+only a student's confirmation establishes completion, never mastery.
 
-Beginner path: unsure → Building things → Programming (apps/websites) →
-no experience → sourced course options. The composition adapter follows existing
-interest-to-skill-to-course links without assigning a career target or inferring
-mastery. If current data has no match, chat explains the coverage limit once and
-offers sourced areas it can actually check, without a stack of internal warnings.
+Campus mode loads the official public USC course/event snapshot at startup, with
+source links and dated event occurrences. The public importer generates a validated
+shared-data batch and aggregate coverage report, never student records. See
+[university intake and refresh instructions](docs/university-intake.md). A missing
+match means limited current coverage; it does not restart the questionnaire.
 
 Open **What I’m using** below the chat to inspect or correct information. It is
 collapsed by default. Each field offers Not answered, I don’t know, None, or an
@@ -142,15 +144,16 @@ syllabus links. Raw responses are cached in the git-ignored `data/raw/` so an
 interrupted run resumes. Requests are sequential with a delay.
 
 In `campus` mode the server loads this catalog at startup (or `COMPASS_CATALOG_PATH`).
-When the curated graph has no skill-link match, it ranks catalog courses by BM25 over
+It supplements curated results with catalog courses ranked by BM25 over
 their official title/description/prep against what the student said. Each card quotes
 the matched description sentence and links the official listing. Matching is lexical:
-it does not infer mastery, check eligibility or D-clearance, and seats are as of the
-fetch time. Re-run the script to refresh.
+it does not infer mastery or confirm eligibility/D-clearance. Undergraduate discovery
+excludes graduate catalog courses; known graph prerequisite blocks, completed courses,
+and explicit event requests remain respected. Seats are as of the fetch time. Re-run the script to refresh.
 
 ## Campus questions
 
-In `campus` mode a router (same configured LLM) runs alongside extraction. Questions
+In `campus` mode a router (same configured LLM) runs before extraction. Questions
 such as "Is any library open now?", "Who teaches CSCI 572 in Spring?" or "When is the
 last day to drop a class?" are answered directly instead of entering the course
 search. Recommendation requests and replies to onboarding questions keep the existing

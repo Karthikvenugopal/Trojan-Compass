@@ -30,7 +30,11 @@ from trojan_compass.contracts import (
     RetrievalContext,
     Source,
 )
+from trojan_compass.recommendations.clock import SystemClock
+from trojan_compass.recommendations.feasibility import FeasibilityChecker
+from trojan_compass.recommendations.graph import GraphRepository
 from trojan_compass.recommendations.preparation import completed_course_names, normalize_code
+from trojan_compass.recommendations.service import requested_kind
 
 CATALOG_NOTICE = (
     "Course matches come from USC's public Schedule of Classes snapshot ({terms}, fetched "
@@ -230,9 +234,17 @@ class CatalogIndex:
 class CatalogRecommendationService:
     """Fall back to full-catalog search when the curated graph has no match."""
 
-    def __init__(self, inner: RecommendationService, index: CatalogIndex) -> None:
+    def __init__(
+        self,
+        inner: RecommendationService,
+        index: CatalogIndex,
+        *,
+        graph: GraphRepository | None = None,
+    ) -> None:
         self._inner = inner
         self._index = index
+        self._graph = graph
+        self._feasibility = FeasibilityChecker(SystemClock())
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
         """Merge curated graph results with catalog matches.
@@ -242,20 +254,69 @@ class CatalogRecommendationService:
         A curated clarification with no results is returned unchanged.
         """
         result = await self._inner.recommend(request)
-        if result.clarification and not result.recommendations:
+        if result.clarification or requested_kind(request.user_query) == "event":
             return result
         context = request.context
         phrases = query_phrases(context)
         exclude = frozenset(normalize_code(n) for n in completed_course_names(context))
-        hits = self._index.search(phrases, request.limit, exclude)
+        # Retrieve a bounded candidate pool before applying the same student-fit
+        # constraints as the graph path. No student query/results are cached.
+        hits = self._index.search(phrases, max(30, request.limit * 3), exclude)
+        stage = context.study_stage.value.casefold() if context.study_stage else ""
+        if "undergrad" in stage:
+            hits = [h for h in hits if h.course.level not in ("graduate", "doctoral")]
+        hits = [h for h in hits if h.course.offerings]
+        canonical_ids: dict[str, str] = {}
+        if self._graph is not None and hits:
+            completed_actions = await self._graph.find_courses(completed_course_names(context))
+            completed_ids = {a.id for a in completed_actions}
+            feasible_hits = []
+            for hit in hits:
+                # Resolve public aliases (e.g. PSYC 100 / PSYC 100L) through the
+                # adapter rather than guessing identity by stripping course suffixes.
+                actions = await self._graph.find_courses([hit.course.code])
+                if actions:
+                    canonical_ids[normalize_code(hit.course.code)] = actions[0].id
+                    if any(a.id in completed_ids for a in actions):
+                        continue
+                    if all(
+                        self._feasibility.check(a, context, exclude).excluded is not None
+                        for a in actions
+                    ):
+                        continue
+                feasible_hits.append(hit)
+            hits = feasible_hits
+        completed_titles = {c.value.strip().casefold() for c in context.completed_courses}
+        hits = [h for h in hits if h.course.title.casefold() not in completed_titles][
+            : request.limit
+        ]
         if not hits:
             return result
         strong = [self._card(h, phrases) for h in hits if h.phrase]
         weak = [self._card(h, phrases) for h in hits if not h.phrase]
         merged: list[Recommendation] = []
         seen: set[str] = set()
-        for card in [*strong, *result.recommendations, *weak]:
-            key = normalize_code(card.title.split(":", 1)[0])
+        states = {a.field: a.status for a in context.answers}
+        starting_out = (
+            states.get("work_experience") == "none"
+            and states.get("completed_courses") == "none"
+            and not any(s.status in ("known", "learning") for s in context.skills)
+        )
+        # Keep the graph's introductory fit ahead of broad lexical matches when
+        # the student explicitly reports no experience or completed coursework.
+        ordered = (
+            [*result.recommendations, *strong, *weak]
+            if starting_out
+            else [*strong, *result.recommendations, *weak]
+        )
+        for card in ordered:
+            code = normalize_code(card.title.split(":", 1)[0])
+            key = canonical_ids.get(
+                code,
+                card.id
+                if card.kind == "course" and not card.id.startswith("usc-catalog-")
+                else code,
+            )
             if key not in seen:
                 seen.add(key)
                 merged.append(card)
@@ -297,13 +358,18 @@ class CatalogRecommendationService:
             facts.append(f"Units: {', '.join(course.units)}")
         if course.schools:
             facts.append(f"Offered by {', '.join(course.schools[:2])}")
-        unknowns = ["Whether you meet registration restrictions or need D-clearance."]
+        unknowns = [
+            "Whether you meet published prerequisites, registration restrictions "
+            "or need D-clearance."
+        ]
         term = None
         if best is not None:
             seats = ""
-            if best.seats_total:
+            if best.seats_total is not None:
                 seats = (
-                    f"; {best.seats_remaining or 0} of {best.seats_total} seats open at fetch time"
+                    f"; {best.seats_remaining} of {best.seats_total} seats open at fetch time"
+                    if best.seats_remaining is not None
+                    else f"; capacity {best.seats_total}; remaining seats unknown at fetch time"
                 )
             status = "scheduled" if best.active_sections else "no active sections"
             term = f"{best.label} ({status}{seats})"
@@ -328,7 +394,9 @@ class CatalogRecommendationService:
                 "Matched in official course text: " + ", ".join(hit.matched[:6]),
                 f"{course.code}: {course.title}",
             ],
-            course=CourseDetails(term=term, modality=", ".join(best.modes) if best else None)
+            course=CourseDetails(
+                term=term, modality=(", ".join(best.modes) or None) if best else None
+            )
             if term
             else CourseDetails(),
             modality=", ".join(best.modes) if best and best.modes else None,

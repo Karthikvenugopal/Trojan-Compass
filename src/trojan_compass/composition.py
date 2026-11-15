@@ -28,6 +28,12 @@ from trojan_compass.ingestion.pipeline import IngestionPipeline
 from trojan_compass.llm import configured_llm
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
+from trojan_compass.services import AskBackPolicy
+from trojan_compass.university import (
+    AcademicCourseHistoryService,
+    UniversityGraphRepository,
+    public_snapshot,
+)
 
 COVERAGE_NOTICE = (
     "The connected graph has limited course and event coverage. Missing matches do not mean "
@@ -35,12 +41,19 @@ COVERAGE_NOTICE = (
 )
 SEED_NOTICE = (
     "Using a reviewed USC seed snapshot, not a live database or enrollment feed. "
-    "Some skill links are inferred. Event dates recorded only as dates are not shown as times."
+    "Some skill links and discipline tags are inferred from public metadata; tags do not "
+    "prove learning outcomes. Event dates recorded only as dates are not shown as times."
 )
 CATALOG_SEED_NOTICE = (
     "Courses come from a snapshot of USC's public Schedule of Classes; events come from a "
-    "small reviewed seed. Neither is a live enrollment feed."
+    "reviewed public calendar snapshot. Neither is a live enrollment feed."
 )
+
+
+def shared_data_path(name: str) -> Path:
+    """Locate the same public snapshot in a checkout and an installed wheel."""
+    source = Path(__file__).resolve().parents[2] / "data" / "usc" / name
+    return source if source.is_file() else Path(__file__).resolve().parent / "data" / name
 
 
 @dataclass(frozen=True)
@@ -63,10 +76,10 @@ class RuntimeSettings:
             raise ValueError("COMPASS_MODE must be demo, diagnostic, campus or production")
         seed_path = os.getenv("COMPASS_SEED_PATH")
         catalog = os.getenv("COMPASS_CATALOG_PATH")
-        default_catalog = Path(__file__).resolve().parents[2] / "data" / "usc" / "catalog.json"
+        default_catalog = shared_data_path("catalog.json")
         catalog_path = Path(catalog) if catalog else default_catalog
         kb = os.getenv("COMPASS_KB_PATH")
-        kb_path = Path(kb) if kb else default_catalog.with_name("campus_kb.json")
+        kb_path = Path(kb) if kb else shared_data_path("campus_kb.json")
         return cls(
             kb_path=kb_path if kb_path.is_file() else None,
             catalog_path=catalog_path if catalog_path.is_file() else None,
@@ -100,12 +113,32 @@ def seed_repository(path: Path | None = None) -> FakeGraphRepository:
 class CoverageRecommendationService:
     """Attach truthful deployment limitations; only collaborators/config survive calls."""
 
-    def __init__(self, engine: RecommendationService, notices: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        engine: RecommendationService,
+        notices: tuple[str, ...],
+        graph: GraphRepository | None = None,
+    ) -> None:
         self._engine = engine
         self._notices = notices
+        self._graph = graph
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
-        result = await self._engine.recommend(request)
+        completed = []
+        if self._graph is not None and request.context.completed_courses:
+            completed = await self._graph.find_courses(
+                [v.value for v in request.context.completed_courses]
+            )
+        completed_ids = {a.id for a in completed}
+        expanded = request.model_copy(update={"limit": 10}) if completed_ids else request
+        result = await self._engine.recommend(expanded)
+        result = result.model_copy(
+            update={
+                "recommendations": [r for r in result.recommendations if r.id not in completed_ids][
+                    : request.limit
+                ]
+            }
+        )
         return result.model_copy(update={"limitations": [*self._notices, *result.limitations]})
 
 
@@ -114,6 +147,7 @@ def create_configured_app(
     *,
     extractor: ContextExtractor | None = None,
     graph: GraphRepository | None = None,
+    policy: AskBackPolicy | None = None,
     assistant: CampusAssistant | None = None,
 ) -> FastAPI:
     """Wire extraction → Peri's engine → Abishek's adapter. No automatic imports/writes.
@@ -135,6 +169,8 @@ def create_configured_app(
     lifespan = None
     if graph is None and settings.mode == "campus":
         graph = seed_repository(settings.seed_path)
+        if settings.seed_path is None and (snapshot := public_snapshot()) is not None:
+            graph = UniversityGraphRepository(graph, snapshot)
     elif graph is None:
         if not all(
             (
@@ -163,15 +199,20 @@ def create_configured_app(
                 await asyncio.to_thread(owned_graph.close)
 
         lifespan = close_graph
+    if settings.mode == "production" and (snapshot := public_snapshot()) is not None:
+        # Enrich only records actually returned by the live adapter, never add seed fallback.
+        graph = UniversityGraphRepository(graph, snapshot, overlay=False)
     notices = (SEED_NOTICE, COVERAGE_NOTICE) if settings.mode == "campus" else (COVERAGE_NOTICE,)
     service: RecommendationService = ExplorationRecommendationService(
-        RecommendationEngine(graph), graph
+        RecommendationEngine(graph),
+        graph,
+        subjects=graph.course_subjects if isinstance(graph, UniversityGraphRepository) else None,
     )
     catalog = None
     if settings.mode == "campus" and settings.catalog_path is not None:
         # Shared public catalog, loaded once at startup (never per student request).
         catalog = CatalogIndex.load(settings.catalog_path)
-        service = CatalogRecommendationService(service, catalog)
+        service = CatalogRecommendationService(service, catalog, graph=graph)
         notices = (CATALOG_SEED_NOTICE,)
     if build_assistant:
         knowledge = KnowledgeBase.load(settings.kb_path) if settings.kb_path else None
@@ -179,7 +220,9 @@ def create_configured_app(
     return create_app(
         mode=settings.mode,
         extractor=extractor,
-        recommendations=CoverageRecommendationService(service, notices),
+        recommendations=CoverageRecommendationService(service, notices, graph),
         lifespan=lifespan,
+        policy=policy,
+        course_history=AcademicCourseHistoryService(graph),
         assistant=assistant,
     )

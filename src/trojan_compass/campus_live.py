@@ -60,7 +60,9 @@ def parse_library_hours(html: str, now: datetime) -> LibrarySnapshot:
         transitions.sort()
         current = [t for t in transitions if t[0] <= stamp]
         upcoming = [t for t in transitions if t[0] > stamp]
-        open_now = bool(current) and current[-1][2] == "open"
+        if not current or current[-1][2] not in ("open", "closed"):
+            continue  # Missing/malformed transitions are unknown, never evidence of closure.
+        open_now = current[-1][2] == "open"
         next_change = None
         if upcoming:
             when = datetime.fromtimestamp(upcoming[0][0], UTC).astimezone(CAMPUS_TZ)

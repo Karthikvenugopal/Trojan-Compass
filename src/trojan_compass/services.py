@@ -1,7 +1,7 @@
 """Dependency-injected orchestration; services retain dependencies, never student state."""
 
 import asyncio
-import contextlib
+import re
 from typing import TYPE_CHECKING
 
 from trojan_compass.contracts import (
@@ -11,6 +11,7 @@ from trojan_compass.contracts import (
     Clarification,
     ContextExtractor,
     CourseDetails,
+    CourseHistoryService,
     Recommendation,
     RecommendationRequest,
     RecommendationResult,
@@ -19,7 +20,33 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
-from trojan_compass.readiness import CHECKLIST_HINT, request_information
+from trojan_compass.readiness import (
+    CHECKLIST_HINT,
+    DEFAULT_FIXED_FIELDS,
+    question_field,
+    request_information,
+)
+
+
+def latest_search_query(messages: list[ChatMessage]) -> str:
+    """An intake answer such as None must not erase an explicit event/course request."""
+    search = re.compile(
+        r"\b(show|find|recommend|suggest|looking for|want)\b.*"
+        r"\b(courses?|classes|events?|workshops?|talks?)\b",
+        re.I,
+    )
+    for message in reversed(messages):
+        if message.edit and message.edit.field in (
+            "direction",
+            "direction_detail",
+            "target",
+            "preferences",
+        ):
+            return message.content
+        if message.role == "user" and message.edit is None and search.search(message.content):
+            return message.content
+    return messages[-1].content
+
 
 if TYPE_CHECKING:
     from trojan_compass.assistant import CampusAssistant
@@ -32,12 +59,19 @@ class ChatUnavailable(Exception):
 class AskBackPolicy:
     """Defer discovery to graph retrieval; filter questions already answered by context."""
 
+    def __init__(self, fixed_fields: tuple[str, ...] = DEFAULT_FIXED_FIELDS) -> None:
+        self.fixed_fields = fixed_fields
+
     def field(self, question: Clarification) -> str | None:
         field = question.requested_fields[0]
         field = "direction" if field == "interests" else field.removeprefix("constraints.")
         if field in (
             "direction",
             "direction_detail",
+            "study_stage",
+            "program",
+            "work_experience",
+            "completed_courses",
             "background",
             "target",
             "time_window",
@@ -59,7 +93,7 @@ class AskBackPolicy:
         field = self.field(question)
         if field is None:
             return None
-        information = request_information(context, messages)
+        information = request_information(context, messages, self.fixed_fields)
         # Merely asking before is not evidence of an answer. Explicit unknown/none
         # resolves the question without claiming that the student has a skill.
         return question if information.answer(field).status == "not_answered" else None
@@ -71,30 +105,49 @@ class ChatService:
         extractor: ContextExtractor,
         recommendations: RecommendationService,
         policy: AskBackPolicy | None = None,
+        course_history: CourseHistoryService | None = None,
         assistant: "CampusAssistant | None" = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
         self._policy = policy or AskBackPolicy()
+        self._course_history = course_history
         self._assistant = assistant
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         try:
             # One bounded lifecycle; no retries that silently replay private content.
             async with asyncio.timeout(40):
-                extraction = asyncio.ensure_future(self._extractor.extract(request.messages))
-                answer = await self._answer_question(request, extraction)
+                # Route first: campus questions need no extraction. Keeping every
+                # provider call awaited here prevents orphan work on cancellation.
+                answer = await self._answer_question(request)
                 if answer is not None:
                     return answer
-                context = RetrievalContext.model_validate((await extraction).model_dump())
+                context = RetrievalContext.model_validate(
+                    (await self._extractor.extract(request.messages)).model_dump()
+                )
                 validate_evidence(context, request.messages)
-                information = request_information(context, request.messages)
+                information = request_information(
+                    context, request.messages, self._policy.fixed_fields
+                )
                 context = information.context
                 opening_question = information.missing_question()
                 if opening_question is not None:
-                    first_question = opening_question.requested_fields == ["direction"] and not any(
-                        m.role == "assistant" for m in request.messages
-                    )
+                    courses = []
+                    if (
+                        opening_question.requested_fields == ["completed_courses"]
+                        and self._course_history
+                    ):
+                        try:
+                            courses = await self._course_history.suggest(context)
+                        except Exception:
+                            # Optional public course examples must not block free-text history.
+                            # Never log exception text: dependencies may embed student arguments.
+                            courses = []
+                    first_question = (
+                        self._policy.fixed_fields == DEFAULT_FIXED_FIELDS
+                        or opening_question.requested_fields == ["direction"]
+                    ) and not any(m.role == "assistant" for m in request.messages)
                     return ChatResponse(
                         message=(
                             f"{opening_question.text}\n\n{CHECKLIST_HINT}"
@@ -103,10 +156,11 @@ class ChatService:
                         ),
                         suggested_replies=opening_question.options,
                         information=information.snapshot(),
+                        course_history_options=courses,
                     )
                 retrieval_request = RecommendationRequest(
                     context=context,
-                    user_query=request.messages[-1].content,
+                    user_query=latest_search_query(request.messages),
                 )
                 result = RecommendationResult.model_validate(
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
@@ -190,15 +244,26 @@ class ChatService:
         except Exception:
             raise ChatUnavailable() from None
 
-    async def _answer_question(
-        self, request: ChatRequest, extraction: "asyncio.Future[RetrievalContext]"
-    ) -> ChatResponse | None:
+    async def _answer_question(self, request: ChatRequest) -> ChatResponse | None:
         """Route campus/course questions to the assistant; None continues the course flow.
 
-        Routing runs concurrently with extraction. A routing failure falls back to the
-        existing flow rather than failing the turn.
+        Routing failure falls back to intake. There are no background extraction
+        tasks, so timeout, cancellation and failure release request-local content.
         """
-        if self._assistant is None:
+        if self._assistant is None or request.messages[-1].edit is not None:
+            return None
+        latest = request.messages[-1].content
+        if re.search(
+            r"\b(recommend|suggest)\b|what should I (take|study|learn|explore)", latest, re.I
+        ):
+            return None
+        if (
+            len(request.messages) > 1
+            and request.messages[-2].role == "assistant"
+            and question_field(request.messages[-2].content) is not None
+            and "?" not in latest
+        ):
+            # Ordinary answers to our own checklist stay in intake deterministically.
             return None
         try:
             decision = await self._assistant.route(request.messages)
@@ -206,9 +271,6 @@ class ChatService:
             return None
         if decision.intent == "recommendation":
             return None
-        extraction.cancel()
-        with contextlib.suppress(BaseException):
-            await extraction
         return await self._assistant.answer(request.messages, decision)
 
 

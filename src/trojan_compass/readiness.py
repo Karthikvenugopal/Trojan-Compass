@@ -16,15 +16,42 @@ from trojan_compass.contracts import (
     SupportedText,
 )
 
+DEFAULT_FIXED_FIELDS = (
+    "direction",
+    "study_stage",
+    "program",
+    "work_experience",
+    "completed_courses",
+)
+COMPACT_FIXED_FIELDS = ("direction", "background")
+FIXED_FIELDS = (
+    "direction",
+    "study_stage",
+    "program",
+    "work_experience",
+    "completed_courses",
+    "background",
+)
+STAGE_QUESTION = "Have you started at USC yet, and what level are you studying?"
+PROGRAM_QUESTION = "What program or major are you studying or considering?"
+WORK_QUESTION = "What work, internship, volunteer or project experience do you have?"
+COURSES_QUESTION = (
+    "Which courses have you already completed? List all that are relevant, or say None."
+)
+
 DIRECTION_QUESTION = "What interests you, or what would you like to explore?"
 CHECKLIST_HINT = (
-    "Before I search, we'll cover an area to explore and your experience. "
-    "'I don't know' and 'None' are valid answers."
+    "Before recommendations, we'll cover your study stage, program, experience and completed "
+    "courses. Already shared answers count; 'I don't know' and 'None' are fine."
 )
+
 LABELS = {
     "direction": "Interests or direction",
     "direction_detail": "A more specific area to explore",
-    "background": "Skills and experience",
+    "background": "Skills and comfort",
+    "study_stage": "Study stage",
+    "work_experience": "Work, volunteering and projects",
+    "completed_courses": "Completed courses",
     "program": "Program or major",
     "preferences": "Other preferences",
     "time_window": "Availability",
@@ -33,13 +60,36 @@ LABELS = {
 }
 
 DETAIL_QUESTIONS = {
+    "arts": (
+        "Which creative area would you like to explore?",
+        ["Visual art or design", "Film or storytelling", "Music or performance", "I don't know"],
+    ),
+    "business": (
+        "Are you more curious about business, public policy or law?",
+        [
+            "Business or entrepreneurship",
+            "Public policy or social work",
+            "Law or justice",
+            "I don't know",
+        ],
+    ),
     "building": (
         "What kind of things would you enjoy building?",
-        ["Programming (apps or websites)", "Physical objects or design", "I don't know"],
+        [
+            "Design or architecture",
+            "Engineering or physical systems",
+            "Programming (apps or websites)",
+            "I don't know",
+        ],
     ),
     "people": (
         "What about people interests you most?",
-        ["How people think", "Helping or teaching", "I don't know"],
+        [
+            "Psychology or behavior",
+            "Education or social work",
+            "Health or medicine",
+            "I don't know",
+        ],
     ),
     "problems": (
         "What kinds of problems would you enjoy working on?",
@@ -53,6 +103,8 @@ def broad_theme(value: str) -> str | None:
     text = re.sub(r"[^\w\s]", " ", value.casefold())
     text = " ".join(text.split())
     themes = {
+        "arts": {"arts or storytelling", "arts", "storytelling"},
+        "business": {"business or public service"},
         "building": {
             "building things",
             "build things",
@@ -96,7 +148,7 @@ def latest(answer: StudentAnswer) -> int:
     return max((e.message_index for e in answer.evidence), default=-1)
 
 
-def derived_answers(context: RetrievalContext) -> dict[str, StudentAnswer]:
+def derived_answers(context: RetrievalContext, compact: bool = False) -> dict[str, StudentAnswer]:
     groups: dict[str, tuple[list[str], object]] = {
         "direction": (
             [item.value for item in context.interests + context.goals]
@@ -105,13 +157,29 @@ def derived_answers(context: RetrievalContext) -> dict[str, StudentAnswer]:
         ),
         "background": (
             [f"{s.name}: {s.status.replace('_', ' ')}" for s in context.skills]
-            + [item.value for item in context.experiences + context.completed_courses],
-            [*context.skills, *context.experiences, *context.completed_courses],
+            + (
+                [item.value for item in context.experiences + context.completed_courses]
+                if compact
+                else []
+            ),
+            [
+                *context.skills,
+                *(context.experiences + context.completed_courses if compact else []),
+            ],
         ),
     }
     for name in ("time_window", "modality"):
         item = getattr(context.constraints, name)
         groups[name] = ([item.value] if item else [], item)
+    groups["study_stage"] = (
+        [context.study_stage.value] if context.study_stage else [],
+        context.study_stage,
+    )
+    groups["work_experience"] = ([v.value for v in context.experiences], context.experiences)
+    groups["completed_courses"] = (
+        [v.value for v in context.completed_courses],
+        context.completed_courses,
+    )
     groups["program"] = ([context.program.value] if context.program else [], context.program)
     preferences = context.constraints.additional_preferences
     groups["preferences"] = ([item.value for item in preferences], preferences)
@@ -141,6 +209,14 @@ def question_field(text: str) -> str | None:
     """Recognize our questions for short replies; arbitrary assistant text proves nothing."""
     if text.startswith((DIRECTION_QUESTION, "Which topic would you like to explore?")):
         return "direction"
+    for question, field in (
+        (STAGE_QUESTION, "study_stage"),
+        (PROGRAM_QUESTION, "program"),
+        (WORK_QUESTION, "work_experience"),
+        (COURSES_QUESTION, "completed_courses"),
+    ):
+        if text.startswith(question):
+            return field
     if any(text.startswith(question) for question, _ in DETAIL_QUESTIONS.values()):
         return "direction_detail"
     if text.startswith("Can you give one example of what you'd like to explore?"):
@@ -165,7 +241,9 @@ def question_field(text: str) -> str | None:
     return None
 
 
-def explicit_short_answers(messages: list[ChatMessage]) -> list[StudentAnswer]:
+def explicit_short_answers(
+    messages: list[ChatMessage], compact: bool = False
+) -> list[StudentAnswer]:
     answers = []
     for index, message in enumerate(messages):
         if message.role == "user":
@@ -175,7 +253,7 @@ def explicit_short_answers(messages: list[ChatMessage]) -> list[StudentAnswer]:
             if zero:
                 answers.append(
                     StudentAnswer(
-                        field="background",
+                        field="background" if compact else "work_experience",
                         status="none",
                         evidence=[
                             StudentStatement(message_index=index, quote=zero.group(1)),
@@ -198,8 +276,27 @@ def explicit_short_answers(messages: list[ChatMessage]) -> list[StudentAnswer]:
             "skip this question",
         }
         none = text in {"none", "no preference", "no preferences", "no direction yet"}
-        if field == "background" and text in {"i have no experience", "no experience"}:
+        if field == "program" and text == "i haven't chosen a program":
             none = True
+        if field in ("background", "work_experience") and text in {
+            "i have no experience",
+            "no experience",
+        }:
+            none = True
+        if field == "study_stage" and text in {
+            "not started yet",
+            "not started at usc yet",
+            "undergraduate",
+            "graduate student",
+        }:
+            answers.append(
+                StudentAnswer(
+                    field=field,
+                    status="provided",
+                    value=message.content,
+                    evidence=[StudentStatement(message_index=index, quote=message.content)],
+                )
+            )
         if unknown or none:
             answers.append(
                 StudentAnswer(
@@ -218,8 +315,12 @@ def clear_field(context: RetrievalContext, field: str) -> None:
         context.target = None
     elif field == "background":
         context.skills = []
+    elif field == "work_experience":
         context.experiences = []
+    elif field == "completed_courses":
         context.completed_courses = []
+    elif field == "study_stage":
+        context.study_stage = None
     elif field in ("time_window", "modality"):
         setattr(context.constraints, field, None)
     elif field == "program":
@@ -253,9 +354,14 @@ def prune_before_edit(context: RetrievalContext, field: str, boundary: int) -> N
             related.add("direction_detail")
     elif field == "background":
         context.skills = [v for v in context.skills if current(v)]
-        context.experiences = [v for v in context.experiences if current(v)]
-        context.completed_courses = [v for v in context.completed_courses if current(v)]
         related.update(a.field for a in context.answers if a.field.startswith("skills."))
+    elif field == "work_experience":
+        context.experiences = [v for v in context.experiences if current(v)]
+    elif field == "completed_courses":
+        context.completed_courses = [v for v in context.completed_courses if current(v)]
+    elif field == "study_stage":
+        if not current(context.study_stage):
+            context.study_stage = None
     elif field == "target":
         if context.target and not current(context.target):
             context.target = None
@@ -297,9 +403,7 @@ class RequestInformation:
             for key in ("time_window", "modality", "program", "preferences")
             if self.answer(key).status != "not_answered"
         ]
-        keys = list(
-            dict.fromkeys(["direction", "background", *self.required, *supplied_constraints])
-        )
+        keys = list(dict.fromkeys([*FIXED_FIELDS, *self.required, *supplied_constraints]))
         missing = [key for key in self.required if self.answer(key).status == "not_answered"]
         return InformationSnapshot(
             ready=not missing,
@@ -308,7 +412,7 @@ class RequestInformation:
                 InformationField(
                     **self.answer(key).model_dump(exclude={"evidence"}),
                     label=LABELS.get(key, f"Comfort with {key[7:]}"),
-                    category="fixed" if key in ("direction", "background") else "request",
+                    category="fixed" if key in FIXED_FIELDS else "request",
                     required=key in self.required,
                 )
                 for key in keys
@@ -338,13 +442,26 @@ class RequestInformation:
                 reason="A broad activity is not yet a concrete area to search.",
             )
         questions = {
+            "study_stage": (
+                STAGE_QUESTION,
+                ["Not started at USC yet", "Undergraduate", "Graduate student", "I don't know"],
+            ),
+            "program": (PROGRAM_QUESTION, ["I haven't chosen a program", "I don't know"]),
+            "work_experience": (WORK_QUESTION, ["I have no experience", "I don't know"]),
+            "completed_courses": (COURSES_QUESTION, ["None", "I don't know"]),
             "background": (
                 "What skills, projects or courses have you tried so far?",
                 ["I have no experience", "I don't know"],
             ),
             "direction": (
                 DIRECTION_QUESTION,
-                ["Building things", "Understanding people", "I don't know"],
+                [
+                    "Arts or storytelling",
+                    "Understanding people",
+                    "Building things",
+                    "Business or public service",
+                    "I don't know",
+                ],
             ),
             "time_window": (
                 "When would you be available?",
@@ -365,7 +482,9 @@ class RequestInformation:
 
 
 def request_information(
-    context: RetrievalContext, messages: list[ChatMessage]
+    context: RetrievalContext,
+    messages: list[ChatMessage],
+    fixed_fields: tuple[str, ...] = DEFAULT_FIXED_FIELDS,
 ) -> RequestInformation:
     """Rebuild answers from evidence and explicit edits, including clearing old facts."""
     context = context.model_copy(deep=True)
@@ -377,8 +496,9 @@ def request_information(
                 continue
             boundary = index if message.edit.status == "provided" else index + 1
             prune_before_edit(context, message.edit.field, boundary)
-    answers = derived_answers(context)
-    explicit = [*context.answers, *explicit_short_answers(messages)]
+    compact = fixed_fields == COMPACT_FIXED_FIELDS
+    answers = derived_answers(context, compact=compact)
+    explicit = [*context.answers, *explicit_short_answers(messages, compact=compact)]
     for index, message in enumerate(messages):
         if message.edit:
             explicit.append(
@@ -393,7 +513,7 @@ def request_information(
         if old is not None and latest(old) > latest(answer):
             continue
         if (
-            answer.field == "background"
+            answer.field in ("background", "work_experience", "completed_courses")
             and answer.status in ("none", "unknown")
             and old is not None
             and old.status == "provided"
@@ -431,7 +551,13 @@ def request_information(
                     evidence=answer.evidence,
                 )
             elif answer.field == "background":
+                pass  # A skills sentence cannot establish mastery without extraction.
+            elif answer.field == "work_experience":
                 context.experiences = [supported]
+            elif answer.field == "completed_courses":
+                context.completed_courses = [supported]
+            elif answer.field == "study_stage":
+                context.study_stage = supported
             elif answer.field in ("time_window", "modality"):
                 setattr(context.constraints, answer.field, supported)
             elif answer.field == "program":
@@ -462,7 +588,7 @@ def request_information(
             answers["direction_detail"] = detail
     # Fixed minimum before recommendation search. A broad direction is refined
     # first, then ask about background; explicit absence/uncertainty resolves both.
-    required.append("background")
+    required.extend(field for field in fixed_fields if field != "direction")
     required.extend(
         r.field
         for r in context.requested_context

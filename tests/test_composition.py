@@ -7,11 +7,12 @@ from typing import Any
 
 import httpx
 import pytest
+from compact_checklist import create_configured_app
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from trojan_compass.api import app_from_environment
-from trojan_compass.composition import RuntimeSettings, create_configured_app, seed_repository
+from trojan_compass.composition import RuntimeSettings, seed_repository
 from trojan_compass.contracts import (
     ChatMessage,
     ChatResponse,
@@ -191,7 +192,13 @@ def test_environment_factory_uses_real_campus_path(monkeypatch: pytest.MonkeyPat
             },
         )
     assert response.status_code == 200
-    assert response.json()["recommendations"]
+    assert not response.json()["recommendations"]
+    assert response.json()["information"]["missing_fields"] == [
+        "study_stage",
+        "program",
+        "work_experience",
+        "completed_courses",
+    ]
 
 
 def test_public_seed_loaded_at_startup_only(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -317,8 +324,9 @@ def test_owned_database_adapter_closes_and_never_imports_during_chat(
 
 
 def test_target_refinement_is_material_even_when_a_target_exists() -> None:
+    from compact_checklist import AskBackPolicy
+
     from trojan_compass.contracts import Clarification
-    from trojan_compass.services import AskBackPolicy
 
     context = RetrievalContext(
         target=Target(
