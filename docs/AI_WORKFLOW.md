@@ -56,8 +56,10 @@ steps and fallback suggestions are not published by AIChatService.
 An invalid planning decision may get one same-provider validation repair using the
 original conversation and static feedback. Auth/quota/connection/timeouts are not
 retried or sent to another provider. Normal ask turns use one audit-first decision;
-search turns use decision plus composition. The previous proposal/reviewer chain is
-not used by live chat. Bounded validation repairs can add calls; the overall deadline
+search turns use decision plus composition. Skill claims receive a focused LLM
+source-basis review; inferred proficiency is discarded. A search-only planning call
+handles optional discovery proposals after the minimum is known, preserving the
+validated extraction. The previous proposal/reviewer chain is not used by live chat. Bounded validation repairs can add calls; the overall deadline
 still applies. Cloud requests are bounded by a 75-second lifecycle;
 local Ollama requests have a 180-second lifecycle to allow local inference. A provider
 or validation failure returns a safe error, never a scripted imitation of AI advice.
@@ -221,3 +223,19 @@ AI selection and is included with its original source/access/status metadata. In
 or fabricated references remain rejected; no fuzzy semantic matching is performed.
 Earlier course-history checkboxes and confirmation buttons are disabled along with
 other earlier reply controls.
+
+## Tested OpenAI configuration
+
+The current local acceptance run uses LLM_PROVIDER=openai and OPENAI_MODEL=gpt-4.1,
+with the API key supplied only in the server environment. The full model passed the
+synthetic production-planning checks (combined academic answers, a contextual career
+abbreviation, retained coursework/volunteering, scoped negative and no inferred skill
+mastery). The mini model misclassified a negative work-experience reply as an unlearned
+skill in that test. These observed runs do not guarantee model accuracy on every input.
+
+Readiness summaries never replace detailed experience/course/skill records. Detailed
+records are re-extracted from the conversation each turn; the model must omit naturally
+retracted records. Typed user resets prune older records before readiness is computed.
+Skill verification distinguishes a direct skill statement from a degree, completed
+course, career interest or job/project. Unsupported skill claims are omitted, rather
+than recorded as a student having answered an unasked skill question.
