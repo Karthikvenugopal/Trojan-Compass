@@ -341,16 +341,3 @@ def request_information(
     context.answers = list(answers.values())
     required = ["direction", *(r.field for r in context.requested_context)]
     return RequestInformation(context, answers, list(dict.fromkeys(required)))
-
-
-def retrieval_query(messages: list[ChatMessage]) -> str:
-    """Keep the student's search preference while they answer questions or edit facts."""
-    user_turns = [message for message in messages if message.role == "user" and not message.edit]
-    for message in reversed(user_turns):
-        if re.search(
-            r"\b(courses?|classes|events?|workshops?|meetups?|talks?|panels?|hackathons?)\b",
-            message.content,
-            re.I,
-        ):
-            return message.content
-    return user_turns[-1].content if user_turns else messages[-1].content

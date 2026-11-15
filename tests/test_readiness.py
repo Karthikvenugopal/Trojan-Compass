@@ -116,7 +116,7 @@ async def test_panel_reset_clears_old_facts_and_blocks_retrieval_again() -> None
     assert updated.context.interests[0].value == "music"
 
 
-async def test_saved_sentence_replaces_old_values_and_preserves_search_request() -> None:
+async def test_saved_sentence_replaces_old_values_and_carries_latest_query() -> None:
     context = RetrievalContext(
         interests=[SupportedText(value="robotics", evidence=said("robotics"))]
     )
@@ -129,7 +129,7 @@ async def test_saved_sentence_replaces_old_values_and_preserves_search_request()
     ]
     response = await ChatService(FakeExtractor(context), spy).chat(ChatRequest(messages=messages))
     assert response.information.ready
-    assert spy.requests[0].user_query == "Find robotics events"
+    assert spy.requests[0].user_query == "Update my direction: I like music"
     assert [i.value for i in spy.requests[0].context.interests] == ["I like music"]
     fresh = await ChatService(FakeExtractor(), spy).chat(ChatRequest(messages=[user("Hi")]))
     assert not fresh.information.ready

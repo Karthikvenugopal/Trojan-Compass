@@ -17,7 +17,7 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
-from trojan_compass.readiness import CHECKLIST_HINT, request_information, retrieval_query
+from trojan_compass.readiness import CHECKLIST_HINT, request_information
 
 
 class ChatUnavailable(Exception):
@@ -83,7 +83,7 @@ class ChatService:
                     )
                 retrieval_request = RecommendationRequest(
                     context=context,
-                    user_query=retrieval_query(request.messages),
+                    user_query=request.messages[-1].content,
                 )
                 result = RecommendationResult.model_validate(
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
