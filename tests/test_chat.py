@@ -314,6 +314,7 @@ async def test_request_isolation_concurrent_and_sequential() -> None:
         "_course_history",
         "_assistant",
         "_guidance",
+        "_local_intake",
     }
 
 

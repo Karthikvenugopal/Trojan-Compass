@@ -13,7 +13,7 @@
             "type": "string"
           },
           "content": {
-            "maxLength": 4000,
+            "maxLength": 20400,
             "minLength": 1,
             "title": "Content",
             "type": "string"

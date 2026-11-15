@@ -26,7 +26,7 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy, isLatest = 
       </div>
       <div className="message-content">
         <div className="message-label">{isAssistant ? 'Trojan Compass' : 'You'}</div>
-        <div className={`bubble ${message.role}`}>{message.content}</div>
+        <div className={`bubble ${message.role}`}>{!isAssistant && /^Use my (resume|LinkedIn profile) as background\.\n/.test(message.content) ? (message.content.startsWith('Use my resume') ? 'Resume added as background' : 'LinkedIn profile added as background') : message.content}</div>
         {isAssistant && message.limitations && message.limitations.length > 0 && (
           <ul className="limitations">{message.limitations.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
         )}

@@ -13,6 +13,7 @@ from trojan_compass.extraction import (
     parse_context,
     validate_evidence,
 )
+from trojan_compass.failures import FailureReason, provider_reason
 
 
 class GeminiPart(BaseModel):
@@ -116,6 +117,14 @@ class GeminiContextExtractor:
             context = parse_context(content)
             validate_evidence(context, messages)
             return context
+        except httpx.HTTPStatusError as error:
+            raise ExtractionFailure(provider_reason(error)) from None
+        except httpx.TimeoutException:
+            raise ExtractionFailure(FailureReason.TIMEOUT) from None
+        except httpx.RequestError:
+            raise ExtractionFailure(FailureReason.NETWORK) from None
+        except ExtractionFailure as error:
+            raise ExtractionFailure(error.reason) from None
         except Exception:
             # Do not leak or chain provider bodies, credentials, prompts or output.
             raise ExtractionFailure() from None

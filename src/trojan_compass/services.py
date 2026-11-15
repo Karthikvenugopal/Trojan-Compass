@@ -20,7 +20,9 @@ from trojan_compass.contracts import (
     RetrievalContext,
     Source,
 )
-from trojan_compass.extraction import validate_evidence
+from trojan_compass.controlled_intake import ControlledIntakeParser
+from trojan_compass.extraction import ExtractionFailure, validate_evidence
+from trojan_compass.failures import FailureReason
 from trojan_compass.readiness import (
     CHECKLIST_HINT,
     DEFAULT_FIXED_FIELDS,
@@ -55,6 +57,10 @@ if TYPE_CHECKING:
 
 class ChatUnavailable(Exception):
     """Sanitized failure without sensitive exception details."""
+
+    def __init__(self, reason: FailureReason = FailureReason.INTERNAL) -> None:
+        super().__init__()
+        self.reason = reason
 
 
 class AskBackPolicy:
@@ -109,6 +115,7 @@ class ChatService:
         course_history: CourseHistoryService | None = None,
         assistant: "CampusAssistant | None" = None,
         guidance: CareerGuidanceService | None = None,
+        local_intake: ControlledIntakeParser | None = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
@@ -116,19 +123,20 @@ class ChatService:
         self._course_history = course_history
         self._assistant = assistant
         self._guidance = guidance
+        self._local_intake = local_intake
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         try:
             # One bounded lifecycle; no retries that silently replay private content.
             async with asyncio.timeout(40):
-                # Route first: campus questions need no extraction. Keeping every
-                # provider call awaited here prevents orphan work on cancellation.
-                answer = await self._answer_question(request)
-                if answer is not None:
-                    return answer
-                context = RetrievalContext.model_validate(
-                    (await self._extractor.extract(request.messages)).model_dump()
-                )
+                context = self._local_intake.parse(request.messages) if self._local_intake else None
+                if context is None:
+                    answer = await self._answer_question(request)
+                    if answer is not None:
+                        return answer
+                    context = RetrievalContext.model_validate(
+                        (await self._extractor.extract(request.messages)).model_dump()
+                    )
                 validate_evidence(context, request.messages)
                 information = request_information(
                     context, request.messages, self._policy.fixed_fields
@@ -257,6 +265,10 @@ class ChatService:
                     limitations=limitations,
                     information=information.snapshot(),
                 )
+        except ExtractionFailure as error:
+            raise ChatUnavailable(error.reason) from None
+        except TimeoutError:
+            raise ChatUnavailable(FailureReason.TIMEOUT) from None
         except Exception:
             raise ChatUnavailable() from None
 
@@ -269,7 +281,13 @@ class ChatService:
         if self._assistant is None or request.messages[-1].edit is not None:
             return None
         latest = request.messages[-1].content
-        if latest.startswith("I reviewed this text from my "):
+        if latest.startswith(
+            (
+                "I reviewed this text from my ",
+                "Use my resume as background.\n",
+                "Use my LinkedIn profile as background.\n",
+            )
+        ):
             return None  # Confirmed background belongs to intake, not campus chit-chat.
         if re.search(
             r"\b(recommend|suggest)\b|what should I (take|study|learn|explore)", latest, re.I

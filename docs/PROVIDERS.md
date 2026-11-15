@@ -27,7 +27,8 @@ Pydantic JSON Schema. The full conversation is encoded as untrusted user data;
 the extraction rules remain in system instructions. Only user quotations can
 support facts. Local Pydantic validation still enforces schema keywords that the
 provider may not constrain. Blocked/truncated/malformed responses or invalid
-provenance yield the same safe 503 as other extraction failures. Thinking parts
+provenance yield a safe 503 with an invalid-output category; HTTP and connection
+failures use safe actionable categories without raw provider content. Thinking parts
 are ignored; tool outputs are not accepted. The API key is sent in a header, not
 the URL. No Interactions/chat sessions, previous-response IDs, explicit context
 caching, search grounding, tools, model-generated code, prompt logging or retries
@@ -68,7 +69,8 @@ retention verification is claimed.
 
 Campus mode routes factual questions using the same configured provider. A direct
 campus answer uses a second structured call with request-local evidence; a
-recommendation turn routes first and then extracts context. Each call is awaited
+free-form recommendation turn routes first and then extracts context. Fully recognized
+guided intake choices are re-derived locally from the conversation without a model call. Each call is awaited
 within the request lifecycle; cancellation leaves no background extraction task.
 Typed edits and ordinary checklist answers bypass routing. No provider-managed
 threads or student caches are used. OpenAI calls use `store=false`; this does not

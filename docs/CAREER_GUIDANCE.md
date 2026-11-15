@@ -2,7 +2,7 @@
 
 Compass now builds a working career plan instead of ending at course results.
 The five-field minimum intake stays in place. A student may answer manually or
-review imported background to supply multiple facts together. Unknown and None
+add background directly to supply multiple facts together. Unknown and None
 remain valid answers. Student state exists only in frontend memory and per-request
 local variables; refresh, Start over or End chat clears it.
 
@@ -47,9 +47,19 @@ and USC arts/humanities research routes. No outreach messages are sent automatic
 
 ## Resume and LinkedIn inputs
 
-The original POC excluded ingestion. The expanded scope explicitly permits **resume
-PDF/DOCX and pasted LinkedIn text or PDF exports**, with review before use. LinkedIn
-URLs, authenticated scraping and account credentials are not supported.
+The expanded scope accepts resume PDF/DOCX, public LinkedIn URLs, PDF exports and
+pasted background. Uploading uses the document directly: there is no extracted-text
+preview or mandatory review step. The conversation shows a compact background-added
+message. Students can correct the resulting facts in the collapsed “What I’m using”
+section, or send a correction normally.
+
+`POST /api/import-linkedin` accepts a public `https://www.linkedin.com/in/name` URL
+in its JSON body. A fresh, bounded request reads public structured profile text only.
+It never logs in, sends cookies, follows redirects, bypasses restrictions or caches
+profiles. LinkedIn often blocks automated access or exposes only a limited snippet;
+missing public data is not inferred. Blocked, oversized or unreadable pages ask the
+student to upload a profile PDF or paste background. The URL importer cannot promise
+complete LinkedIn coverage or verify that a profile belongs to the student.
 
 `POST /api/import-document?format=pdf|docx` accepts raw document bytes, never a server
 filename. The privacy boundary caps the actual stream at 4 MiB. A fixed trusted worker
@@ -63,20 +73,22 @@ to paste text; OCR is not included.
 The parser has an 8-second CPU limit, a 12-second parent timeout, a Linux address-space
 limit, and disabled core dumps. Timeout/cancellation kills and awaits the worker.
 POSIX environments (macOS/Linux) are supported. Parsing complex PDF layouts can lose
-structure, so the result is always editable. The PDF parser is `pypdf`; hardened XML
+structure. Extracted facts can be corrected in the information panel. The reader uses `pypdf`; XML
 parsing uses `defusedxml`.
 
-The review UI holds the text in component memory. Closing it, ending/resetting chat,
-or refreshing clears it and aborts an active upload. **Use this reviewed background**
-adds only the student's confirmed text as a normal user message. The 4,000-character
-chat-message cap includes its introduction; excessive text requires an explicit edit,
-not automatic deletion of earlier facts or constraints. Normal context extraction
-then identifies supported facts and asks only for missing required answers.
+File reading stays internal. The full text becomes a normal student message in the
+active frontend conversation, so every subsequent request can derive the background
+again. The imported-message cap is 20,400 characters including its short introduction;
+ordinary messages remain capped at 4,000. The total 24,000-character / 65,536-byte
+conversation cap still applies. Oversized input is rejected explicitly without
+truncating earlier corrections or constraints. Ending/resetting chat or refreshing
+clears background; closing an in-progress import aborts it. No backend copy persists.
 
-Parsing calls no LLM. Confirming background sends it in the normal active conversation
-to the configured provider. [External provider retention](PROVIDERS.md) remains separate;
-no claim is made that it is disabled. No provider threads or application student store
-are introduced.
+Adding background sends its text with the active conversation to the configured AI
+provider. [External provider retention](PROVIDERS.md) remains separate; no claim is
+made that it is disabled. No provider threads or application student store are added.
+Coursework and job descriptions do not automatically establish skill mastery or a
+current career target. Other missing required facts are still asked one at a time.
 
 ## Setup and validation
 
@@ -87,5 +99,16 @@ Tests cover unknown versus confirmed gaps, explicit assessments and corrections,
 request isolation, unsupported company targets, source-backed non-CS paths, research
 eligibility labels, the full HTTP roadmap flow, DOCX/PDF parsing, oversized/malformed
 uploads, XML entities/archive expansion, cancellation cleanup, response privacy,
-review confirmation, draft clearing and unsafe evidence URLs. All test student data
+direct imports, public-profile access failures, SSRF boundaries, clearing and unsafe evidence URLs. All test student data
 is synthetic. Full CI installs `pypdf` and runs the real PDF-reader test.
+
+## Intake reliability
+
+Recognized UI choices and explicit panel edits are re-derived from the entire active
+conversation without a provider call. This supplies only student-selected facts,
+never fixture recommendations. If any turn requires free-form interpretation, the
+entire conversation goes through the validated extractor, preserving corrections and
+constraints. Retrieval still waits for the minimum checklist. Free-form provider
+failures return safe categories (authentication, quota, rate limit, connection,
+timeout, configuration or invalid output) rather than a repeated generic error.
+These classifications reveal no student text or raw provider response.

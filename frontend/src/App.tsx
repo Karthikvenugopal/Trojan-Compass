@@ -40,7 +40,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
     const requestMessages: ChatMessage[] = [...history, { role: 'user', content, ...(edit ? { edit } : {}) }];
     const charCount = requestMessages.reduce((total, item) => total + Array.from(item.content).length, 0);
     const bodyBytes = new TextEncoder().encode(JSON.stringify({ messages: requestMessages })).byteLength;
-    if (requestMessages.length > 64 || requestMessages.some((item) => Array.from(item.content).length > 4000) || charCount > 24000 || bodyBytes > 65536) {
+    if (requestMessages.length > 64 || requestMessages.some((item) => Array.from(item.content).length > (item.role === 'user' && /^Use my (resume|LinkedIn profile) as background\.\n/.test(item.content) ? 20400 : 4000)) || charCount > 24000 || bodyBytes > 65536) {
       setError(new ChatApiError('This conversation reached the API size limit. Start a fresh chat to continue; nothing was sent or truncated.', 422, 'conversation_too_large'));
       setDraft(content);
       setFailedEdit(edit ?? null);

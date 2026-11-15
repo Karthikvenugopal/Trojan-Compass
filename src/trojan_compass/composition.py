@@ -22,6 +22,7 @@ from trojan_compass.contracts import (
     RecommendationResult,
     RecommendationService,
 )
+from trojan_compass.controlled_intake import ControlledIntakeParser
 from trojan_compass.exploration import ExplorationRecommendationService
 from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
@@ -166,6 +167,7 @@ def create_configured_app(
         return create_app(mode=settings.mode)
     # The question assistant uses the same server-configured provider as extraction;
     # injected (test) extractors get no assistant unless one is injected too.
+    use_local_intake = extractor is None
     build_assistant = extractor is None and assistant is None
     extractor = extractor if extractor is not None else configured_extractor()
     lifespan = None
@@ -227,6 +229,7 @@ def create_configured_app(
         policy=policy,
         course_history=AcademicCourseHistoryService(graph),
         assistant=assistant,
+        local_intake=ControlledIntakeParser() if use_local_intake else None,
         guidance=EvidenceCareerGuide(graph, PathLibrary.load(), catalog)
         if policy is None or policy.fixed_fields == DEFAULT_FIXED_FIELDS
         else None,

@@ -248,3 +248,21 @@ a { color: inherit; }
 .import-counter { color: #756c63; }
 .import-use { background: #831e29; color: white; padding: 10px 14px; border: 0; border-radius: 8px; font-size: 12px; }
 @media (max-width: 600px) { .career-guide-header, .career-skill-section, .career-roadmap, .career-actions { padding: 15px; } .career-options { grid-template-columns: 1fr; padding: 15px; } .career-guide h3 { font-size: 20px; } }
+
+.background-import input[type="url"] {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.5rem 0;
+  padding: 0.7rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  color: #172033;
+  background: #fff;
+  font: inherit;
+}
+.background-import input[type="url"]:focus-visible {
+  outline: 2px solid #990000;
+  outline-offset: 2px;
+}
+.background-import details > summary { cursor: pointer; margin: 0.8rem 0; }

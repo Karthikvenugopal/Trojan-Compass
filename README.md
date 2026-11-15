@@ -41,7 +41,8 @@ OpenAPI is at `/docs`. Shared Pydantic models are in
 `src/trojan_compass/contracts`; JSON examples and schemas are in `docs/examples`.
 Examples use synthetic student statements. `GET /health` reports the configured
 mode. There are no session/profile endpoints. Optional resume PDF/DOCX and LinkedIn
-text/PDF imports are reviewed before use; the document parser stores no uploads.
+URLs/text/PDF imports add background directly, with corrections available in “What I’m using.”
+Public URL access may be blocked by LinkedIn; PDF/text remains available. Uploads are not stored.
 
 ## Local test launcher
 
@@ -182,7 +183,8 @@ closest official page. Page snapshots go stale; re-run the script to refresh.
 
 ## Behavior and limits
 
-- Requests allow 1–64 messages, 1–4000 characters each, 24000 characters total,
+- Requests allow 1–64 messages, 1–4000 characters each (20,400 for imported
+  background), 24000 characters total,
   and 65536 raw UTF-8 body bytes. First and last messages must be from the user.
   Roles are user/assistant only; no extra fields. Excess bytes return 413;
   invalid/oversized structured conversations return 422. Nothing is truncated.

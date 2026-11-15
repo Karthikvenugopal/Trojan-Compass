@@ -46,11 +46,17 @@ class InformationEdit(Contract):
 
 class ChatMessage(Contract):
     role: Literal["user", "assistant"]
-    content: Text
+    content: Annotated[str, Field(min_length=1, max_length=20400, strict=True)]
     edit: InformationEdit | None = None
 
     @model_validator(mode="after")
     def student_edit(self) -> Self:
+        # Full background is kept in the active conversation, never a backend file/session.
+        imported = self.role == "user" and self.content.startswith(
+            ("Use my resume as background.\n", "Use my LinkedIn profile as background.\n")
+        )
+        if len(self.content) > 4000 and not imported:
+            raise ValueError("Ordinary messages are limited to 4000 characters")
         if self.role != "user" and self.edit is not None:
             raise ValueError("Only student messages can carry information edits")
         if self.edit is not None and self.edit.value is not None:

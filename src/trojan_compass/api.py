@@ -20,6 +20,7 @@ from trojan_compass.contracts import (
     CourseHistoryService,
     RecommendationService,
 )
+from trojan_compass.controlled_intake import ControlledIntakeParser
 from trojan_compass.cors import configured_origins, validate_origins
 from trojan_compass.diagnostics import dummy_response
 from trojan_compass.documents import (
@@ -30,7 +31,14 @@ from trojan_compass.documents import (
     MemoryDocumentParser,
 )
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
+from trojan_compass.failures import FAILURE_MESSAGES
 from trojan_compass.gemini import GeminiContextExtractor
+from trojan_compass.linkedin import (
+    LinkedInRequest,
+    LinkedInText,
+    LinkedInUnavailable,
+    PublicLinkedInReader,
+)
 from trojan_compass.services import (
     AskBackPolicy,
     ChatService,
@@ -142,6 +150,7 @@ def create_app(
     course_history: CourseHistoryService | None = None,
     assistant: "CampusAssistant | None" = None,
     guidance: CareerGuidanceService | None = None,
+    local_intake: ControlledIntakeParser | None = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
@@ -154,6 +163,7 @@ def create_app(
         course_history=course_history,
         assistant=assistant,
         guidance=guidance,
+        local_intake=local_intake,
     )
     app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)
     app.add_middleware(PrivateBoundary)
@@ -189,9 +199,36 @@ def create_app(
                 },
             )
 
+    @app.post("/api/import-linkedin", response_model=LinkedInText)
+    async def import_linkedin(request: LinkedInRequest) -> LinkedInText | JSONResponse:
+        try:
+            return await PublicLinkedInReader().read(request)
+        except LinkedInUnavailable:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "linkedin_unavailable",
+                        "message": "LinkedIn did not provide readable public background. "
+                        "Upload your profile PDF export or paste the relevant text instead. "
+                        "No login or access restrictions were bypassed; nothing was saved.",
+                    }
+                },
+            )
+
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
         # FastAPI's default errors echo offending input; emit static details instead.
+        if request.url.path == "/api/import-linkedin":
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "invalid_linkedin_url",
+                        "message": "Use a public https://www.linkedin.com/in/profile-name URL.",
+                    }
+                },
+            )
         if request.url.path == "/api/import-document":
             return JSONResponse(
                 status_code=422,
@@ -207,7 +244,8 @@ def create_app(
             content={
                 "error": {
                     "code": "invalid_conversation",
-                    "message": "Use 1–64 user/assistant messages, 1–4000 characters each, "
+                    "message": "Use 1–64 user/assistant messages, 1–4000 characters each "
+                    "(20,400 for imported background), "
                     "24000 characters total, starting and ending with user. "
                     "Nothing was truncated.",
                 }
@@ -220,8 +258,8 @@ def create_app(
             status_code=503,
             content={
                 "error": {
-                    "code": "chat_unavailable",
-                    "message": "Recommendations are temporarily unavailable. Please try again.",
+                    "code": exc.reason.value,
+                    "message": FAILURE_MESSAGES[exc.reason],
                 }
             },
         )

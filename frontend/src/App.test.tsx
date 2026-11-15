@@ -243,3 +243,19 @@ it('collects an area and background through concrete follow-ups before showing c
     "I'm not sure where to start.", 'Building things', 'Programming (apps or websites)', 'I have no experience',
   ]);
 });
+
+it('keeps full imported background across turns while showing a compact message', async () => {
+  const user = userEvent.setup();
+  const background = 'Synthetic arts coursework. '.repeat(200);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: background }), { status: 200 })));
+  const send = vi.fn<ChatApi['send']>().mockResolvedValue(result('What would you like to explore next?', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.click(screen.getByRole('button', { name: /Add a resume/ }));
+  await user.upload(screen.getByLabelText('Upload background document'), new File(['synthetic'], 'resume.pdf', { type: 'application/pdf' }));
+  expect(await screen.findByText('Resume added as background')).toBeInTheDocument();
+  expect(screen.queryByText(background.trim())).not.toBeInTheDocument();
+  const firstContent = send.mock.calls[0][0].messages[0].content;
+  expect(firstContent).toBe(`Use my resume as background.\n${background.trim()}`);
+  await user.click(screen.getByRole('button', { name: 'Change direction' }));
+  expect(send.mock.calls[1][0].messages[0].content).toBe(firstContent);
+});
