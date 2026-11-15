@@ -216,3 +216,24 @@ def test_default_http_flow_collects_minimum_then_returns_a_working_roadmap() -> 
         assert any(
             s.name == "Mathematics" and s.status == "learning" for s in updated.guidance.skills
         )
+
+
+async def test_existing_programming_statement_is_not_reasked_as_an_unknown_alias(
+    guide: EvidenceCareerGuide,
+) -> None:
+    student = context("Software developer")
+    student.skills = [Skill(name="Programming", status="known", evidence=evidence())]
+    plan = await guide.guide(student, [])
+    programming = [s for s in plan.skills if "programming" in s.name.casefold()]
+    assert len(programming) == 1 and programming[0].status == "known"
+    assert plan.next_question
+    assert "programming" not in plan.next_question.requested_fields[0]
+
+
+@pytest.mark.parametrize("role", ["Architect", "Biochemist", "Musician", "Financial analyst"])
+async def test_additional_disciplines_have_verified_baselines(
+    guide: EvidenceCareerGuide, role: str
+) -> None:
+    plan = await guide.guide(context(role), [])
+    assert plan.mode == "plan" and plan.skills
+    assert all(s.sources for s in plan.skills)

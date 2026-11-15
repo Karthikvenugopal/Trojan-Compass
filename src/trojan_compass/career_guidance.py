@@ -221,6 +221,7 @@ class EvidenceCareerGuide:
         # Priority is from student self-report, not a fabricated diagnostic test.
         priority = {"not_yet_learned": 0, "learning": 1, "unknown": 2, "known": 3}
         skills.sort(key=lambda s: priority[s.status])
+        skills = skills[:12]
         skill_terms = {
             s.name: next((b.search_terms for b in role.skills if b.name == s.name), [s.name])
             if role

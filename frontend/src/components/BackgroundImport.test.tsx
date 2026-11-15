@@ -28,3 +28,12 @@ it('clears a closed draft and rejects excessive text without truncation', async 
   await user.click(screen.getByRole('button', { name: /Add a resume/ }));
   expect(screen.getByRole('textbox')).toHaveValue('');
 });
+it('does not treat a LinkedIn URL as imported profile text', async () => {
+  const user = userEvent.setup();
+  render(<BackgroundImport disabled={false} onUse={vi.fn()} />);
+  await user.click(screen.getByRole('button', { name: /Add a resume/ }));
+  await user.click(screen.getByRole('button', { name: 'LinkedIn' }));
+  await user.type(screen.getByRole('textbox'), 'https://www.linkedin.com/in/synthetic');
+  expect(screen.getByRole('button', { name: 'Use this reviewed background' })).toBeDisabled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Profile links are not fetched');
+});

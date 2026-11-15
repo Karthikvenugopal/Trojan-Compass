@@ -13,6 +13,7 @@ export function BackgroundImport({ disabled, onUse }: { disabled: boolean; onUse
   useEffect(() => () => pending.current?.abort(), []);
   const prefix = `I reviewed this text from my ${kind}. Use it as background, including relevant skills, experience and coursework:\n`;
   const size = Array.from(prefix + text.trim()).length;
+  const urlOnly = /^https?:\/\/\S+$/i.test(text.trim());
   function close() { pending.current?.abort(); pending.current = null; setBusy(false); setText(''); setError(''); setOpen(false); }
   async function read(file: File) {
     const format = file.name.toLowerCase().split('.').pop();
@@ -35,9 +36,10 @@ export function BackgroundImport({ disabled, onUse }: { disabled: boolean; onUse
       <label className="upload-control"><Upload size={15} aria-hidden="true" /> Choose PDF or DOCX<input type="file" accept=".pdf,.docx" disabled={disabled || busy} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void read(file); }} /></label>
       {busy && <p role="status">Reading document in memory…</p>}{error && <p role="alert">{error}</p>}
       <label className="import-text-label">Review the text before using it<textarea rows={7} value={text} disabled={busy || disabled} onChange={event => setText(event.target.value)} placeholder="Paste relevant background. Remove contact details or anything you do not want to share." /></label>
+      {urlOnly && <p role="alert">Paste profile text or upload an export. Profile links are not fetched.</p>}
       <p className={size > 4000 ? 'import-over-limit' : 'import-counter'}>{size} / 4,000 characters including the introduction.{size > 4000 ? ' Keep relevant sections; nothing will be truncated automatically.' : ''}</p>
       <p className="information-privacy">Uploads are processed in memory and discarded. Nothing is added until you confirm. Using this text sends it in the conversation to the configured AI provider; provider retention is separate. Close, Start over, End chat or refresh clears this draft.</p>
-      <button type="button" className="import-use" disabled={disabled || busy || !text.trim() || size > 4000} onClick={() => { const value = prefix + text.trim(); close(); onUse(value); }}>Use this reviewed background</button>
+      <button type="button" className="import-use" disabled={disabled || busy || !text.trim() || size > 4000 || urlOnly} onClick={() => { const value = prefix + text.trim(); close(); onUse(value); }}>Use this reviewed background</button>
     </div>}
   </section>;
 }

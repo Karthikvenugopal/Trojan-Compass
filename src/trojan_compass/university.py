@@ -177,7 +177,17 @@ class UniversityGraphRepository:
         return await self._delegate.suggest_directions(interests, limit)
 
     async def requirements_for(self, destination_id: str) -> list[Requirement]:
-        return await self._delegate.requirements_for(destination_id)
+        # Public synonyms keep an already-stated ability from being asked again.
+        # These are aliases, not inferred mastery or new graph requirements.
+        aliases = {"computer programming": ["programming", "coding"], "mathematics": ["math"]}
+        result = []
+        for requirement in await self._delegate.requirements_for(destination_id):
+            extra = aliases.get(requirement.skill.name.casefold(), [])
+            skill = requirement.skill.model_copy(
+                update={"aliases": list(dict.fromkeys([*requirement.skill.aliases, *extra]))}
+            )
+            result.append(requirement.model_copy(update={"skill": skill}))
+        return result
 
     async def actions_for_skills(self, skill_ids: Sequence[str]) -> list[CampusAction]:
         actions = await self._delegate.actions_for_skills(skill_ids)

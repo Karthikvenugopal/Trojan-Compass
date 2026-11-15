@@ -73,6 +73,15 @@ jobs:
               health = client.get('http://127.0.0.1:5173/health')
               assert health.status_code == 200
               assert health.json()['mode'] == 'demo'
+              import io
+              import zipfile
+              upload = io.BytesIO()
+              with zipfile.ZipFile(upload, 'w') as archive:
+                  archive.writestr('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Synthetic background import</w:t></w:r></w:p></w:body></w:document>')
+              parsed = client.post('http://127.0.0.1:5173/api/import-document?format=docx', content=upload.getvalue())
+              assert parsed.status_code == 200
+              assert parsed.json()['text'] == 'Synthetic background import'
+              assert parsed.headers['cache-control'] == 'no-store'
               origin = 'http://localhost:5173'
               preflight = client.options('http://127.0.0.1:8000/api/chat', headers={
                   'Origin': origin, 'Access-Control-Request-Method': 'POST',
