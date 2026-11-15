@@ -6,7 +6,11 @@ README; no AGENTS.md or owner implementations existed at inspection. The prior
 chat-session branch supplies stack/conventions, but its session/profile API is
 superseded here. Do not integrate its session repository.
 
-Published proposal, pending owner confirmation:
+The implementations now use this v2 boundary. The runtime composition is in
+`trojan_compass.composition`; see the root README for campus/production startup.
+This records code compatibility, not an assumption that every data limitation is resolved.
+
+Shared interface:
 
 - Riddhi: `POST /api/chat` with `ChatRequest.messages` (user/assistant only), then
   render `ChatResponse`. Keep active conversation in frontend memory only. Clear
@@ -25,13 +29,16 @@ Published proposal, pending owner confirmation:
 - Abishek: construct your read-only graph adapter, inject it into Peri's service,
   then pass that service to `create_app(extractor=..., recommendations=...)`.
   Only shared campus graph data may persist. Do not create student nodes, log
-  graph parameters, or write derived student facts. No graph/recommendation owner
-  implementation is present yet; no real graph wiring is claimed.
+  graph parameters, or write derived student facts. The factory now constructs
+  this dependency chain using the async graph protocol shared by both owners.
 
 Dependency shape: Abishek graph adapter → Peri RecommendationService → ChatService.
 A synchronous adapter must be wrapped with `asyncio.to_thread` by its owner.
-The default is explicitly a fixture/demo service. Production configuration fails
-closed until a real RecommendationService is injected.
+The default remains an explicit fixture/demo service. Campus mode connects the real
+engine to the reviewed public seed through Abishek’s in-memory adapter; production
+connects his Neo4j adapter. Missing production credentials fail startup. No graph
+writes occur through the chat factory; Neo4j imports remain a separate command.
+See GRAPH_INTEGRATION.md for data semantics that remain incomplete.
 
 All models forbid extra fields. Nullable fields use null; lists default empty.
 Examples are synthetic and generated from the Pydantic contracts. No student
