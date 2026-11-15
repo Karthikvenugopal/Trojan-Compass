@@ -164,6 +164,49 @@ def clear_field(context: RetrievalContext, field: str) -> None:
         context.skills = [s for s in context.skills if s.name.casefold() != field[7:]]
 
 
+def prune_before_edit(context: RetrievalContext, field: str, boundary: int) -> None:
+    """An edit replaces older facts even if extraction also returned a newer fact.
+
+    Filtering individual evidence prevents a new interest from accidentally keeping
+    an older career target alive. Facts from later natural corrections survive.
+    """
+
+    def current(value: object) -> bool:
+        return max((e.message_index for e in evidence_in(value)), default=-1) >= boundary
+
+    related = {field}
+    if field == "direction":
+        context.interests = [v for v in context.interests if current(v)]
+        context.goals = [v for v in context.goals if current(v)]
+        if context.target and not current(context.target):
+            context.target = None
+        related.add("target")
+    elif field == "background":
+        context.skills = [v for v in context.skills if current(v)]
+        context.experiences = [v for v in context.experiences if current(v)]
+        context.completed_courses = [v for v in context.completed_courses if current(v)]
+        related.update(a.field for a in context.answers if a.field.startswith("skills."))
+    elif field == "target":
+        if context.target and not current(context.target):
+            context.target = None
+        context.goals = [v for v in context.goals if current(v)]
+    elif field in ("time_window", "modality"):
+        if not current(getattr(context.constraints, field)):
+            setattr(context.constraints, field, None)
+    elif field == "program":
+        if not current(context.program):
+            context.program = None
+    elif field == "preferences":
+        context.constraints.additional_preferences = [
+            v for v in context.constraints.additional_preferences if current(v)
+        ]
+    elif field.startswith("skills."):
+        context.skills = [v for v in context.skills if v.name.casefold() != field[7:] or current(v)]
+    context.answers = [
+        a for a in context.answers if a.field not in related or latest(a) >= boundary
+    ]
+
+
 @dataclass
 class RequestInformation:
     context: RetrievalContext
@@ -239,6 +282,14 @@ def request_information(
 ) -> RequestInformation:
     """Rebuild answers from evidence and explicit edits, including clearing old facts."""
     context = context.model_copy(deep=True)
+    for index, message in enumerate(messages):
+        if message.edit:
+            # Unknown target refinement keeps the existing company; a provided
+            # replacement must not retain the previous target.
+            if message.edit.field == "target" and message.edit.status != "provided":
+                continue
+            boundary = index if message.edit.status == "provided" else index + 1
+            prune_before_edit(context, message.edit.field, boundary)
     answers = derived_answers(context)
     explicit = [*context.answers, *explicit_short_answers(messages)]
     for index, message in enumerate(messages):
@@ -271,6 +322,14 @@ def request_information(
             supported = SupportedText(value=answer.value, evidence=answer.evidence)
             if answer.field == "direction":
                 context.interests = [supported]
+            elif answer.field == "target" and context.target is None:
+                context.interests.append(supported)
+                answers["direction"] = StudentAnswer(
+                    field="direction",
+                    status="provided",
+                    value=answer.value,
+                    evidence=answer.evidence,
+                )
             elif answer.field == "background":
                 context.experiences = [supported]
             elif answer.field in ("time_window", "modality"):

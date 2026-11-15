@@ -351,3 +351,27 @@ async def test_provider_structured_output_preserves_explicit_absence(provider: s
     assert response.information.ready
     assert response.information.fields[0].status == "none"
     assert "not personalized" in response.message
+
+
+def test_edit_removes_old_target_even_when_extraction_includes_new_interest() -> None:
+    from trojan_compass.contracts import Target
+
+    messages = [
+        user("I like robotics and want Synthetic Company"),
+        ChatMessage(role="assistant", content="Synthetic reply"),
+        user(
+            "Update my direction: I prefer music",
+            InformationEdit(field="direction", status="provided", value="I prefer music"),
+        ),
+    ]
+    context = RetrievalContext(
+        interests=[
+            SupportedText(value="robotics", evidence=said("robotics")),
+            SupportedText(value="music", evidence=said("music", 2)),
+        ],
+        target=Target(kind="company", name="Synthetic Company", evidence=said("Synthetic Company")),
+    )
+    info = request_information(context, messages)
+    assert info.context.target is None
+    assert [i.value for i in info.context.interests] == ["music"]
+    assert info.answer("direction").value == "I prefer music"
