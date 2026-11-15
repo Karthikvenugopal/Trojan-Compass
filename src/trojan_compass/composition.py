@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from pydantic import SecretStr
 
 from trojan_compass.api import AppMode, configured_extractor, create_app
+from trojan_compass.catalog import CatalogIndex, CatalogRecommendationService
 from trojan_compass.contracts import (
     ContextExtractor,
     RecommendationRequest,
@@ -34,6 +35,10 @@ SEED_NOTICE = (
     "Using a reviewed USC seed snapshot, not a live database or enrollment feed. "
     "Some skill links are inferred. Event dates recorded only as dates are not shown as times."
 )
+CATALOG_SEED_NOTICE = (
+    "Courses come from a snapshot of USC's public Schedule of Classes; events come from a "
+    "small reviewed seed. Neither is a live enrollment feed."
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,7 @@ class RuntimeSettings:
     neo4j_username: str = ""
     neo4j_password: SecretStr = SecretStr("")
     neo4j_database: str = "neo4j"
+    catalog_path: Path | None = None
 
     @classmethod
     def from_environment(cls) -> "RuntimeSettings":
@@ -53,7 +59,11 @@ class RuntimeSettings:
         if mode not in ("demo", "diagnostic", "campus", "production"):
             raise ValueError("COMPASS_MODE must be demo, diagnostic, campus or production")
         seed_path = os.getenv("COMPASS_SEED_PATH")
+        catalog = os.getenv("COMPASS_CATALOG_PATH")
+        default_catalog = Path(__file__).resolve().parents[2] / "data" / "usc" / "catalog.json"
+        catalog_path = Path(catalog) if catalog else default_catalog
         return cls(
+            catalog_path=catalog_path if catalog_path.is_file() else None,
             mode=cast(AppMode, mode),
             seed_path=Path(seed_path) if seed_path else None,
             neo4j_uri=os.getenv("NEO4J_URI", ""),
@@ -144,11 +154,16 @@ def create_configured_app(
 
         lifespan = close_graph
     notices = (SEED_NOTICE, COVERAGE_NOTICE) if settings.mode == "campus" else (COVERAGE_NOTICE,)
+    service: RecommendationService = ExplorationRecommendationService(
+        RecommendationEngine(graph), graph
+    )
+    if settings.mode == "campus" and settings.catalog_path is not None:
+        # Shared public catalog, loaded once at startup (never per student request).
+        service = CatalogRecommendationService(service, CatalogIndex.load(settings.catalog_path))
+        notices = (CATALOG_SEED_NOTICE,)
     return create_app(
         mode=settings.mode,
         extractor=extractor,
-        recommendations=CoverageRecommendationService(
-            ExplorationRecommendationService(RecommendationEngine(graph), graph), notices
-        ),
+        recommendations=CoverageRecommendationService(service, notices),
         lifespan=lifespan,
     )

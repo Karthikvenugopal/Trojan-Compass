@@ -130,6 +130,24 @@ source semantics when returning actions. The UI exposes unknowns and coverage
 limitations; consult [graph limitations](docs/GRAPH_INTEGRATION.md). Missing matches
 are not evidence that USC lacks suitable opportunities.
 
+## Full USC course catalog
+
+`python scripts/fetch_usc_catalog.py` downloads every school and program from USC's
+public Schedule of Classes API (`https://classes.usc.edu/api`, no login) for Spring 2026,
+Fall 2026 and Spring 2027 (`--terms` to change), covering undergraduate, graduate and
+doctoral courses in all schools. It writes `data/usc/catalog.json`: one record per course
+with official title, description, recommended preparation, prerequisites, restrictions,
+units, level, schools/programs, and per-term sections, seats, modes, instructors and
+syllabus links. Raw responses are cached in the git-ignored `data/raw/` so an
+interrupted run resumes. Requests are sequential with a delay.
+
+In `campus` mode the server loads this catalog at startup (or `COMPASS_CATALOG_PATH`).
+When the curated graph has no skill-link match, it ranks catalog courses by BM25 over
+their official title/description/prep against what the student said. Each card quotes
+the matched description sentence and links the official listing. Matching is lexical:
+it does not infer mastery, check eligibility or D-clearance, and seats are as of the
+fetch time. Re-run the script to refresh.
+
 ## Behavior and limits
 
 - Requests allow 1–64 messages, 1–4000 characters each, 24000 characters total,

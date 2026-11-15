@@ -1,6 +1,7 @@
 """Validated request-local extraction. No provider threads or mutable conversation state."""
 
 import json
+import re
 from typing import Any
 
 import httpx
@@ -47,14 +48,36 @@ experience level (background), availability (time_window) or delivery format
 (modality) necessary to fit their request. Cite that request. Do not invent
 requirements for ordinary browsing. Apply later changes to the request too.
 Each fact must cite a short exact quote from a user message and its zero-based
-message_index in the original array. Do not put names/contact details or irrelevant
-sensitive information in context. Omit unsupported fields. Return empty lists/null
-for unavailable information. Quotes support the claimed value AND skill status.
+message_index in the original array. Copy one contiguous span verbatim; never
+abbreviate it with "..." or change its wording or capitalization. Do not put
+names/contact details or irrelevant sensitive information in context. Omit
+unsupported fields. Return empty lists/null for unavailable information. Quotes
+support the claimed value AND skill status.
 """
 
 
 class ExtractionFailure(Exception):
     """Safe boundary exception; never include provider payloads or student content."""
+
+
+def quoted(quote: str, content: str) -> bool:
+    """Exact substring, or an ellipsis-abbreviated quote whose parts appear in order.
+
+    Models sometimes shorten long quotes as "start ... end". Each non-empty part must
+    still be verbatim student text, so provenance stays mechanically checked.
+    """
+    if quote in content:
+        return True
+    parts = [p.strip() for p in re.split(r"\.\.\.|…", quote)]
+    if len(parts) < 2 or not any(parts):
+        return False
+    position = 0
+    for part in filter(None, parts):
+        found = content.find(part, position)
+        if found < 0:
+            return False
+        position = found + len(part)
+    return True
 
 
 def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) -> None:
@@ -65,7 +88,7 @@ def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) ->
             if value.message_index >= len(messages):
                 raise ExtractionFailure()
             message = messages[value.message_index]
-            if message.role != "user" or value.quote not in message.content:
+            if message.role != "user" or not quoted(value.quote, message.content):
                 raise ExtractionFailure()
         elif isinstance(value, BaseModel):
             for name in type(value).model_fields:
