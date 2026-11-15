@@ -19,11 +19,12 @@ from trojan_compass.contracts import (
     RecommendationService,
 )
 from trojan_compass.cors import configured_origins, validate_origins
+from trojan_compass.diagnostics import dummy_response
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
 from trojan_compass.gemini import GeminiContextExtractor
 from trojan_compass.services import ChatService, ChatUnavailable, DemoRecommendationService
 
-AppMode = Literal["demo", "campus", "production"]
+AppMode = Literal["demo", "diagnostic", "campus", "production"]
 
 
 class PrivateBoundary:
@@ -119,7 +120,7 @@ def create_app(
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
-    if mode != "demo" and (extractor is None or recommendations is None):
+    if mode not in ("demo", "diagnostic") and (extractor is None or recommendations is None):
         raise ValueError("Production requires an extractor and real RecommendationService")
     service = ChatService(
         extractor or DemoContextExtractor(),
@@ -180,7 +181,14 @@ def create_app(
 
     @app.post("/api/chat", response_model=ChatResponse)
     async def chat(request: ChatRequest) -> ChatResponse:
+        if mode == "diagnostic":
+            return dummy_response()
         return await service.chat(request)
+
+    @app.get("/api/diagnostics/dummy", response_model=ChatResponse)
+    async def diagnostic_dummy() -> ChatResponse:
+        # No request content is read by a provider or retrieval dependency here.
+        return dummy_response()
 
     @app.get("/health")
     async def health() -> dict[str, str]:

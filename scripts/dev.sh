@@ -3,6 +3,11 @@
 set -euo pipefail
 compass_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$compass_root"
+case "${1:-}" in
+  --diagnostic) export COMPASS_MODE=diagnostic ;;
+  "") ;;
+  *) echo 'Usage: bash scripts/dev.sh [--diagnostic]' >&2; exit 2 ;;
+esac
 
 if [[ ! -f .env ]]; then
   echo 'Missing backend .env configuration.' >&2
