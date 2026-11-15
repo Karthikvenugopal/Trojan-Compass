@@ -163,7 +163,13 @@ def test_environment_factory_uses_real_campus_path(monkeypatch: pytest.MonkeyPat
             "/api/chat",
             json={
                 "messages": [
-                    {"role": "user", "content": "Show me campus events"},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Show me campus events; I want to be a Software developer. "
+                            "I haven't learned Computer programming yet."
+                        ),
+                    },
                 ]
             },
         )
@@ -277,7 +283,13 @@ def test_owned_database_adapter_closes_and_never_imports_during_chat(
             "/api/chat",
             json={
                 "messages": [
-                    {"role": "user", "content": "Show me campus events"},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Show me campus events; I want to be a Software developer. "
+                            "I haven't learned Computer programming yet."
+                        ),
+                    },
                 ]
             },
         )

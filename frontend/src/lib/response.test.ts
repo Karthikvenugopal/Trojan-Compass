@@ -37,3 +37,15 @@ it.each([
 ])('rejects unsafe or unrenderable nested card fields', patch => {
   expect(() => decodeResponse(response([{ ...validCard, ...patch }]))).toThrow('unreadable response');
 });
+
+it.each([
+  { field: 'direction', status: 'provided', value: null },
+  { field: 'direction', status: 'none', value: 'invented' },
+  { field: 'unsupported', status: 'unknown', value: null },
+])('rejects malformed information snapshots', patch => {
+  expect(() => decodeResponse({ message: 'Synthetic', suggested_replies: [], limitations: [], recommendations: [],
+    information: { ready: true, missing_fields: [], fields: [
+      { label: 'Synthetic field', category: 'fixed', required: true, ...patch },
+    ] },
+  })).toThrow('unreadable response');
+});

@@ -90,6 +90,21 @@ jobs:
               assert reply.status_code == 200
               assert reply.json()['recommendations']
               assert reply.headers['cache-control'] == 'no-store'
+              first = client.post('http://127.0.0.1:5173/api/chat', json={
+                  'messages': [{'role': 'user', 'content': 'Hi'}],
+              }).json()
+              assert first['recommendations'] == []
+              assert first['information']['missing_fields'] == ['direction']
+              corrected = client.post('http://127.0.0.1:5173/api/chat', json={
+                  'messages': [
+                      {'role': 'user', 'content': 'Hi'},
+                      {'role': 'assistant', 'content': first['message']},
+                      {'role': 'user', 'content': 'Update my direction: programming.',
+                       'edit': {'field': 'direction', 'status': 'provided', 'value': 'programming'}},
+                  ],
+              }).json()
+              assert corrected['information']['ready']
+              assert corrected['recommendations']
           print('Actual frontend, backend and proxied chat request passed.')
           PY
           kill -TERM "$launcher_pid"

@@ -1,0 +1,13 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Update my interests or direction: I enjoy building websites.",
+      "edit": {
+        "field": "direction",
+        "status": "provided",
+        "value": "I enjoy building websites."
+      }
+    }
+  ]
+}

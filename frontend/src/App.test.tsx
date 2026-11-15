@@ -179,3 +179,41 @@ it('preserves source review dates in a Pacific browser timezone', async () => {
     expect(await screen.findByText('Checked Nov 14, 2026')).toBeInTheDocument();
   } finally { vi.unstubAllEnvs(); }
 });
+
+it('carries panel corrections in history, retries them intact and clears on Start over', async () => {
+  const user = userEvent.setup();
+  const snapshot = (value: string): ChatResponse => ({ ...result('Synthetic response', []), information: {
+    ready: true, missing_fields: [], fields: [
+      { field: 'direction', label: 'Interests or direction', category: 'fixed', required: true, status: 'provided', value },
+    ],
+  } });
+  const send = vi.fn<ChatApi['send']>()
+    .mockResolvedValueOnce(snapshot('I like robotics.'))
+    .mockRejectedValueOnce(new ChatApiError('Temporary edit failure', 503))
+    .mockResolvedValueOnce(snapshot('I prefer music.'))
+    .mockResolvedValueOnce(snapshot('I prefer music.'));
+  const storage = vi.spyOn(Storage.prototype, 'setItem');
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'I like robotics.{Enter}');
+  await screen.findByText('Synthetic response');
+  await user.click(screen.getByRole('button', { name: /What I’m using/ }));
+  const sentence = screen.getByRole('textbox', { name: 'Interests or direction answer' });
+  await user.clear(sentence);
+  await user.type(sentence, 'I prefer music.');
+  await user.click(screen.getByRole('button', { name: 'Save interests or direction' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Temporary edit failure');
+  const expectedEdit = { field: 'direction', status: 'provided', value: 'I prefer music.' };
+  expect(send.mock.calls[1]?.[0].messages.at(-1)?.edit).toEqual(expectedEdit);
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByRole('textbox', { name: 'Interests or direction answer' })).toHaveValue('I prefer music.');
+  expect(send.mock.calls[2]?.[0]).toEqual(send.mock.calls[1]?.[0]);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'Continue{Enter}');
+  expect(send.mock.calls[3]?.[0].messages.filter(message => message.edit)).toHaveLength(1);
+  await user.click(screen.getByRole('button', { name: 'Start over' }));
+  expect(screen.getByRole('button', { name: /What I’m using/ })).toHaveAttribute('aria-expanded', 'false');
+  await user.click(screen.getByRole('button', { name: /What I’m using/ }));
+  expect(screen.getByRole('combobox', { name: 'Interests or direction' })).toHaveValue('not_answered');
+  expect(screen.queryByRole('textbox', { name: 'Interests or direction answer' })).not.toBeInTheDocument();
+  expect(storage).not.toHaveBeenCalled();
+  storage.mockRestore();
+});

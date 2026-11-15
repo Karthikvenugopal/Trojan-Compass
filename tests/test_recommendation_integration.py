@@ -101,7 +101,7 @@ async def test_not_sure_reply_gets_broad_options_instead_of_the_same_question() 
     )
     assert second.recommendations, "after 'not sure' the student still gets starting points"
     assert second.suggested_replies == []
-    assert second.message == "Here are campus options with supporting sources below."
+    assert "general campus starting points" in second.message
 
     fresh = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content="Hello")]))
     assert fresh.recommendations == [], "another request must not inherit discovery progress"
@@ -113,18 +113,18 @@ async def test_vague_opening_asks_before_showing_graph_events(opening: str) -> N
     service = ChatService(ContextExtractorStub(RetrievalContext()), engine())
     response = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content=opening)]))
     assert not response.recommendations
-    assert "enjoy" in response.message
+    assert "interests" in response.message
     assert len(response.suggested_replies) > 1
-    assert any("sure" in option for option in response.suggested_replies)
+    assert any("know" in option for option in response.suggested_replies)
     assert not response.limitations  # No notices referring to unshown broad cards.
 
 
 @pytest.mark.parametrize("query", ["Show me campus events", "Find introductory courses"])
-async def test_explicit_browsing_can_get_graph_results_immediately(query: str) -> None:
+async def test_browsing_without_a_direction_still_requires_an_answer(query: str) -> None:
     service = ChatService(ContextExtractorStub(RetrievalContext()), engine())
     response = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content=query)]))
-    assert response.recommendations
-    assert all(resource.sources for resource in response.recommendations)
+    assert not response.recommendations
+    assert response.information.missing_fields == ["direction"]
 
 
 async def test_skill_question_path_is_understood_by_ask_back_policy() -> None:

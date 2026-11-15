@@ -3,9 +3,10 @@ import { Compass, RotateCcw, ShieldCheck, SquarePen } from 'lucide-react';
 import { ChatMessageView } from './components/ChatMessageView';
 import { MessageComposer } from './components/MessageComposer';
 import { Welcome } from './components/Welcome';
+import { InformationPanel } from './components/InformationPanel';
 import { chatApi, ChatApiError, isMockMode } from './lib/api';
 import type { ChatApi } from './lib/api';
-import type { ChatMessage, DisplayMessage } from './types';
+import type { ChatMessage, DisplayMessage, InformationEdit, InformationSnapshot } from './types';
 import { decodeResponse } from './lib/response';
 import './styles.css';
 
@@ -14,7 +15,7 @@ interface AppProps {
   mockMode?: boolean;
 }
 
-const INTRO = 'Welcome to Trojan Compass. Tell me what you’re interested in, what you’ve tried, or where you hope to go. We can figure out a useful next step together.';
+const INTRO = 'Welcome to Trojan Compass. A direction and a little about your skills or experience help me find a useful fit. You can say you don’t know or have none. I’ll ask only the extra questions your request needs.';
 
 export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -24,21 +25,24 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
   const [error, setError] = useState<ChatApiError | null>(null);
   const [status, setStatus] = useState('');
   const [ended, setEnded] = useState(false);
+  const [information, setInformation] = useState<InformationSnapshot | null>(null);
+  const [failedEdit, setFailedEdit] = useState<InformationEdit | null>(null);
   const busyRef = useRef(false);
   const generationRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
-  async function sendMessage(rawText: string = draft) {
+  async function sendMessage(rawText: string = draft, edit?: InformationEdit) {
     const content = rawText.trim();
     if (!content || busyRef.current || ended) return;
 
-    const history: ChatMessage[] = messages.map(({ role, content: messageContent }) => ({ role, content: messageContent }));
-    const requestMessages: ChatMessage[] = [...history, { role: 'user', content }];
+    const history: ChatMessage[] = messages.map(({ role, content: messageContent, edit: priorEdit }) => ({ role, content: messageContent, ...(priorEdit ? { edit: priorEdit } : {}) }));
+    const requestMessages: ChatMessage[] = [...history, { role: 'user', content, ...(edit ? { edit } : {}) }];
     const charCount = requestMessages.reduce((total, item) => total + Array.from(item.content).length, 0);
     const bodyBytes = new TextEncoder().encode(JSON.stringify({ messages: requestMessages })).byteLength;
     if (requestMessages.length > 64 || requestMessages.some((item) => Array.from(item.content).length > 4000) || charCount > 24000 || bodyBytes > 65536) {
       setError(new ChatApiError('This conversation reached the API size limit. Start a fresh chat to continue; nothing was sent or truncated.', 422, 'conversation_too_large'));
       setDraft(content);
+      setFailedEdit(edit ?? null);
       setStatus('Conversation is too long. Start a fresh chat to continue.');
       return;
     }
@@ -57,7 +61,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
       const rawResponse: unknown = await api.send({ messages: requestMessages }, controller.signal);
       if (requestGeneration !== generationRef.current || controller.signal.aborted) return;
       const response = decodeResponse(rawResponse);
-      const userMessage: DisplayMessage = { id: createId(), role: 'user', content };
+      const userMessage: DisplayMessage = { id: createId(), role: 'user', content, ...(edit ? { edit } : {}) };
       const assistantMessage: DisplayMessage = {
         id: createId(), role: 'assistant', content: response.message,
         recommendations: response.recommendations,
@@ -65,6 +69,8 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         suggested_replies: response.suggested_replies,
       };
       setMessages((current) => [...current, userMessage, assistantMessage]);
+      setInformation(response.information ?? null);
+      setFailedEdit(null);
       setDraft('');
       setError(null);
       setStatus('New response received.');
@@ -75,6 +81,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         : new ChatApiError('Something went wrong. Your message is still here; please retry.', 0);
       setError(apiError);
       setDraft(content);
+      setFailedEdit(edit ?? null);
       setStatus('Message was not sent. Your text is available to retry.');
     } finally {
       if (requestGeneration === generationRef.current) {
@@ -92,6 +99,8 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
     abortRef.current = null;
     busyRef.current = false;
     setMessages([]);
+    setInformation(null);
+    setFailedEdit(null);
     setDraft('');
     setPendingText(null);
     setLoading(false);
@@ -106,6 +115,8 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
     abortRef.current = null;
     busyRef.current = false;
     setMessages([]);
+    setInformation(null);
+    setFailedEdit(null);
     setDraft('');
     setPendingText(null);
     setLoading(false);
@@ -167,14 +178,22 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
               <div><b>{isOversized ? 'Let’s start fresh' : 'We couldn’t send that yet'}</b><p>{error.message}</p></div>
               {isOversized
                 ? <button type="button" className="secondary-button" onClick={startFresh}>Start a fresh chat</button>
-                : <button type="button" className="secondary-button" onClick={() => void sendMessage(draft)} disabled={loading || !draft.trim()}>Retry</button>}
+                : <button type="button" className="secondary-button" onClick={() => void sendMessage(draft, failedEdit ?? undefined)} disabled={loading || !draft.trim()}>Retry</button>}
             </div>
           )}
 
           {ended && <div className="ended-note"><b>Chat ended.</b> Your conversation and draft were cleared from this page. Refreshing also starts a new conversation. This does not control external model-provider retention.</div>}
 
-          {!ended && <MessageComposer value={draft} onChange={setDraft} onSubmit={() => void sendMessage()} disabled={loading} />}
+          {!ended && <MessageComposer value={draft} onChange={value => { setDraft(value); setFailedEdit(null); }} onSubmit={() => void sendMessage(draft, failedEdit ?? undefined)} disabled={loading} />}
         </section>
+
+        {!ended && <InformationPanel key={generationRef.current} information={information}
+          disabled={loading || draft.trim().length > 0}
+          onSave={(edit, label) => {
+            const answer = edit.status === 'provided' ? edit.value
+              : edit.status === 'unknown' ? 'I don’t know' : edit.status === 'none' ? 'None' : 'Not answered';
+            void sendMessage(`Update my ${label.toLowerCase()}: ${answer}`, edit);
+          }} />}
 
         <p className="privacy-note">No login or profile needed. Your conversation stays in this page’s memory and clears when you end the chat or refresh.</p>
         <div className="new-chat-row"><button type="button" className="subtle-button" onClick={startFresh} disabled={!conversationStarted && !draft}><RotateCcw size={14} aria-hidden="true" /> Start over</button></div>

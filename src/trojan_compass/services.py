@@ -1,7 +1,6 @@
 """Dependency-injected orchestration; services retain dependencies, never student state."""
 
 import asyncio
-import re
 
 from trojan_compass.contracts import (
     ChatMessage,
@@ -18,6 +17,7 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
+from trojan_compass.readiness import CHECKLIST_HINT, request_information, retrieval_query
 
 
 class ChatUnavailable(Exception):
@@ -27,34 +27,14 @@ class ChatUnavailable(Exception):
 class AskBackPolicy:
     """Defer discovery to graph retrieval; filter questions already answered by context."""
 
-    def prioritize_discovery(
-        self, question: Clarification, context: RetrievalContext, query: str
-    ) -> bool:
-        """A vague opening gets a question before broad cards, not a questionnaire.
-
-        Explicit browsing requests and supported background can use provisional
-        results immediately. Repeat questions are already removed by choose(),
-        so an unsure answer can progress to broad options on the next request.
-        """
-        return (
-            question.requested_fields == ["interests"]
-            and not any(
-                (
-                    context.interests,
-                    context.target,
-                    context.skills,
-                    context.experiences,
-                    context.completed_courses,
-                    context.goals,
-                )
-            )
-            and not re.search(
-                r"\b(courses?|class(?:es)?|events?|workshops?|meetups?|talks?|"
-                r"panels?|hackathons?|starting points?|options|recommendations)\b",
-                query,
-                re.IGNORECASE,
-            )
-        )
+    def field(self, question: Clarification) -> str | None:
+        field = question.requested_fields[0]
+        field = "direction" if field == "interests" else field.removeprefix("constraints.")
+        if field in ("direction", "background", "target", "time_window", "modality"):
+            return field
+        if field.startswith("skills.") and 0 < len(field[7:]) <= 100:
+            return field
+        return None
 
     def choose(
         self,
@@ -64,26 +44,13 @@ class AskBackPolicy:
     ) -> Clarification | None:
         if question is None:
             return None
-        # A prior identical question has already had its chance, including "not sure".
-        if any(m.role == "assistant" and question.text in m.content for m in messages):
+        field = self.field(question)
+        if field is None:
             return None
-        path = question.requested_fields[0].split(".")
-        if path[0] == "skills" and len(path) == 2:
-            answered = context.skill_status(path[1]) != "unknown"
-        elif path[0] == "constraints" and len(path) == 2:
-            answered = path[1] in type(context.constraints).model_fields and bool(
-                getattr(context.constraints, path[1]),
-            )
-        elif path == ["target"]:
-            # Retrieval may need to disambiguate a supplied name or narrow a company
-            # to one role. A non-empty target alone does not answer that question.
-            answered = False
-        elif len(path) == 1 and path[0] in type(context).model_fields:
-            answered = bool(getattr(context, path[0]))
-        else:
-            # Do not forward questions requesting arbitrary data or unsupported fields.
-            return None
-        return None if answered else question
+        information = request_information(context, messages)
+        # Merely asking before is not evidence of an answer. Explicit unknown/none
+        # resolves the question without claiming that the student has a skill.
+        return question if information.answer(field).status == "not_answered" else None
 
 
 class ChatService:
@@ -105,58 +72,72 @@ class ChatService:
                     (await self._extractor.extract(request.messages)).model_dump(),
                 )
                 validate_evidence(context, request.messages)
+                information = request_information(context, request.messages)
+                context = information.context
+                opening_question = information.missing_question()
+                if opening_question is not None:
+                    return ChatResponse(
+                        message=f"{opening_question.text}\n\n{CHECKLIST_HINT}",
+                        suggested_replies=opening_question.options,
+                        information=information.snapshot(),
+                    )
                 retrieval_request = RecommendationRequest(
                     context=context,
-                    user_query=request.messages[-1].content,
+                    user_query=retrieval_query(request.messages),
                 )
                 result = RecommendationResult.model_validate(
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
                 )
+                if result.clarification is not None:
+                    required_field = self._policy.field(result.clarification)
+                    if required_field is not None:
+                        information.require(required_field)
                 question = self._policy.choose(result.clarification, context, request.messages)
-                if (
-                    result.recommendations
-                    and question is not None
-                    and self._policy.prioritize_discovery(
-                        question, context, retrieval_request.user_query
+                if question is not None:
+                    options = list(question.options)
+                    if not any(
+                        "know" in option.casefold() or "sure" in option.casefold()
+                        for option in options
+                    ):
+                        options = options[:5] + ["I don't know"]
+                    return ChatResponse(
+                        message=question.text,
+                        suggested_replies=options,
+                        information=information.snapshot(),
                     )
-                ):
-                    # The graph's broad candidates are not personal matches. Keep
-                    # discovery focused until the student responds or asks to browse.
-                    options = list(question.options) or [
-                        "Building things",
-                        "Understanding people",
-                        "Solving problems",
-                    ]
-                    if not any("sure" in option.casefold() for option in options):
-                        options = options[:5] + ["I’m not sure — show broad starting points"]
-                    return ChatResponse(message=question.text, suggested_replies=options)
                 recommendations = result.recommendations[: retrieval_request.limit]
                 limitations = list(result.limitations)
-                if result.clarification and question is None:
+                unavailable = [
+                    field.label
+                    for field in information.snapshot().fields
+                    if field.status in ("unknown", "none") and field.required
+                ]
+                if unavailable:
                     limitations.append(
-                        "A redundant or unsupported clarification was omitted; "
-                        "some retrieval details may remain uncertain.",
+                        "You indicated no usable information for: "
+                        + ", ".join(unavailable)
+                        + ". Suggestions cannot be matched to those details."
                     )
                 if recommendations:
-                    message = "Here are campus options with supporting sources below."
-                    if question:
-                        message = question.text
-                elif question:
-                    message = question.text
+                    if information.answer("direction").status in ("unknown", "none"):
+                        message = (
+                            "You don't have a direction to share yet. These are general campus "
+                            "starting points, not personalized matches."
+                        )
+                    else:
+                        message = "Here are campus options with supporting sources below."
                 else:
                     message = (
                         "I couldn’t find supported matches for this request. "
                         "You can try a broader topic or another course or event preference."
                     )
-                options = list(question.options) if question else []
-                if question and not any("sure" in option.casefold() for option in options):
-                    options = options[:5] + ["I’m not sure — show broad starting points"]
                 # Composition is deterministic: retrieved text is never executed or reprompted.
                 return ChatResponse(
                     message=message,
-                    suggested_replies=options,
+                    suggested_replies=[],
                     recommendations=recommendations,
                     limitations=limitations,
+                    information=information.snapshot(),
                 )
         except Exception:
             raise ChatUnavailable() from None
@@ -172,7 +153,16 @@ class DemoRecommendationService:
             "Current enrollment and eligibility are unverified.",
         ]
         query = request.user_query.casefold()
-        if any(word in query for word in ("program", "course", "sure", "starting point")):
+        general = any(
+            answer.field == "direction" and answer.status in ("unknown", "none")
+            for answer in request.context.answers
+        )
+        programming = any(i.value.casefold() == "programming" for i in request.context.interests)
+        if (
+            general
+            or programming
+            or any(word in query for word in ("program", "course", "sure", "starting point"))
+        ):
             return RecommendationResult(
                 recommendations=[
                     Recommendation(

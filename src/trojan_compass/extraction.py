@@ -18,6 +18,24 @@ constraints. Do not infer skills from completed courses or experience, or infer
 missing skills from absence. Only an explicit statement of ability warrants known;
 learning means currently learning, not_yet_learned requires explicit lack of study;
 otherwise unknown. No direction is a valid starting point; do not invent a target.
+Also populate answers: direction summarizes interests/goals/target; background
+summarizes explicitly stated skills, experience and coursework. Values are short
+sentences in the student's terms. A field starts not_answered with value=null.
+Optional program and preferences answers summarize the program/major and other
+explicit constraints. They are not required merely because they are absent.
+An explicit 'I don't know' or refusal is unknown; explicit absence/no preference
+is none. Those states have value=null and MUST cite the student's statement.
+Do not mark an unanswered field unknown merely because an assistant asked it.
+An explicit zero-experience answer is none for background, not a claim about
+individual skill mastery. For a specific skill use field='skills.<casefolded name>'.
+Preserve explicit unknown/none answers across turns until the student corrects them.
+The student may attach a typed edit to a user message. Apply it as a correction:
+not_answered clears previous facts for that field; unknown/none also remove old
+claims; provided replaces them. Continue extracting other unaffected facts.
+Populate requested_context ONLY when the student's current request makes their
+experience level (background), availability (time_window) or delivery format
+(modality) necessary to fit their request. Cite that request. Do not invent
+requirements for ordinary browsing. Apply later changes to the request too.
 Each fact must cite a short exact quote from a user message and its zero-based
 message_index in the original array. Do not put names/contact details or irrelevant
 sensitive information in context. Omit unsupported fields. Return empty lists/null
@@ -49,6 +67,12 @@ def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) ->
     visit(context)
     names = [skill.name.casefold() for skill in context.skills]
     if len(names) != len(set(names)):
+        raise ExtractionFailure()
+    fields = [answer.field for answer in context.answers]
+    if len(fields) != len(set(fields)):
+        raise ExtractionFailure()
+    requirements = [requirement.field for requirement in context.requested_context]
+    if len(requirements) != len(set(requirements)):
         raise ExtractionFailure()
 
 
@@ -148,4 +172,18 @@ class DemoContextExtractor:
     """Offline demo deliberately extracts nothing rather than pretending to understand facts."""
 
     async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
+        # Explicit fixture topic only; this is not a general language extractor.
+        for index in range(len(messages) - 1, -1, -1):
+            message = messages[index]
+            if message.role == "user" and "programming" in message.content.casefold():
+                from trojan_compass.contracts import SupportedText
+
+                return RetrievalContext(
+                    interests=[
+                        SupportedText(
+                            value="programming",
+                            evidence=[StudentStatement(message_index=index, quote=message.content)],
+                        )
+                    ]
+                )
         return RetrievalContext()

@@ -3,20 +3,57 @@
 from datetime import datetime
 from typing import Annotated, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 Text = Annotated[str, Field(min_length=1, max_length=4000, strict=True)]
 SkillStatus = Literal["known", "learning", "not_yet_learned", "unknown"]
 MAX_BODY_BYTES = 65536
+InformationKey = Annotated[
+    str,
+    Field(
+        max_length=120,
+        pattern=r"^(direction|background|program|preferences|time_window|modality|target|skills\..{1,100})$",
+    ),
+]
+AnswerStatus = Literal["not_answered", "unknown", "none", "provided"]
 
 
 class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
+class InformationEdit(Contract):
+    """An explicit student correction carried in a user turn, never stored server-side."""
+
+    field: InformationKey
+    status: AnswerStatus
+    value: Annotated[str, Field(min_length=1, max_length=1000)] | None = None
+
+    @field_validator("field")
+    @classmethod
+    def canonical_field(cls, value: str) -> str:
+        return value.casefold()
+
+    @model_validator(mode="after")
+    def consistent(self) -> Self:
+        if (self.status == "provided") != (self.value is not None):
+            raise ValueError("Only a provided answer has a text value")
+        return self
+
+
 class ChatMessage(Contract):
     role: Literal["user", "assistant"]
     content: Text
+    edit: InformationEdit | None = None
+
+    @model_validator(mode="after")
+    def student_edit(self) -> Self:
+        if self.role != "user" and self.edit is not None:
+            raise ValueError("Only student messages can carry information edits")
+        if self.edit is not None and self.edit.value is not None:
+            if self.edit.value not in self.content:
+                raise ValueError("The correction sentence must be present in the student message")
+        return self
 
 
 class ChatRequest(Contract):
@@ -38,6 +75,23 @@ class StudentStatement(Contract):
 
 class SupportedText(Contract):
     value: Text
+    evidence: list[StudentStatement] = Field(min_length=1, max_length=8)
+
+
+class StudentAnswer(InformationEdit):
+    evidence: list[StudentStatement] = Field(default_factory=list, max_length=8)
+
+    @model_validator(mode="after")
+    def supported(self) -> Self:
+        if self.status != "not_answered" and not self.evidence:
+            raise ValueError("An answered field requires student evidence")
+        return self
+
+
+class ContextRequirement(Contract):
+    """Additional information explicitly made material by the student's request."""
+
+    field: Literal["background", "time_window", "modality"]
     evidence: list[StudentStatement] = Field(min_length=1, max_length=8)
 
 
@@ -69,6 +123,8 @@ class RetrievalContext(Contract):
     goals: list[SupportedText] = Field(default_factory=list)
     target: Target | None = None
     constraints: Constraints = Field(default_factory=Constraints)
+    answers: list[StudentAnswer] = Field(default_factory=list, max_length=32)
+    requested_context: list[ContextRequirement] = Field(default_factory=list, max_length=3)
 
     def skill_status(self, name: str) -> SkillStatus:
         return next(
@@ -151,8 +207,23 @@ class ContextExtractor(Protocol):
         ...
 
 
+class InformationField(InformationEdit):
+    label: Text
+    category: Literal["fixed", "request"]
+    required: bool = False
+
+
+class InformationSnapshot(Contract):
+    """A response view for frontend memory, not a persistent student profile."""
+
+    fields: list[InformationField] = Field(default_factory=list)
+    ready: bool = False
+    missing_fields: list[InformationKey] = Field(default_factory=list)
+
+
 class ChatResponse(Contract):
     message: Text
     suggested_replies: list[Text] = Field(default_factory=list)
     recommendations: list[Recommendation] = Field(default_factory=list)
     limitations: list[Text] = Field(default_factory=list)
+    information: InformationSnapshot = Field(default_factory=InformationSnapshot)
