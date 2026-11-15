@@ -21,6 +21,9 @@ trojan-compass-import = "trojan_compass.ingestion.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/trojan_compass"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"data/seed/usc.json" = "trojan_compass/data/usc.json"
+
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "mypy>=1.15,<3", "ruff>=0.11,<1"]
 

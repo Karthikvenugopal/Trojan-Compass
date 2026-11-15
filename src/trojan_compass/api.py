@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Lifespan, Message, Receive, Scope, Send
 
 from trojan_compass.contracts import (
     MAX_BODY_BYTES,
@@ -19,6 +19,8 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
 from trojan_compass.services import ChatService, ChatUnavailable, DemoRecommendationService
+
+AppMode = Literal["demo", "campus", "production"]
 
 
 class PrivateBoundary:
@@ -108,17 +110,18 @@ def create_app(
     *,
     extractor: ContextExtractor | None = None,
     recommendations: RecommendationService | None = None,
-    mode: Literal["demo", "production"] = "demo",
+    mode: AppMode = "demo",
+    lifespan: Lifespan[FastAPI] | None = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
-    if mode == "production" and (extractor is None or recommendations is None):
+    if mode != "demo" and (extractor is None or recommendations is None):
         raise ValueError("Production requires an extractor and real RecommendationService")
     service = ChatService(
         extractor or DemoContextExtractor(),
         recommendations or DemoRecommendationService(),
     )
-    app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False)
+    app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)
     app.add_middleware(PrivateBoundary)
 
     @app.exception_handler(RequestValidationError)
@@ -172,14 +175,10 @@ def create_app(
 
 
 def app_from_environment() -> FastAPI:
-    mode = os.getenv("COMPASS_MODE", "demo")
-    if mode == "demo":
-        return create_app()
-    if mode != "production":
-        raise ValueError("COMPASS_MODE must be demo or production")
-    # This entrypoint cannot assume an unreviewed or absent graph implementation.
-    # Deployments supply a factory constructing Abishek's adapter and Peri's service.
-    raise ValueError("Use a composition factory injecting the real RecommendationService")
+    from trojan_compass.composition import create_configured_app
+
+    configure_private_logging()
+    return create_configured_app()
 
 
 def configured_extractor() -> OpenAIContextExtractor:

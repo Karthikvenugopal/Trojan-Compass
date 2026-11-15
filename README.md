@@ -37,29 +37,64 @@ OpenAPI is at `/docs`. Shared Pydantic models are in
 Examples use synthetic student statements. `GET /health` reports the configured
 mode. There are no session, resume or LinkedIn ingestion endpoints.
 
-## Production composition
+## Integrated startup
 
-Peri and Abishek's implementations are not present in master or this branch.
-The integration boundary is ready, but live graph integration is pending their
-implementations and contract confirmation; see [the handoff](docs/INTEGRATION.md).
-Construct Abishek's read-only adapter, inject it into Peri's recommendation
-service, then inject that service into the chat app:
+All four workstreams now connect through the v2 contracts. The backend factory
+wires OpenAI extraction → chat orchestration → Peri's `RecommendationEngine` →
+Abishek's graph adapter. Riddhi's frontend sends the entire active in-memory
+conversation to the same `/api/chat` route.
 
-```python
-from trojan_compass.api import configured_extractor, create_app
+| `COMPASS_MODE` | Extraction | Recommendations and graph |
+| --- | --- | --- |
+| `demo` (default) | Offline; extracts no student facts | Existing fixed course fixture, explicitly labeled |
+| `campus` | OpenAI, requires server credentials | Real engine over reviewed USC seed using Abishek's in-memory adapter |
+| `production` | OpenAI, requires server credentials | Real engine over configured Neo4j; never falls back to fixtures |
 
-# Inside your deployment's app factory, after building Peri's service:
-# return create_app(mode="production", extractor=configured_extractor(),
-#                   recommendations=peri_service)
+For the integrated USC seed journey, set `COMPASS_MODE=campus`, `OPENAI_API_KEY`
+and `OPENAI_MODEL` in your server environment. Choose a model supporting strict
+structured outputs, then start the same backend command above. The reviewed seed
+ships inside the wheel and loads at startup only. Optional `COMPASS_SEED_PATH`
+selects a server-owned public graph import file; it is never a student upload.
+No database is needed for campus mode. This is a snapshot, not live campus data.
+
+For production, also set `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` and optional
+`NEO4J_DATABASE` (default `neo4j`). Import public data separately using
+`trojan-compass-import data/seed/usc.json`; the chat server performs no graph
+imports or writes. The factory closes its Neo4j driver on shutdown. Use a
+read-only database account for the chat runtime and a separate importer account.
+Missing configuration fails startup; unavailable dependencies produce safe 503s.
+See [data setup](docs/DATA_IMPORT.md) for database-side parameter logging controls.
+
+For the frontend, in a second terminal:
+
+```sh
+cd frontend
+cp .env.example .env.local
+npm ci
+npm run dev
 ```
 
-Set `OPENAI_API_KEY` and `OPENAI_MODEL` server-side for a model supporting strict
-structured outputs. The extractor uses a typed schema and validates all returned
-facts and quotation provenance. It sends the full conversation as untrusted data
-in one Chat Completions request with `store=false`. No provider conversation IDs,
-threads or previous-response state are used. No live provider call was run during
-implementation, and no API key is needed for tests. `COMPASS_MODE=production` in
-the generic demo factory fails closed; production must use the composition above.
+The example now sets `VITE_USE_MOCK_API=false`, so the frontend uses the real API
+through Vite's same-origin `/api` proxy. To deliberately use frontend-only fixtures,
+set it to `true`. No frontend environment file contains backend/provider credentials.
+The backend `.env.example` documents variables; it is not automatically loaded.
+Configure them in your server environment and restart both servers after changes.
+
+The extractor sends the full conversation as untrusted data in one typed Chat
+Completions request with `store=false`, validates the schema and user-quotation
+provenance, and retains no provider thread or previous-response state. Live model
+accuracy and external retention controls still require account-specific validation.
+No real student data, provider call or live Neo4j database was used for the
+integration tests. HTTP-provider responses and the database lifecycle are mocked;
+the USC seed adapter, engine, chat orchestration and frontend contract are real.
+
+The current seed is small: course identities, a career-event recurrence/occurrence,
+and a general software-developer requirement. It has no company/team requirements
+or verified enrollment availability. Some course-skill links are inferred. The
+current graph model omits date-only event schedules, prerequisite edges and some
+source semantics when returning actions. The UI exposes unknowns and coverage
+limitations; consult [graph limitations](docs/GRAPH_INTEGRATION.md). Missing matches
+are not evidence that USC lacks suitable opportunities.
 
 ## Behavior and limits
 
@@ -124,6 +159,9 @@ pytest -q
 mypy src tests
 ruff check src tests
 ruff format --check src tests
+cd frontend
+npm test
+npm run build
 ```
 
 Tests cover supported evidence, multi-turn payloads and corrected snapshots,

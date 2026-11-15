@@ -44,6 +44,10 @@ class AskBackPolicy:
             answered = path[1] in type(context.constraints).model_fields and bool(
                 getattr(context.constraints, path[1]),
             )
+        elif path == ["target"]:
+            # Retrieval may need to disambiguate a supplied name or narrow a company
+            # to one role. A non-empty target alone does not answer that question.
+            answered = False
         elif len(path) == 1 and path[0] in type(context).model_fields:
             answered = bool(getattr(context, path[0]))
         else:
