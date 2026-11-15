@@ -100,6 +100,11 @@ can receive results immediately. After an unsure answer, broad starting points a
 allowed instead of repeating the same question. This progress is derived only from
 the conversation supplied with each request.
 
+The stricter required behavior is specified in [Ask before recommending](docs/RECOMMENDATION_READINESS.md):
+unanswered information differs from explicitly unavailable information, and cards
+require sufficient supported search context. The current shortcuts described above
+do not yet fully enforce that specification.
+
 Each extractor sends the full conversation as untrusted data in one typed
 request, validates the schema and user-quotation provenance, and retains no
 provider thread or previous-response state. OpenAI uses Chat Completions with
