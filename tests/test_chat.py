@@ -549,6 +549,43 @@ def test_demo_processes_checklist_choices_and_free_text_answers() -> None:
         )
 
 
+def test_demo_course_followup_keeps_context_and_returns_sourced_catalog_results() -> None:
+    from trojan_compass.composition import RuntimeSettings, create_configured_app
+
+    root = Path(__file__).resolve().parents[1]
+    app = create_configured_app(
+        RuntimeSettings(mode="demo", catalog_path=root / "data/usc/catalog.json")
+    )
+    transcript: list[dict[str, str]] = []
+    with TestClient(app) as client:
+        last = None
+        for answer in [
+            "I have an interest to explore.",
+            "Building things",
+            "Design or architecture",
+            "Graduate student",
+            "I haven't chosen a program",
+            "2 years of experience as software engineer",
+            "CS570 and CS 572",
+            "I have done the Algorithms course",
+        ]:
+            transcript.append({"role": "user", "content": answer})
+            response = client.post("/api/chat", json={"messages": transcript})
+            assert response.status_code == 200, response.text
+            last = ChatResponse.model_validate(response.json())
+            if answer == "CS570 and CS 572":
+                assert "CSCI 570, CSCI 572" in last.message
+                assert "completed coursework" in last.message
+            transcript.append({"role": "assistant", "content": last.message})
+
+        assert last is not None
+        assert "What interests you" not in last.message
+        assert last.information is not None and last.information.ready
+        assert any("Algorithms" in item.title for item in last.recommendations)
+        assert all(card.sources for card in last.recommendations)
+        assert all(card.status != "demo_fixture" for card in last.recommendations[:2])
+
+
 @pytest.mark.asyncio
 async def test_cap_results_after_direction_is_answered() -> None:
     resources = [resource().model_copy(update={"id": str(i)}) for i in range(5)]

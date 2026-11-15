@@ -230,6 +230,21 @@ class ChatService:
                         limitations=result.limitations,
                     )
                 if not recommendations:
+                    if context.completed_courses:
+                        completed = ", ".join(
+                            course.value for course in context.completed_courses[:4]
+                        )
+                        return ChatResponse(
+                            message=(
+                                f"I recorded {completed} as completed coursework. Courses can "
+                                "help guide suggestions, but they don't by themselves show which "
+                                "skills you've mastered. I couldn't find a verified next-step "
+                                "match in my current data yet; tell me a topic or direction "
+                                "you'd like to connect them to."
+                            ),
+                            information=information.snapshot(),
+                            limitations=result.limitations,
+                        )
                     return ChatResponse(
                         message=(
                             "Your search details are collected. I don't have a verified "
