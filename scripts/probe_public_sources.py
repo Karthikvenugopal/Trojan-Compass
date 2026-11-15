@@ -67,3 +67,20 @@ for path in (
                 print('COURSE FACTS',json.dumps({k:v for k,v in rows[0].items() if k.lower() in ('courseid','title','coursename','prefix','units','minunits','maxunits','prerequisite','prerequisites','prerequisitetext','corequisite','description','leveloneprefix','leveltwoprefix','classnumber','coursetitle','coursedescription','corequisites','prerequisitecondition')},ensure_ascii=False)[:2000],flush=True)
     except Exception as error:
         print('PUBLIC COURSE ERROR',type(error).__name__,str(error)[:120],flush=True)
+for path in (
+    'api/Courses/CoursesByTermSchoolProgram?termCode=20263&school=DRNS&program=PSYC',
+    'api/Courses/CoursesByTermSchoolProgram?termCode=20263&school=MUS',
+    'api/Courses/CoursesByTermSchoolProgram?termCode=20263&program=PSYC',
+):
+    try:
+        obj=json.loads(get(base+path))
+        rows=obj.get('courses') if isinstance(obj,dict) else obj
+        print('CONFIRMED PUBLIC COURSE GET',path, 'COUNT',len(rows) if isinstance(rows,list) else None,flush=True)
+        if isinstance(rows,list) and rows:
+            print('PUBLIC COURSE KEYS',list(rows[0]),flush=True)
+            print('PUBLIC COURSE FACTS',json.dumps({k:v for k,v in rows[0].items() if not isinstance(v,(list,dict)) and not any(term in k.lower() for term in ('instructor','contact','email','description','note'))},ensure_ascii=False)[:2500],flush=True)
+            for key in rows[0]:
+                if 'pre' in key.lower() or 'req' in key.lower():
+                    print('PUBLIC REQUISITE',key,json.dumps(rows[0][key],ensure_ascii=False)[:1600],flush=True)
+    except Exception as error:
+        print('PUBLIC COURSE ERROR',type(error).__name__,str(error)[:120],flush=True)
