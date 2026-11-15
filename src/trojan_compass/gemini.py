@@ -7,7 +7,12 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from trojan_compass.contracts import ChatMessage, RetrievalContext
-from trojan_compass.extraction import EXTRACTION_PROMPT, ExtractionFailure, validate_evidence
+from trojan_compass.extraction import (
+    EXTRACTION_PROMPT,
+    ExtractionFailure,
+    parse_context,
+    validate_evidence,
+)
 
 
 class GeminiPart(BaseModel):
@@ -108,7 +113,7 @@ class GeminiContextExtractor:
             if not parts or any(part.text is None for part in parts):
                 raise ExtractionFailure()
             content = "".join(part.text or "" for part in parts)
-            context = RetrievalContext.model_validate_json(content)
+            context = parse_context(content)
             validate_evidence(context, messages)
             return context
         except Exception:

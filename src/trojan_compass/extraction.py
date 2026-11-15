@@ -60,24 +60,46 @@ class ExtractionFailure(Exception):
     """Safe boundary exception; never include provider payloads or student content."""
 
 
-def quoted(quote: str, content: str) -> bool:
-    """Exact substring, or an ellipsis-abbreviated quote whose parts appear in order.
+def parse_context(raw: str) -> RetrievalContext:
+    """Validate model output, dropping redundant text on non-provided answers.
 
-    Models sometimes shorten long quotes as "start ... end". Each non-empty part must
-    still be verbatim student text, so provenance stays mechanically checked.
+    Models sometimes echo the student's word (e.g. value "None" with status "none").
+    Only a provided answer carries a value, so the echo is discarded before strict
+    validation instead of failing the whole turn.
+    """
+    data = json.loads(raw)
+    if isinstance(data, dict):
+        for answer in data.get("answers") or []:
+            if isinstance(answer, dict) and answer.get("status") != "provided":
+                answer["value"] = None
+    return RetrievalContext.model_validate(data)
+
+
+def quoted(quote: str, content: str) -> bool:
+    """Exact substring, or the same words in order with punctuation ignored.
+
+    Models sometimes shorten long quotes as "start ... end" or garble punctuation such
+    as an em dash. Every word of the quote must still appear in the student's message,
+    as contiguous word runs in order, so provenance stays mechanically checked.
     """
     if quote in content:
         return True
-    parts = [p.strip() for p in re.split(r"\.\.\.|…", quote)]
-    if len(parts) < 2 or not any(parts):
+    parts = [_words(p) for p in re.split(r"\.\.\.|…", quote)]
+    parts = [p for p in parts if p]
+    if not parts:
         return False
+    text = f" {_words(content)} "
     position = 0
-    for part in filter(None, parts):
-        found = content.find(part, position)
+    for part in parts:
+        found = text.find(f" {part} ", position)
         if found < 0:
             return False
-        position = found + len(part)
+        position = found + len(part) + 1
     return True
+
+
+def _words(value: str) -> str:
+    return " ".join(re.findall(r"[^\W_]+", value.casefold()))
 
 
 def validate_evidence(context: RetrievalContext, messages: list[ChatMessage]) -> None:
@@ -193,7 +215,7 @@ class OpenAIContextExtractor:
                 or not choice.message.content
             ):
                 raise ExtractionFailure()
-            context = RetrievalContext.model_validate_json(choice.message.content)
+            context = parse_context(choice.message.content)
             validate_evidence(context, messages)
             return context
         except Exception:

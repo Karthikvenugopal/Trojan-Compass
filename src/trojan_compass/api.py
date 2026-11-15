@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -23,6 +23,9 @@ from trojan_compass.diagnostics import dummy_response
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
 from trojan_compass.gemini import GeminiContextExtractor
 from trojan_compass.services import ChatService, ChatUnavailable, DemoRecommendationService
+
+if TYPE_CHECKING:
+    from trojan_compass.assistant import CampusAssistant
 
 AppMode = Literal["demo", "diagnostic", "campus", "production"]
 
@@ -117,6 +120,7 @@ def create_app(
     mode: AppMode = "demo",
     lifespan: Lifespan[FastAPI] | None = None,
     cors_origins: tuple[str, ...] | None = None,
+    assistant: "CampusAssistant | None" = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
@@ -125,6 +129,7 @@ def create_app(
     service = ChatService(
         extractor or DemoContextExtractor(),
         recommendations or DemoRecommendationService(),
+        assistant=assistant,
     )
     app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)
     app.add_middleware(PrivateBoundary)

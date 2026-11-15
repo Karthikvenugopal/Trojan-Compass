@@ -307,7 +307,8 @@ async def test_request_isolation_concurrent_and_sequential() -> None:
     ]
     third = await service.chat(ChatRequest(messages=[student("design. I have no experience.")]))
     assert third.recommendations[0].id == "design. I have no experience."
-    assert set(vars(service)) == {"_extractor", "_recommendations", "_policy"}
+    # Dependencies only; the optional assistant caches public library hours, never students.
+    assert set(vars(service)) == {"_extractor", "_recommendations", "_policy", "_assistant"}
 
 
 @pytest.mark.parametrize(

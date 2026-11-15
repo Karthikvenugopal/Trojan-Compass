@@ -102,6 +102,8 @@ class Offering:
     seats_total: int | None
     seats_remaining: int | None
     syllabus_urls: tuple[str, ...]
+    instructors: tuple[str, ...] = ()
+    schedule: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -391,6 +393,8 @@ def _course(raw: dict[str, Any]) -> CatalogCourse:
             seats_total=o.get("seats_total"),
             seats_remaining=o.get("seats_remaining"),
             syllabus_urls=tuple(u.replace(" ", "%20") for u in o.get("syllabus_urls") or ()),
+            instructors=tuple(o.get("instructors") or ()),
+            schedule=tuple(o.get("schedule") or ()),
         )
         for o in (raw.get("offerings") or {}).values()
     )

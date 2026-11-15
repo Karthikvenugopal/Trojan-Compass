@@ -35,7 +35,7 @@ LABELS = {
 DETAIL_QUESTIONS = {
     "building": (
         "What kind of things would you enjoy building?",
-        ["Programming — apps or websites", "Physical objects or design", "I don't know"],
+        ["Programming (apps or websites)", "Physical objects or design", "I don't know"],
     ),
     "people": (
         "What about people interests you most?",

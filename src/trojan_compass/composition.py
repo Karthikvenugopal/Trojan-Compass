@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from pydantic import SecretStr
 
 from trojan_compass.api import AppMode, configured_extractor, create_app
+from trojan_compass.assistant import CampusAssistant, KnowledgeBase
 from trojan_compass.catalog import CatalogIndex, CatalogRecommendationService
 from trojan_compass.contracts import (
     ContextExtractor,
@@ -24,6 +25,7 @@ from trojan_compass.exploration import ExplorationRecommendationService
 from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
+from trojan_compass.llm import configured_llm
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
 
@@ -52,6 +54,7 @@ class RuntimeSettings:
     neo4j_password: SecretStr = SecretStr("")
     neo4j_database: str = "neo4j"
     catalog_path: Path | None = None
+    kb_path: Path | None = None
 
     @classmethod
     def from_environment(cls) -> "RuntimeSettings":
@@ -62,7 +65,10 @@ class RuntimeSettings:
         catalog = os.getenv("COMPASS_CATALOG_PATH")
         default_catalog = Path(__file__).resolve().parents[2] / "data" / "usc" / "catalog.json"
         catalog_path = Path(catalog) if catalog else default_catalog
+        kb = os.getenv("COMPASS_KB_PATH")
+        kb_path = Path(kb) if kb else default_catalog.with_name("campus_kb.json")
         return cls(
+            kb_path=kb_path if kb_path.is_file() else None,
             catalog_path=catalog_path if catalog_path.is_file() else None,
             mode=cast(AppMode, mode),
             seed_path=Path(seed_path) if seed_path else None,
@@ -108,6 +114,7 @@ def create_configured_app(
     *,
     extractor: ContextExtractor | None = None,
     graph: GraphRepository | None = None,
+    assistant: CampusAssistant | None = None,
 ) -> FastAPI:
     """Wire extraction → Peri's engine → Abishek's adapter. No automatic imports/writes.
 
@@ -121,6 +128,9 @@ def create_configured_app(
                 "Choose campus or production mode for injected integration dependencies"
             )
         return create_app(mode=settings.mode)
+    # The question assistant uses the same server-configured provider as extraction;
+    # injected (test) extractors get no assistant unless one is injected too.
+    build_assistant = extractor is None and assistant is None
     extractor = extractor if extractor is not None else configured_extractor()
     lifespan = None
     if graph is None and settings.mode == "campus":
@@ -157,13 +167,19 @@ def create_configured_app(
     service: RecommendationService = ExplorationRecommendationService(
         RecommendationEngine(graph), graph
     )
+    catalog = None
     if settings.mode == "campus" and settings.catalog_path is not None:
         # Shared public catalog, loaded once at startup (never per student request).
-        service = CatalogRecommendationService(service, CatalogIndex.load(settings.catalog_path))
+        catalog = CatalogIndex.load(settings.catalog_path)
+        service = CatalogRecommendationService(service, catalog)
         notices = (CATALOG_SEED_NOTICE,)
+    if build_assistant:
+        knowledge = KnowledgeBase.load(settings.kb_path) if settings.kb_path else None
+        assistant = CampusAssistant(configured_llm(), catalog, knowledge)
     return create_app(
         mode=settings.mode,
         extractor=extractor,
         recommendations=CoverageRecommendationService(service, notices),
         lifespan=lifespan,
+        assistant=assistant,
     )

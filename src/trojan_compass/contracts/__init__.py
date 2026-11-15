@@ -231,3 +231,5 @@ class ChatResponse(Contract):
     recommendations: list[Recommendation] = Field(default_factory=list)
     limitations: list[Text] = Field(default_factory=list)
     information: InformationSnapshot = Field(default_factory=InformationSnapshot)
+    # Official pages a direct campus/course answer relied on (empty for card replies).
+    sources: list[Source] = Field(default_factory=list, max_length=5)

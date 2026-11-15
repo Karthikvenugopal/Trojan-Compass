@@ -67,9 +67,11 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         recommendations: response.recommendations,
         limitations: response.limitations,
         suggested_replies: response.suggested_replies,
+        sources: response.sources,
       };
       setMessages((current) => [...current, userMessage, assistantMessage]);
-      setInformation(response.information ?? null);
+      // Direct campus answers carry no checklist; keep the course-search details as they were.
+      if (response.information?.fields.length) setInformation(response.information);
       setFailedEdit(null);
       setDraft('');
       setError(null);

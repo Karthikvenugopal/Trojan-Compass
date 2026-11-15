@@ -1,6 +1,8 @@
 """Dependency-injected orchestration; services retain dependencies, never student state."""
 
 import asyncio
+import contextlib
+from typing import TYPE_CHECKING
 
 from trojan_compass.contracts import (
     ChatMessage,
@@ -18,6 +20,9 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.extraction import validate_evidence
 from trojan_compass.readiness import CHECKLIST_HINT, request_information
+
+if TYPE_CHECKING:
+    from trojan_compass.assistant import CampusAssistant
 
 
 class ChatUnavailable(Exception):
@@ -66,18 +71,22 @@ class ChatService:
         extractor: ContextExtractor,
         recommendations: RecommendationService,
         policy: AskBackPolicy | None = None,
+        assistant: "CampusAssistant | None" = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
         self._policy = policy or AskBackPolicy()
+        self._assistant = assistant
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         try:
             # One bounded lifecycle; no retries that silently replay private content.
             async with asyncio.timeout(40):
-                context = RetrievalContext.model_validate(
-                    (await self._extractor.extract(request.messages)).model_dump(),
-                )
+                extraction = asyncio.ensure_future(self._extractor.extract(request.messages))
+                answer = await self._answer_question(request, extraction)
+                if answer is not None:
+                    return answer
+                context = RetrievalContext.model_validate((await extraction).model_dump())
                 validate_evidence(context, request.messages)
                 information = request_information(context, request.messages)
                 context = information.context
@@ -180,6 +189,27 @@ class ChatService:
                 )
         except Exception:
             raise ChatUnavailable() from None
+
+    async def _answer_question(
+        self, request: ChatRequest, extraction: "asyncio.Future[RetrievalContext]"
+    ) -> ChatResponse | None:
+        """Route campus/course questions to the assistant; None continues the course flow.
+
+        Routing runs concurrently with extraction. A routing failure falls back to the
+        existing flow rather than failing the turn.
+        """
+        if self._assistant is None:
+            return None
+        try:
+            decision = await self._assistant.route(request.messages)
+        except Exception:
+            return None
+        if decision.intent == "recommendation":
+            return None
+        extraction.cancel()
+        with contextlib.suppress(BaseException):
+            await extraction
+        return await self._assistant.answer(request.messages, decision)
 
 
 class DemoRecommendationService:

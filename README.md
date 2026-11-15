@@ -148,6 +148,29 @@ the matched description sentence and links the official listing. Matching is lex
 it does not infer mastery, check eligibility or D-clearance, and seats are as of the
 fetch time. Re-run the script to refresh.
 
+## Campus questions
+
+In `campus` mode a router (same configured LLM) runs alongside extraction. Questions
+such as "Is any library open now?", "Who teaches CSCI 572 in Spring?" or "When is the
+last day to drop a class?" are answered directly instead of entering the course
+search. Recommendation requests and replies to onboarding questions keep the existing
+flow; if routing fails, the turn falls back to that flow.
+
+Answers use only evidence gathered for that request, and cite it under the reply:
+
+- **Live library hours** from `https://libraries.usc.edu/hours` (cached 10 minutes),
+  evaluated against current Pacific time.
+- **Course records** from `data/usc/catalog.json` (instructors, meeting times, seats,
+  prerequisites, description per term).
+- **Official USC pages** in `data/usc/campus_kb.json`, built by
+  `python scripts/fetch_campus_kb.py` from public sites (libraries, registrar and
+  academic calendar, student health, dining, transportation, career centers, OIS,
+  housing, IT, financial aid, DPS, rec sports, graduate school, student life, OSAS).
+  Override with `COMPASS_KB_PATH`.
+
+If the evidence does not cover a question, the assistant says so and points to the
+closest official page. Page snapshots go stale; re-run the script to refresh.
+
 ## Behavior and limits
 
 - Requests allow 1–64 messages, 1–4000 characters each, 24000 characters total,

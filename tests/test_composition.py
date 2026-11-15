@@ -3,6 +3,7 @@
 import builtins
 import json
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -20,6 +21,7 @@ from trojan_compass.contracts import (
     Target,
 )
 from trojan_compass.extraction import OpenAIContextExtractor
+from trojan_compass.llm import LLMFailure
 
 
 def extraction_response(request: httpx.Request) -> httpx.Response:
@@ -162,9 +164,16 @@ def test_runtime_configuration_fails_closed_and_masks_secrets(
     )
 
 
+class FailingLLM:
+    async def complete(self, system: str, user: str, schema: type[Any]) -> Any:
+        raise LLMFailure()
+
+
 def test_environment_factory_uses_real_campus_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COMPASS_MODE", "campus")
     monkeypatch.setattr("trojan_compass.composition.configured_extractor", extractor)
+    # A failing question router must fall back to the normal recommendation flow.
+    monkeypatch.setattr("trojan_compass.composition.configured_llm", FailingLLM)
     with TestClient(app_from_environment()) as client:
         assert client.get("/health").json()["mode"] == "campus"
         response = client.post(

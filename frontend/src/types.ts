@@ -71,6 +71,8 @@ export interface ChatResponse {
   recommendations: Recommendation[];
   limitations: string[];
   information?: InformationSnapshot;
+  /** Official pages a direct campus/course answer relied on. */
+  sources?: Source[];
 }
 
 export interface DisplayMessage extends ChatMessage {
@@ -78,4 +80,5 @@ export interface DisplayMessage extends ChatMessage {
   recommendations?: Recommendation[];
   limitations?: string[];
   suggested_replies?: string[];
+  sources?: Source[];
 }

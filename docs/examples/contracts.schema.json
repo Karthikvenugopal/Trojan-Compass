@@ -1575,6 +1575,14 @@
       },
       "information": {
         "$ref": "#/$defs/InformationSnapshot"
+      },
+      "sources": {
+        "items": {
+          "$ref": "#/$defs/Source"
+        },
+        "maxItems": 5,
+        "title": "Sources",
+        "type": "array"
       }
     },
     "required": [
