@@ -375,3 +375,21 @@ def test_edit_removes_old_target_even_when_extraction_includes_new_interest() ->
     assert info.context.target is None
     assert [i.value for i in info.context.interests] == ["music"]
     assert info.answer("direction").value == "I prefer music"
+
+
+async def test_collecting_a_schedule_does_not_claim_it_was_verified() -> None:
+    from trojan_compass.contracts import Constraints
+
+    context = RetrievalContext(
+        interests=[SupportedText(value="robotics", evidence=said("robotics"))],
+        constraints=Constraints(
+            time_window=SupportedText(value="Mondays", evidence=said("Mondays"))
+        ),
+    )
+    response = await ChatService(FakeExtractor(context), RetrievalSpy()).chat(
+        ChatRequest(messages=[user("Find robotics courses; I'm available Mondays")])
+    )
+    assert response.information.ready
+    assert any(
+        "automatic schedule matching is not supported" in note for note in response.limitations
+    )

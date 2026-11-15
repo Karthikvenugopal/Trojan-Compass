@@ -43,6 +43,11 @@ matches**. Other unavailable required details appear in limitations; no fit or
 eligibility is asserted for those details. If retrieval finds no supported matches,
 say so without claiming USC has no relevant opportunities.
 
+Collecting an answer is not proof that every preference was verified. The current
+engine does not automatically match personal availability or event-format
+preferences; responses explicitly disclose those limits when applicable. Course
+prerequisites and course-format preferences still use the existing engine checks.
+
 ## Optional editor
 
 **What I’m using** is collapsed by default. Expanding it shows core checklist fields,

@@ -107,6 +107,18 @@ class ChatService:
                     )
                 recommendations = result.recommendations[: retrieval_request.limit]
                 limitations = list(result.limitations)
+                if context.constraints.time_window is not None:
+                    limitations.append(
+                        "Your timing preference is recorded, but automatic schedule matching "
+                        "is not supported yet. Confirm dates and availability using the sources."
+                    )
+                if context.constraints.modality is not None and any(
+                    recommendation.kind == "event" for recommendation in recommendations
+                ):
+                    limitations.append(
+                        "Event format preferences are recorded but not automatically checked. "
+                        "Confirm each event's format with the organizer."
+                    )
                 unavailable = [
                     field.label
                     for field in information.snapshot().fields
