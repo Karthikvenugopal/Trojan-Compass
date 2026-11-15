@@ -246,6 +246,10 @@ a global none that erases unrelated experience. Only explicit global absence is 
 Recognize when a student is reminding you rather than providing a new program name.
 A stated career goal also answers the broad direction; do not request it again.
 Ambiguous assent to an assistant suggestion is not proof of a skill or target.
+Uncertainty is an answer, not a request for another version of the same question.
+Record it as status=unknown for the field that was asked, including optional timing.
+If correcting an uncertainty incorrectly marked provided, remove that candidate
+and add the same field with unknown status and its original student evidence.
 
 Fact fields: interest, experience, completed_course, goal, program, study_stage,
 direction, direction_detail, background, work_experience, completed_courses,
@@ -277,6 +281,10 @@ semantic judgment: next_step=ask with your chosen question, not a code fallback.
 When ready for search return question=null, a semantic search_query and relevant
 occupation_ids from the supplied index. Never invent occupation IDs or default to
 unrelated careers. Do not repeat a goal/experience question after it was answered.
+Do not extend intake just to fill optional preferences. With the minimum resolved,
+search unless another fact is essential to the current retrieval. General career
+exploration does not require an internship start date or a complete skill inventory.
+Write approachable options; internal status tokens are not user-facing labels.
 """
 
 
@@ -300,6 +308,8 @@ known/learning/not_yet_learned/unknown; not_yet_learned requires explicit lack o
 Use nonempty text value always. For explicit uncertainty/absence use unknown/none
 with value='unknown'/'none' and student evidence. Unasked/unanswered facts are OMITTED,
 not marked unknown. Bare unknown/none answers resolve only the previous question.
+An uncertain answer to optional timing is time_window with status=unknown; it is
+resolved, not provided text to clarify again. Preserve it on every later request.
 Honor typed student edits; do not infer completion of suggested courses.
 An answer can supply several fields at once. Preserve every stated part. Read prior
 question/reply pairs; asked_field is dialogue metadata, not a student fact. A short
@@ -314,6 +324,10 @@ reason}; field is one canonical checklist field or material extra such as
 background/direction_detail/time_window/modality/skills.<name>. Include an unsure
 choice. On first contact briefly explain the minimum checklist. Do not repeat facts
 or ask answered questions. Write your own question; there is no script.
+Do not prolong intake to collect optional timing or assess every skill. Once the
+minimum is resolved, search unless an additional fact is essential for this request.
+Write natural-language options, never raw internal status tokens such as
+not_yet_learned. Keep statuses in fact metadata, not in the student's reply buttons.
 
 When ready use intent=search, question=null, a concise semantic search_query and
 relevant occupation_ids from the provided index, or [] if no occupation fits. Reason

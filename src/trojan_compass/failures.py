@@ -35,6 +35,14 @@ class DecisionIssue(StrEnum):
     INVALID_ROUTE = "invalid_campus_route"
 
 
+class CompositionIssue(StrEnum):
+    RESOURCE_IDS = "invalid_or_duplicate_resource_ids"
+    SKILL_IDS = "invalid_or_duplicate_skill_ids"
+    STEP_ORDER = "invalid_step_dependency_order"
+    STEP_REFERENCES = "step_references_unselected_evidence"
+    GENERATED_URL = "generated_url_in_prose"
+
+
 class ProcessingStage(StrEnum):
     CAMPUS_ANSWER = "campus_answer"
     EXTRACTION = "extraction"
@@ -80,8 +88,7 @@ FAILURE_MESSAGES = {
         "Your message is preserved. Error: invalid_model_structure."
     ),
     FailureReason.EVIDENCE: (
-        "The AI could not tie its interpretation to your actual words "
-        "after validation repair. Your message is preserved. "
+        "The AI response failed evidence validation. Your message is preserved. "
         "Error: invalid_model_evidence."
     ),
     FailureReason.CONFLICT: (

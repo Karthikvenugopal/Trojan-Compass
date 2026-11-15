@@ -29,9 +29,11 @@ from trojan_compass.contracts import (
     ChatRequest,
     Clarification,
     PlanStep,
+    Recommendation,
     RecommendationRequest,
     RecommendationResult,
     RetrievalContext,
+    Source,
     StudentAnswer,
     StudentStatement,
     SupportedText,
@@ -462,13 +464,155 @@ async def test_assistant_suggestions_cannot_be_used_as_student_evidence() -> Non
 async def test_composer_cannot_publish_invented_resources_urls_or_plan_references(
     bad: GuidedAnswer,
 ) -> None:
-    llm = FakeReasoner([search(), bad])
+    llm = FakeReasoner([search(), bad, bad])
     spy = RetrievalSpy()
     with pytest.raises(ChatUnavailable) as caught:
         await make_service(llm, spy).chat(
             ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
         )
     assert caught.value.reason == FailureReason.EVIDENCE
+    assert llm.schemas == ["PlannerOutput", "GuidedAnswer", "GuidedAnswer"]
+    assert len(spy.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_composer_repairs_resource_ids_without_reretrieving_or_exposing_bad_output() -> None:
+    invalid = GuidedAnswer(
+        message="Synthetic invalid draft",
+        headline="Next",
+        mode="plan",
+        actions=[ResourceChoice(id="invented-opening", why_relevant="Synthetic")],
+    )
+
+    def repair(payload: dict[str, Any]) -> GuidedAnswer:
+        assert payload["validation_feedback"]["issue"] == "invalid_or_duplicate_resource_ids"
+        assert "invented-opening" not in json.dumps(payload)
+        assert payload["selection_ids"]["actions"] == [a["id"] for a in payload["actions"]]
+        return composed(payload)
+
+    llm = FakeReasoner([search(), invalid, repair])
+    spy = RetrievalSpy()
+    response = await make_service(llm, spy, CatalogIndex.load(Path("data/usc/catalog.json"))).chat(
+        ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
+    )
+    assert response.guidance and response.guidance.actions
+    assert "invented-opening" not in response.model_dump_json()
+    assert len(spy.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_unknown_optional_timeframe_survives_and_composer_cannot_reask_it() -> None:
+    context = prepared()
+    messages = [
+        ChatMessage(role="user", content=STUDENT),
+        ChatMessage(
+            role="assistant", content="When would you like to start?", asked_field="time_window"
+        ),
+        ChatMessage(role="user", content="Unsure"),
+    ]
+    context.answers.append(
+        StudentAnswer(
+            field="time_window",
+            status="unknown",
+            evidence=quote("Unsure", 2),
+        )
+    )
+    decision = search().model_copy(update={"context": context})
+    repeat = GuidedAnswer(
+        message="Another timing question",
+        headline="Next",
+        mode="plan",
+        question=Clarification(
+            text="When do you want an internship?",
+            options=[],
+            requested_fields=["time_window"],
+            reason="Synthetic",
+        ),
+    )
+
+    def repair(payload: dict[str, Any]) -> GuidedAnswer:
+        assert payload["validation_feedback"]["issue"] == "asked_answered_field"
+        field = next(f for f in payload["information"]["fields"] if f["field"] == "time_window")
+        assert field["status"] == "unknown"
+        return GuidedAnswer(
+            message="We can explore without a fixed start date.", headline="Explore", mode="explore"
+        )
+
+    llm = FakeReasoner([decision, repeat, repair])
+    spy = RetrievalSpy()
+    response = await make_service(llm, spy).chat(ChatRequest(messages=messages))
+    assert response.asked_field is None
+    assert (
+        next(f for f in response.information.fields if f.field == "time_window").status == "unknown"
+    )
+    assert len(spy.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_composition_transport_failure_is_not_retried() -> None:
+    llm = FakeReasoner([search(), LLMFailure(FailureReason.NETWORK)])
+    with pytest.raises(ChatUnavailable) as caught:
+        await make_service(llm, RetrievalSpy()).chat(
+            ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
+        )
+    assert caught.value.reason == FailureReason.NETWORK
+    assert llm.schemas == ["PlannerOutput", "GuidedAnswer"]
+
+
+@pytest.mark.asyncio
+async def test_retrieved_course_can_be_planned_without_an_occupation_and_handles_stay_local() -> (
+    None
+):
+    rec = Recommendation(
+        id="synthetic-course-101",
+        kind="course",
+        title="Synthetic course",
+        summary="A test-only retrieved course.",
+        action_url="https://example.org/course",
+        sources=[Source(url="https://example.org/course", title="Synthetic source")],
+        prerequisites_or_access=["Verify eligibility"],
+        unknowns=["Seats unknown"],
+        evidence_path=["synthetic interest", "synthetic course"],
+    )
+
+    class CourseService(RetrievalSpy):
+        async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
+            self.calls.append(request)
+            return RecommendationResult(recommendations=[rec])
+
+    def compose_course(payload: dict[str, Any]) -> GuidedAnswer:
+        assert not payload["occupations"]
+        assert len(payload["actions"]) == 1
+        action = payload["actions"][0]
+        assert action["id"] == "a1"
+        assert action["checks"] == ["Verify eligibility", "Seats unknown"]
+        return GuidedAnswer(
+            message="Consider the sourced course.",
+            headline="Explore",
+            mode="explore",
+            actions=[ResourceChoice(id=action["id"], why_relevant="A sourced learning option")],
+            steps=[
+                PlanStep(
+                    id="try",
+                    title="Review",
+                    description="Check the official source.",
+                    action_ids=[action["id"]],
+                )
+            ],
+        )
+
+    decision = search().model_copy(update={"occupation_ids": []})
+    llm = FakeReasoner([decision, compose_course])
+    spy = CourseService()
+    response = await make_service(llm, spy).chat(
+        ChatRequest(messages=[ChatMessage(role="user", content=STUDENT)])
+    )
+    assert response.guidance
+    assert response.guidance.actions[0].id == rec.id
+    assert response.guidance.steps[0].action_ids == [rec.id]
+    assert response.guidance.actions[0].sources == rec.sources
+    assert response.guidance.actions[0].checks == ["Verify eligibility", "Seats unknown"]
+    assert len(spy.calls) == 1
 
 
 @pytest.mark.asyncio
