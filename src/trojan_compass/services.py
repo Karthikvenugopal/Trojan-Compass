@@ -5,6 +5,7 @@ import re
 from typing import TYPE_CHECKING
 
 from trojan_compass.contracts import (
+    CareerGuidanceService,
     ChatMessage,
     ChatRequest,
     ChatResponse,
@@ -107,12 +108,14 @@ class ChatService:
         policy: AskBackPolicy | None = None,
         course_history: CourseHistoryService | None = None,
         assistant: "CampusAssistant | None" = None,
+        guidance: CareerGuidanceService | None = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
         self._policy = policy or AskBackPolicy()
         self._course_history = course_history
         self._assistant = assistant
+        self._guidance = guidance
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         try:
@@ -183,6 +186,19 @@ class ChatService:
                         information=information.snapshot(),
                     )
                 recommendations = result.recommendations[: retrieval_request.limit]
+                guidance = (
+                    await self._guidance.guide(context, recommendations) if self._guidance else None
+                )
+                if guidance is not None:
+                    return ChatResponse(
+                        message=guidance.next_question.text
+                        if guidance.next_question
+                        else guidance.headline,
+                        guidance=guidance,
+                        recommendations=recommendations,
+                        information=information.snapshot(),
+                        limitations=result.limitations,
+                    )
                 if not recommendations:
                     return ChatResponse(
                         message=(
@@ -253,6 +269,8 @@ class ChatService:
         if self._assistant is None or request.messages[-1].edit is not None:
             return None
         latest = request.messages[-1].content
+        if latest.startswith("I reviewed this text from my "):
+            return None  # Confirmed background belongs to intake, not campus chit-chat.
         if re.search(
             r"\b(recommend|suggest)\b|what should I (take|study|learn|explore)", latest, re.I
         ):

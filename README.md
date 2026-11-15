@@ -1,12 +1,17 @@
 # Trojan Compass
 
 Trojan Compass connects student goals to USC courses and events through a shared
-knowledge graph. This branch implements the **stateless chat backend**.
+knowledge graph. It provides a **stateless career guide** with skill checks, a working roadmap, courses,
+faculty teaching connections and research pathways.
 
 `POST /api/chat` accepts the active conversation and returns a grounded message,
 suggested replies, recommendations and limitations. It never requires a session
 identifier or returns a student profile. The frontend owns the conversation in
 memory; each request re-derives temporary retrieval context from that conversation.
+
+See [career guidance and background imports](docs/CAREER_GUIDANCE.md) for the student
+journey, evidence limits, setup and privacy. The roadmap is rebuilt from each supplied
+conversation. Unknown skills are never reported as missing skills.
 
 ## Run
 
@@ -35,7 +40,8 @@ curl http://127.0.0.1:8000/api/chat \
 OpenAPI is at `/docs`. Shared Pydantic models are in
 `src/trojan_compass/contracts`; JSON examples and schemas are in `docs/examples`.
 Examples use synthetic student statements. `GET /health` reports the configured
-mode. There are no session, resume or LinkedIn ingestion endpoints.
+mode. There are no session/profile endpoints. Optional resume PDF/DOCX and LinkedIn
+text/PDF imports are reviewed before use; the document parser stores no uploads.
 
 ## Local test launcher
 

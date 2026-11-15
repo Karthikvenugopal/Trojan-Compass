@@ -48,7 +48,7 @@ compass_python="$compass_root/.venv/bin/python"
 if ! "$compass_python" - <<'PY'
 import importlib.util
 import sys
-required = ('fastapi', 'pydantic', 'httpx', 'uvicorn', 'dotenv')
+required = ('fastapi', 'pydantic', 'httpx', 'uvicorn', 'dotenv', 'pypdf', 'defusedxml')
 sys.exit(any(importlib.util.find_spec(name) is None for name in required))
 PY
 then

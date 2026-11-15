@@ -13,6 +13,7 @@ from starlette.types import ASGIApp, Lifespan, Message, Receive, Scope, Send
 
 from trojan_compass.contracts import (
     MAX_BODY_BYTES,
+    CareerGuidanceService,
     ChatRequest,
     ChatResponse,
     ContextExtractor,
@@ -21,6 +22,13 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.cors import configured_origins, validate_origins
 from trojan_compass.diagnostics import dummy_response
+from trojan_compass.documents import (
+    MAX_DOCUMENT_BYTES,
+    DocumentFailure,
+    DocumentKind,
+    DocumentText,
+    MemoryDocumentParser,
+)
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
 from trojan_compass.gemini import GeminiContextExtractor
 from trojan_compass.services import (
@@ -58,6 +66,9 @@ class PrivateBoundary:
                 message = {**message, "headers": headers}
             await send(message)
 
+        body_limit = (
+            MAX_DOCUMENT_BYTES if scope.get("path") == "/api/import-document" else MAX_BODY_BYTES
+        )
         chunks: list[bytes] = []
         total = 0
         # Inspect the actual stream, not just spoofable/missing Content-Length.
@@ -67,13 +78,14 @@ class PrivateBoundary:
                 return
             chunk = message.get("body", b"")
             total += len(chunk)
-            if total > MAX_BODY_BYTES:
+            if total > body_limit:
                 response = JSONResponse(
                     status_code=413,
                     content={
                         "error": {
                             "code": "conversation_too_large",
-                            "message": "Request exceeds 65536 bytes; nothing was truncated.",
+                            "message": f"Request exceeds {body_limit} bytes. "
+                            "Nothing was truncated.",
                         }
                     },
                 )
@@ -129,6 +141,7 @@ def create_app(
     policy: AskBackPolicy | None = None,
     course_history: CourseHistoryService | None = None,
     assistant: "CampusAssistant | None" = None,
+    guidance: CareerGuidanceService | None = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
@@ -140,6 +153,7 @@ def create_app(
         policy=policy,
         course_history=course_history,
         assistant=assistant,
+        guidance=guidance,
     )
     app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)
     app.add_middleware(PrivateBoundary)
@@ -155,9 +169,39 @@ def create_app(
         max_age=0,
     )
 
+    @app.post("/api/import-document", response_model=DocumentText)
+    async def import_document(
+        request: Request, format: DocumentKind
+    ) -> DocumentText | JSONResponse:
+        try:
+            return await MemoryDocumentParser().parse(await request.body(), format)
+        except DocumentFailure:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "document_unreadable",
+                        "message": "Could not read this file. "
+                        "Use a text PDF (up to 20 pages) or DOCX, "
+                        "under 4 MB and 20,000 extracted characters. Encrypted/scanned files "
+                        "may not work. You can paste relevant text instead. Nothing was saved.",
+                    }
+                },
+            )
+
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
         # FastAPI's default errors echo offending input; emit static details instead.
+        if request.url.path == "/api/import-document":
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "invalid_document_format",
+                        "message": "Use format=pdf or format=docx.",
+                    }
+                },
+            )
         return JSONResponse(
             status_code=422,
             content={

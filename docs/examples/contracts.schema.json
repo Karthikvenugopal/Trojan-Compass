@@ -1191,6 +1191,248 @@
   },
   "ChatResponse": {
     "$defs": {
+      "CareerGuidance": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "enum": [
+              "explore",
+              "plan",
+              "coverage_gap"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Goal"
+          },
+          "headline": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Headline",
+            "type": "string"
+          },
+          "suggested_paths": {
+            "items": {
+              "$ref": "#/$defs/CareerOption"
+            },
+            "maxItems": 3,
+            "title": "Suggested Paths",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/$defs/CareerSkill"
+            },
+            "maxItems": 12,
+            "title": "Skills",
+            "type": "array"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/$defs/GuidanceAction"
+            },
+            "maxItems": 12,
+            "title": "Actions",
+            "type": "array"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/$defs/PlanStep"
+            },
+            "maxItems": 5,
+            "title": "Steps",
+            "type": "array"
+          },
+          "next_question": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Clarification"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "limitations": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "headline"
+        ],
+        "title": "CareerGuidance",
+        "type": "object"
+      },
+      "CareerOption": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "why_consider": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Why Consider",
+            "type": "string"
+          },
+          "select_message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Select Message",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/Source"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "why_consider",
+          "select_message",
+          "sources"
+        ],
+        "title": "CareerOption",
+        "type": "object"
+      },
+      "CareerSkill": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "unknown",
+            "enum": [
+              "known",
+              "learning",
+              "not_yet_learned",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "category": {
+            "default": "skill",
+            "enum": [
+              "skill",
+              "knowledge"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "basis": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "student_evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "title": "Student Evidence",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/Source"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "basis",
+          "sources"
+        ],
+        "title": "CareerSkill",
+        "type": "object"
+      },
+      "Clarification": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Options",
+            "type": "array"
+          },
+          "requested_fields": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "title": "Requested Fields",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "requested_fields",
+          "reason"
+        ],
+        "title": "Clarification",
+        "type": "object"
+      },
       "CourseDetails": {
         "additionalProperties": false,
         "properties": {
@@ -1306,6 +1548,112 @@
         "title": "EventSchedule",
         "type": "object"
       },
+      "GuidanceAction": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "course",
+              "event",
+              "faculty",
+              "research"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "why_relevant": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Why Relevant",
+            "type": "string"
+          },
+          "skill_names": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Skill Names",
+            "type": "array"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/Source"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "availability": {
+            "default": "unknown",
+            "enum": [
+              "unknown",
+              "snapshot"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "term": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Term"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "summary",
+          "why_relevant",
+          "url",
+          "sources"
+        ],
+        "title": "GuidanceAction",
+        "type": "object"
+      },
       "InformationField": {
         "additionalProperties": false,
         "properties": {
@@ -1395,6 +1743,63 @@
           }
         },
         "title": "InformationSnapshot",
+        "type": "object"
+      },
+      "PlanStep": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "skill_names": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Skill Names",
+            "type": "array"
+          },
+          "action_ids": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Action Ids",
+            "type": "array"
+          },
+          "depends_on": {
+            "items": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description"
+        ],
+        "title": "PlanStep",
         "type": "object"
       },
       "Recommendation": {
@@ -1593,10 +1998,43 @@
         ],
         "title": "Source",
         "type": "object"
+      },
+      "StudentStatement": {
+        "additionalProperties": false,
+        "properties": {
+          "message_index": {
+            "minimum": 0,
+            "title": "Message Index",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_index",
+          "quote"
+        ],
+        "title": "StudentStatement",
+        "type": "object"
       }
     },
     "additionalProperties": false,
     "properties": {
+      "guidance": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/CareerGuidance"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
       "message": {
         "maxLength": 4000,
         "minLength": 1,

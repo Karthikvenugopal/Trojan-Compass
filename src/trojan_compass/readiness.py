@@ -11,6 +11,7 @@ from trojan_compass.contracts import (
     InformationField,
     InformationSnapshot,
     RetrievalContext,
+    Skill,
     StudentAnswer,
     StudentStatement,
     SupportedText,
@@ -496,6 +497,35 @@ def request_information(
                 continue
             boundary = index if message.edit.status == "provided" else index + 1
             prune_before_edit(context, message.edit.field, boundary)
+    # These exact sentences come from explicit student skill-check controls.
+    # They are not guessed from a resume, completed course, or assistant suggestion.
+    for index, message in enumerate(messages):
+        edit = message.edit
+        if not edit or not edit.field.startswith("skills.") or edit.status != "provided":
+            continue
+        name = edit.field[7:]
+        templates = {
+            f"i am comfortable with {name}.": "known",
+            f"i am learning {name}.": "learning",
+            f"i have not learned {name} yet.": "not_yet_learned",
+        }
+        status = templates.get((edit.value or "").casefold())
+        if status and not any(
+            e.message_index > index
+            for skill in context.skills
+            if skill.name.casefold() == name
+            for e in skill.evidence
+        ):
+            context.skills = [skill for skill in context.skills if skill.name.casefold() != name]
+            context.skills.append(
+                Skill.model_validate(
+                    dict(
+                        name=name,
+                        status=status,
+                        evidence=[StudentStatement(message_index=index, quote=message.content)],
+                    )
+                )
+            )
     compact = fixed_fields == COMPACT_FIXED_FIELDS
     answers = derived_answers(context, compact=compact)
     explicit = [*context.answers, *explicit_short_answers(messages, compact=compact)]

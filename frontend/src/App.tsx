@@ -3,6 +3,7 @@ import { Compass, RotateCcw, ShieldCheck, SquarePen } from 'lucide-react';
 import { ChatMessageView } from './components/ChatMessageView';
 import { MessageComposer } from './components/MessageComposer';
 import { Welcome } from './components/Welcome';
+import { BackgroundImport } from './components/BackgroundImport';
 import { InformationPanel } from './components/InformationPanel';
 import { chatApi, ChatApiError, isMockMode } from './lib/api';
 import type { ChatApi } from './lib/api';
@@ -15,7 +16,7 @@ interface AppProps {
   mockMode?: boolean;
 }
 
-const INTRO = 'Welcome to Trojan Compass. We’ll first cover an area to explore and your experience, then search USC courses and events. “I don’t know” and “None” are valid answers. Extra questions depend on your request.';
+const INTRO = 'Welcome to Trojan Compass. Explore possible careers or build a working plan for a goal you have. We’ll check your starting point, then connect skills, learning, faculty and research. Unknown and None are valid answers. Resume or LinkedIn background is optional.';
 
 export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -69,6 +70,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         suggested_replies: response.suggested_replies,
         course_history_options: response.course_history_options,
         sources: response.sources,
+        guidance: response.guidance,
       };
       setMessages((current) => [...current, userMessage, assistantMessage]);
       // Direct campus answers carry no checklist; keep the course-search details as they were.
@@ -94,6 +96,11 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         setPendingText(null);
       }
     }
+  }
+
+  function saveInformation(edit: InformationEdit, label: string) {
+    const answer = edit.status === 'provided' ? edit.value : edit.status === 'unknown' ? 'I don’t know' : edit.status === 'none' ? 'None' : 'Not answered';
+    void sendMessage(`Update my ${label.toLowerCase()}: ${answer}`, edit);
   }
 
   function endChat() {
@@ -153,7 +160,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
         <section className="page-heading" aria-label="About Trojan Compass">
           <span className="section-kicker">A USC student guide</span>
           <h1>Find your next step.</h1>
-          <p>Find USC courses and events that help you take your next step.</p>
+          <p>Connect your career goals to skills, courses, faculty and research.</p>
         </section>
 
         {mockMode && <div className="demo-disclosure"><ShieldCheck size={15} aria-hidden="true" /><span><b>Demo data:</b> examples are synthetic and do not represent live USC offerings.</span></div>}
@@ -166,8 +173,8 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
                 <Welcome onStarter={handleStarter} disabled={loading} />
               </div>
             )}
-            {messages.map((message) => (
-              <ChatMessageView key={message.id} message={message} isBusy={loading || draft.trim().length > 0} onSuggestedReply={(reply) => void sendMessage(reply)} />
+            {messages.map((message, index) => (
+              <ChatMessageView key={message.id} message={message} isLatest={index === messages.length - 1} isBusy={loading || draft.trim().length > 0} onSuggestedReply={(reply) => void sendMessage(reply)} onInformationEdit={saveInformation} />
             ))}
             {pendingText && <div className="pending-row"><div className="pending-user"><b>You</b><p>{pendingText}</p></div></div>}
             {loading && <div className="thinking" role="status"><span className="dot-loader" aria-hidden="true"><i /><i /><i /></span><span>Finding a helpful next step…</span></div>}
@@ -184,6 +191,7 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
 
           {ended && <div className="ended-note"><b>Chat ended.</b> Your conversation and draft were cleared from this page. Refreshing also starts a new conversation. This does not control external model-provider retention.</div>}
 
+          {!ended && <BackgroundImport key={`import-${generationRef.current}`} disabled={loading || draft.trim().length > 0} onUse={text => void sendMessage(text)} />}
           {!ended && <MessageComposer value={draft} onChange={value => { setDraft(value); setFailedEdit(null); }} onSubmit={() => void sendMessage(draft, failedEdit ?? undefined)} disabled={loading} />}
         </section>
 

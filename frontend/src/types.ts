@@ -72,6 +72,7 @@ export interface CourseHistoryOption {
 }
 
 export interface ChatResponse {
+  guidance?: CareerGuidance | null;
   course_history_options?: CourseHistoryOption[];
   message: string;
   suggested_replies: string[];
@@ -83,10 +84,30 @@ export interface ChatResponse {
 }
 
 export interface DisplayMessage extends ChatMessage {
+  guidance?: CareerGuidance | null;
   id: string;
   course_history_options?: CourseHistoryOption[];
   recommendations?: Recommendation[];
   limitations?: string[];
   suggested_replies?: string[];
   sources?: Source[];
+}
+
+export interface CareerOption { id: string; title: string; why_consider: string; select_message: string; sources: Source[]; }
+export interface CareerSkill {
+  name: string; status: 'known' | 'learning' | 'not_yet_learned' | 'unknown';
+  category: 'skill' | 'knowledge'; basis: string;
+  student_evidence: { message_index: number; quote: string }[]; sources: Source[];
+}
+export interface GuidanceAction {
+  id: string; kind: 'course' | 'event' | 'faculty' | 'research'; title: string; summary: string;
+  why_relevant: string; skill_names: string[]; url: string; sources: Source[];
+  availability: 'unknown' | 'snapshot'; checks: string[]; term: string | null;
+}
+export interface CareerGuidance {
+  mode: 'explore' | 'plan' | 'coverage_gap'; goal: string | null; headline: string;
+  suggested_paths: CareerOption[]; skills: CareerSkill[]; actions: GuidanceAction[];
+  steps: { id: string; title: string; description: string; skill_names: string[]; action_ids: string[]; depends_on: string[] }[];
+  next_question: { text: string; options: string[]; requested_fields: string[]; reason: string } | null;
+  limitations: string[];
 }

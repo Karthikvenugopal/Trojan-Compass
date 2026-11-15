@@ -14,6 +14,7 @@ from pydantic import SecretStr
 
 from trojan_compass.api import AppMode, configured_extractor, create_app
 from trojan_compass.assistant import CampusAssistant, KnowledgeBase
+from trojan_compass.career_guidance import EvidenceCareerGuide, PathLibrary
 from trojan_compass.catalog import CatalogIndex, CatalogRecommendationService
 from trojan_compass.contracts import (
     ContextExtractor,
@@ -26,6 +27,7 @@ from trojan_compass.graph.fake import FakeGraphRepository
 from trojan_compass.ingestion.loaders import load_json
 from trojan_compass.ingestion.pipeline import IngestionPipeline
 from trojan_compass.llm import configured_llm
+from trojan_compass.readiness import DEFAULT_FIXED_FIELDS
 from trojan_compass.recommendations import RecommendationEngine
 from trojan_compass.recommendations.graph import GraphRepository
 from trojan_compass.services import AskBackPolicy
@@ -225,4 +227,7 @@ def create_configured_app(
         policy=policy,
         course_history=AcademicCourseHistoryService(graph),
         assistant=assistant,
+        guidance=EvidenceCareerGuide(graph, PathLibrary.load(), catalog)
+        if policy is None or policy.fixed_fields == DEFAULT_FIXED_FIELDS
+        else None,
     )
