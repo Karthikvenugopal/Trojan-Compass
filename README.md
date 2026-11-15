@@ -40,19 +40,21 @@ mode. There are no session, resume or LinkedIn ingestion endpoints.
 ## Integrated startup
 
 All four workstreams now connect through the v2 contracts. The backend factory
-wires OpenAI extraction → chat orchestration → Peri's `RecommendationEngine` →
+wires configured LLM extraction → chat orchestration → Peri's `RecommendationEngine` →
 Abishek's graph adapter. Riddhi's frontend sends the entire active in-memory
 conversation to the same `/api/chat` route.
 
 | `COMPASS_MODE` | Extraction | Recommendations and graph |
 | --- | --- | --- |
 | `demo` (default) | Offline; extracts no student facts | Existing fixed course fixture, explicitly labeled |
-| `campus` | OpenAI, requires server credentials | Real engine over reviewed USC seed using Abishek's in-memory adapter |
-| `production` | OpenAI, requires server credentials | Real engine over configured Neo4j; never falls back to fixtures |
+| `campus` | OpenAI or Gemini, requires server credentials | Real engine over reviewed USC seed using Abishek's in-memory adapter |
+| `production` | OpenAI or Gemini, requires server credentials | Real engine over configured Neo4j; never falls back to fixtures |
 
-For the integrated USC seed journey, set `COMPASS_MODE=campus`, `OPENAI_API_KEY`
-and `OPENAI_MODEL` in your server environment. Choose a model supporting strict
-structured outputs, then start the same backend command above. The reviewed seed
+For the integrated USC seed journey, set `COMPASS_MODE=campus` and provider
+credentials in your server environment. OpenAI is the default (`OPENAI_API_KEY`,
+`OPENAI_MODEL`). For Gemini, set `LLM_PROVIDER=gemini`, `GEMINI_API_KEY` and
+`GEMINI_MODEL`. Choose a model supporting the provider’s structured-output API,
+then start the same backend command above. See [provider setup and retention](docs/PROVIDERS.md). The reviewed seed
 ships inside the wheel and loads at startup only. Optional `COMPASS_SEED_PATH`
 selects a server-owned public graph import file; it is never a student upload.
 No database is needed for campus mode. This is a snapshot, not live campus data.
@@ -80,9 +82,11 @@ set it to `true`. No frontend environment file contains backend/provider credent
 The backend `.env.example` documents variables; it is not automatically loaded.
 Configure them in your server environment and restart both servers after changes.
 
-The extractor sends the full conversation as untrusted data in one typed Chat
-Completions request with `store=false`, validates the schema and user-quotation
-provenance, and retains no provider thread or previous-response state. Live model
+Each extractor sends the full conversation as untrusted data in one typed
+request, validates the schema and user-quotation provenance, and retains no
+provider thread or previous-response state. OpenAI uses Chat Completions with
+`store=false`; Gemini uses a standalone `generateContent` request without tools
+or explicit context caches. Live model
 accuracy and external retention controls still require account-specific validation.
 No real student data, provider call or live Neo4j database was used for the
 integration tests. HTTP-provider responses and the database lifecycle are mocked;
@@ -149,6 +153,8 @@ provider retention. OpenAI documents default abuse-monitoring retention of up to
 project has **not verified or configured zero data retention**. Review your account
 controls before sending student content. See [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data)
 and [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
+Gemini retention and paid/unpaid data-use differences are documented separately
+in [provider setup](docs/PROVIDERS.md); its retention is not claimed to be disabled.
 No claim is made about the retention settings of the environment running this
 repository or external infrastructure.
 

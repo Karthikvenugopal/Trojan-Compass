@@ -18,6 +18,7 @@ from trojan_compass.contracts import (
     RecommendationService,
 )
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
+from trojan_compass.gemini import GeminiContextExtractor
 from trojan_compass.services import ChatService, ChatUnavailable, DemoRecommendationService
 
 AppMode = Literal["demo", "campus", "production"]
@@ -181,8 +182,17 @@ def app_from_environment() -> FastAPI:
     return create_configured_app()
 
 
-def configured_extractor() -> OpenAIContextExtractor:
-    """Server-only configuration for use by the production composition factory."""
+def configured_extractor() -> ContextExtractor:
+    """Select a server-only provider; invalid/missing configuration fails closed."""
+    provider = os.environ.get("LLM_PROVIDER", "openai")
+    if provider == "gemini":
+        key = os.environ.get("GEMINI_API_KEY", "")
+        model = os.environ.get("GEMINI_MODEL", "")
+        if not key or not model:
+            raise ValueError("GEMINI_API_KEY and GEMINI_MODEL are required")
+        return GeminiContextExtractor(key, model)
+    if provider != "openai":
+        raise ValueError("LLM_PROVIDER must be openai or gemini")
     key = os.environ.get("OPENAI_API_KEY", "")
     model = os.environ.get("OPENAI_MODEL", "")
     if not key or not model:
