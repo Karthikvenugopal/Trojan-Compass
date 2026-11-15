@@ -34,6 +34,7 @@ from trojan_compass.extraction import (
     OpenAIContextExtractor,
     validate_evidence,
 )
+from trojan_compass.readiness import DIRECTION_QUESTION
 from trojan_compass.services import AskBackPolicy, ChatService, ChatUnavailable
 
 
@@ -93,8 +94,8 @@ async def test_targeted_clarification_with_no_required_career_target() -> None:
         ),
     )
     response = await service.chat(ChatRequest(messages=[student("Help me get started")]))
-    assert response.message == clarification().text
-    assert "I’m not sure — show broad starting points" in response.suggested_replies
+    assert response.message.startswith(DIRECTION_QUESTION)
+    assert "I don't know" in response.suggested_replies
     assert not response.recommendations
     assert "profile" not in response.model_dump_json()
     assert "session" not in response.model_dump_json()
@@ -103,13 +104,14 @@ async def test_targeted_clarification_with_no_required_career_target() -> None:
 @pytest.mark.asyncio
 async def test_experienced_student_gets_sourced_results_without_discovery() -> None:
     context = RetrievalContext(
+        interests=[SupportedText(value="Python", evidence=[statement("Python")])],
         skills=[
             Skill(
                 name="Python",
                 status="known",
                 evidence=[statement("I know Python")],
             )
-        ]
+        ],
     )
     result = RecommendationResult(recommendations=[resource()])
     response = await ChatService(FakeExtractor(context), FakeRecommendations(result)).chat(
@@ -382,7 +384,15 @@ class BrokenRecommendations:
 @pytest.mark.parametrize("extraction", [True, False])
 def test_failures_and_no_content_logs(extraction: bool, caplog: pytest.LogCaptureFixture) -> None:
     app = create_app(
-        extractor=BrokenExtractor() if extraction else FakeExtractor(),
+        extractor=BrokenExtractor()
+        if extraction
+        else FakeExtractor(
+            RetrievalContext(
+                interests=[
+                    SupportedText(value="synthetic topic", evidence=[statement("PRIVATE_SENTINEL")])
+                ],
+            )
+        ),
         recommendations=FakeRecommendations() if extraction else BrokenRecommendations(),
     )
     with TestClient(app) as client:
@@ -412,7 +422,7 @@ def test_endpoint_does_not_open_student_files(monkeypatch: pytest.MonkeyPatch) -
             response = client.post(
                 "/api/chat",
                 json={
-                    "messages": [{"role": "user", "content": "Synthetic query"}],
+                    "messages": [{"role": "user", "content": "Show a programming course"}],
                 },
             )
         assert response.status_code == 200
@@ -453,7 +463,7 @@ def test_demo_beginner_journey_with_uncertain_reply() -> None:
         first = client.post("/api/chat", json={"messages": messages})
         assert first.status_code == 200
         first_body = ChatResponse.model_validate(first.json())
-        assert "I’m not sure" in first_body.suggested_replies
+        assert "I don't know" in first_body.suggested_replies
         messages += [
             {"role": "assistant", "content": first_body.message},
             {"role": "user", "content": "I’m not sure"},
@@ -468,18 +478,23 @@ def test_demo_beginner_journey_with_uncertain_reply() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cap_results_and_preserve_provisional_clarification() -> None:
+async def test_cap_results_after_direction_is_answered() -> None:
     resources = [resource().model_copy(update={"id": str(i)}) for i in range(5)]
     result = RecommendationResult(
         recommendations=resources,
         clarification=clarification(),
         limitations=["Fixture limitation"],
     )
-    response = await ChatService(FakeExtractor(), FakeRecommendations(result)).chat(
-        ChatRequest(messages=[student("Show me campus options")]),
+    context = RetrievalContext(
+        interests=[
+            SupportedText(value="programming", evidence=[statement("programming")]),
+        ]
+    )
+    response = await ChatService(FakeExtractor(context), FakeRecommendations(result)).chat(
+        ChatRequest(messages=[student("Show programming courses")]),
     )
     assert len(response.recommendations) == 3
-    assert clarification().text in response.message
+    assert response.information.ready
     assert response.limitations == ["Fixture limitation"]
     assert response.recommendations[0].unknowns == resource().unknowns
 
@@ -572,7 +587,13 @@ async def test_invalid_retrieval_output_fails_without_fabricated_fallback() -> N
     invalid = resource().model_copy(update={"sources": []})
     with pytest.raises(ChatUnavailable):
         await ChatService(
-            FakeExtractor(),
+            FakeExtractor(
+                RetrievalContext(
+                    interests=[
+                        SupportedText(value="synthetic", evidence=[statement("Synthetic query")]),
+                    ]
+                )
+            ),
             FakeRecommendations(
                 RecommendationResult(
                     recommendations=[invalid],
@@ -583,9 +604,17 @@ async def test_invalid_retrieval_output_fails_without_fabricated_fallback() -> N
 
 @pytest.mark.asyncio
 async def test_maximum_length_clarification_with_provisional_results() -> None:
-    question = clarification().model_copy(update={"text": "Q" * 4000})
+    question = clarification("skills.python").model_copy(update={"text": "Q" * 4000})
     response = await ChatService(
-        FakeExtractor(),
+        FakeExtractor(
+            RetrievalContext(
+                interests=[
+                    SupportedText(
+                        value="synthetic", evidence=[statement("Show me campus options")]
+                    ),
+                ]
+            )
+        ),
         FakeRecommendations(
             RecommendationResult(
                 recommendations=[resource()],
@@ -594,4 +623,5 @@ async def test_maximum_length_clarification_with_provisional_results() -> None:
         ),
     ).chat(ChatRequest(messages=[student("Show me campus options")]))
     assert response.message == question.text
-    assert response.recommendations
+    assert not response.recommendations
+    assert response.information.missing_fields == ["skills.python"]

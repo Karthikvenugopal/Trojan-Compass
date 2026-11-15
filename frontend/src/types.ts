@@ -37,6 +37,27 @@ export interface Recommendation {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  edit?: InformationEdit;
+}
+
+export type AnswerStatus = 'not_answered' | 'unknown' | 'none' | 'provided';
+
+export interface InformationEdit {
+  field: string;
+  status: AnswerStatus;
+  value: string | null;
+}
+
+export interface InformationField extends InformationEdit {
+  label: string;
+  category: 'fixed' | 'request';
+  required: boolean;
+}
+
+export interface InformationSnapshot {
+  fields: InformationField[];
+  ready: boolean;
+  missing_fields: string[];
 }
 
 /** Stateless API contract specified for POST /api/chat. */
@@ -49,6 +70,7 @@ export interface ChatResponse {
   suggested_replies: string[];
   recommendations: Recommendation[];
   limitations: string[];
+  information?: InformationSnapshot;
 }
 
 export interface DisplayMessage extends ChatMessage {

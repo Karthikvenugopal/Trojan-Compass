@@ -17,6 +17,17 @@
             "minLength": 1,
             "title": "Content",
             "type": "string"
+          },
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/InformationEdit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -24,6 +35,48 @@
           "content"
         ],
         "title": "ChatMessage",
+        "type": "object"
+      },
+      "InformationEdit": {
+        "additionalProperties": false,
+        "description": "An explicit student correction carried in a user turn, never stored server-side.",
+        "properties": {
+          "field": {
+            "maxLength": 120,
+            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "title": "Field",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "not_answered",
+              "unknown",
+              "none",
+              "provided"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field",
+          "status"
+        ],
+        "title": "InformationEdit",
         "type": "object"
       }
     },
@@ -83,6 +136,36 @@
         "title": "Constraints",
         "type": "object"
       },
+      "ContextRequirement": {
+        "additionalProperties": false,
+        "description": "Additional information explicitly made material by the student's request.",
+        "properties": {
+          "field": {
+            "enum": [
+              "background",
+              "time_window",
+              "modality"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "evidence"
+        ],
+        "title": "ContextRequirement",
+        "type": "object"
+      },
       "Skill": {
         "additionalProperties": false,
         "properties": {
@@ -118,6 +201,55 @@
           "evidence"
         ],
         "title": "Skill",
+        "type": "object"
+      },
+      "StudentAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "maxLength": 120,
+            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "title": "Field",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "not_answered",
+              "unknown",
+              "none",
+              "provided"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "status"
+        ],
+        "title": "StudentAnswer",
         "type": "object"
       },
       "StudentStatement": {
@@ -280,6 +412,22 @@
       },
       "constraints": {
         "$ref": "#/$defs/Constraints"
+      },
+      "answers": {
+        "items": {
+          "$ref": "#/$defs/StudentAnswer"
+        },
+        "maxItems": 32,
+        "title": "Answers",
+        "type": "array"
+      },
+      "requested_context": {
+        "items": {
+          "$ref": "#/$defs/ContextRequirement"
+        },
+        "maxItems": 3,
+        "title": "Requested Context",
+        "type": "array"
       }
     },
     "title": "RetrievalContext",
@@ -321,6 +469,36 @@
           }
         },
         "title": "Constraints",
+        "type": "object"
+      },
+      "ContextRequirement": {
+        "additionalProperties": false,
+        "description": "Additional information explicitly made material by the student's request.",
+        "properties": {
+          "field": {
+            "enum": [
+              "background",
+              "time_window",
+              "modality"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "evidence"
+        ],
+        "title": "ContextRequirement",
         "type": "object"
       },
       "RetrievalContext": {
@@ -385,6 +563,22 @@
           },
           "constraints": {
             "$ref": "#/$defs/Constraints"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/$defs/StudentAnswer"
+            },
+            "maxItems": 32,
+            "title": "Answers",
+            "type": "array"
+          },
+          "requested_context": {
+            "items": {
+              "$ref": "#/$defs/ContextRequirement"
+            },
+            "maxItems": 3,
+            "title": "Requested Context",
+            "type": "array"
           }
         },
         "title": "RetrievalContext",
@@ -425,6 +619,55 @@
           "evidence"
         ],
         "title": "Skill",
+        "type": "object"
+      },
+      "StudentAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "maxLength": 120,
+            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "title": "Field",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "not_answered",
+              "unknown",
+              "none",
+              "provided"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/StudentStatement"
+            },
+            "maxItems": 8,
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "status"
+        ],
+        "title": "StudentAnswer",
         "type": "object"
       },
       "StudentStatement": {
@@ -996,6 +1239,97 @@
         "title": "EventSchedule",
         "type": "object"
       },
+      "InformationField": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "maxLength": 120,
+            "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "title": "Field",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "not_answered",
+              "unknown",
+              "none",
+              "provided"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          },
+          "label": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "fixed",
+              "request"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "required": {
+            "default": false,
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "field",
+          "status",
+          "label",
+          "category"
+        ],
+        "title": "InformationField",
+        "type": "object"
+      },
+      "InformationSnapshot": {
+        "additionalProperties": false,
+        "description": "A response view for frontend memory, not a persistent student profile.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/$defs/InformationField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "ready": {
+            "default": false,
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "items": {
+              "maxLength": 120,
+              "pattern": "^(direction|background|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+              "type": "string"
+            },
+            "title": "Missing Fields",
+            "type": "array"
+          }
+        },
+        "title": "InformationSnapshot",
+        "type": "object"
+      },
       "Recommendation": {
         "additionalProperties": false,
         "properties": {
@@ -1226,6 +1560,9 @@
         },
         "title": "Limitations",
         "type": "array"
+      },
+      "information": {
+        "$ref": "#/$defs/InformationSnapshot"
       }
     },
     "required": [

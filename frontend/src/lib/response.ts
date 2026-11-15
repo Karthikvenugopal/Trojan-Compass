@@ -5,10 +5,32 @@ import type { ChatResponse, Recommendation } from '../types';
 export function decodeResponse(value: unknown): ChatResponse {
   if (!record(value) || !text(value.message) || !strings(value.suggested_replies)
       || !strings(value.limitations) || !Array.isArray(value.recommendations)
-      || !value.recommendations.every(recommendation)) {
+      || !value.recommendations.every(recommendation)
+      || (value.information !== undefined && !information(value.information))) {
     throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
   }
   return value as unknown as ChatResponse;
+}
+
+function information(value: unknown): boolean {
+  if (!record(value) || typeof value.ready !== 'boolean'
+      || !Array.isArray(value.missing_fields) || !value.missing_fields.every(fieldKey)
+      || !Array.isArray(value.fields) || value.fields.length > 40) return false;
+  const keys = new Set<string>();
+  return value.fields.every(field => {
+    if (!record(field) || !fieldKey(field.field) || keys.has(field.field)
+        || !text(field.label) || typeof field.required !== 'boolean'
+        || !['fixed', 'request'].includes(String(field.category))
+        || !['not_answered', 'unknown', 'none', 'provided'].includes(String(field.status))) return false;
+    keys.add(field.field);
+    return field.status === 'provided'
+      ? text(field.value) && field.value.length <= 1000 : field.value === null;
+  });
+}
+
+function fieldKey(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 120
+    && /^(direction|background|program|preferences|time_window|modality|target|skills\..{1,100})$/.test(value);
 }
 
 function recommendation(value: unknown): value is Recommendation {

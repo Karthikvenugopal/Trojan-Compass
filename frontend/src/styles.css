@@ -152,3 +152,31 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* The optional information editor stays collapsed until the student opens it. */
+.information-panel { margin: 14px 0 0; border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+.information-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 15px 18px; border: 0; background: #fff; color: var(--ink); text-align: left; }
+.information-toggle:hover { background: #fdfaf8; }
+.information-title { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 750; }
+.information-title svg { color: var(--cardinal); }
+.information-count { margin-left: auto; color: var(--muted); font-size: 11px; }
+.chevron { transition: transform .15s; }
+.chevron.expanded { transform: rotate(180deg); }
+.information-content { border-top: 1px solid var(--line); padding: 16px 18px; background: linear-gradient(145deg, #fffbfa, #fff 65%); }
+.information-intro { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.readiness-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; background: #fff5e6; color: #715222; border-radius: 9px; font-size: 11px; line-height: 1.5; }
+.readiness-note svg { flex-shrink: 0; margin-top: 1px; }
+.readiness-note.ready { background: #edf5ee; color: #365d3d; }
+.information-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 12px; margin-top: 14px; }
+.information-field { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+.information-field-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.information-field label { font-size: 12px; font-weight: 700; }
+.information-badge { padding: 3px 6px; border-radius: 5px; background: #f2f1ef; color: #66636c; font-size: 9px; }
+.information-badge.needed { background: #faeeea; color: #8d3a2c; }
+.answer-controls { display: flex; gap: 8px; }
+.answer-controls select { flex: 1; min-width: 0; border: 1px solid #dedbd7; border-radius: 7px; padding: 9px; font: inherit; font-size: 12px; background: #fff; color: var(--ink); }
+.answer-save { border: 1px solid #e2d5d2; border-radius: 7px; background: #fcf4f2; color: var(--cardinal); padding: 8px 12px; font-weight: 700; font-size: 11px; }
+.information-field textarea { width: 100%; margin-top: 9px; padding: 10px; border: 1px solid #dedbd7; border-radius: 8px; font-size: 12px; line-height: 1.6; resize: vertical; }
+.answer-controls select:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.information-privacy { margin: 13px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }

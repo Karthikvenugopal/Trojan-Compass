@@ -93,12 +93,19 @@ set it to `true`. No frontend environment file contains backend/provider credent
 The backend `.env.example` documents variables; it is not automatically loaded.
 Configure them in your server environment and restart both servers after changes.
 
-For greetings or vague openings without supported interests/background, chat shows
-the graph's discovery question and approachable choices before broad recommendation
-cards. An explicit course/event browsing request or supported interests/background
-can receive results immediately. After an unsure answer, broad starting points are
-allowed instead of repeating the same question. This progress is derived only from
-the conversation supplied with each request.
+Chat checks answer states before recommending: a required field must have a
+supported answer, including an explicit “I don’t know” or “None.” A greeting,
+course/event keyword or previous unanswered question does not unlock cards.
+Direction and background form a small core checklist; extra requirements depend
+on the request and graph-informed prerequisites. Unknown direction permits only
+clearly labeled general starting points, with limitations rather than invented fit.
+
+Open **What I’m using** below the chat to inspect or correct information. It is
+collapsed by default. Each field offers Not answered, I don’t know, None, or an
+editable answer. **Save** sends a typed student correction and updates the reply;
+resetting a required field to Not answered asks for it again. Values, drafts and
+corrections stay in frontend memory and clear with Start over, End chat or refresh.
+There is no server session or profile store. See [readiness and answer states](docs/RECOMMENDATION_READINESS.md).
 
 Each extractor sends the full conversation as untrusted data in one typed
 request, validates the schema and user-quotation provenance, and retains no
