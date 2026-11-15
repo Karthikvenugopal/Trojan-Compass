@@ -108,9 +108,42 @@ jobs:
                   raise SystemExit(f'Port {port} remained open after shutdown')
           print('Both servers stopped cleanly.')
           PY
+      - name: Verify dummy chat mode without provider credentials
+        shell: bash
+        run: |
+          bash scripts/check-system.sh
+          bash scripts/dev.sh --diagnostic > /tmp/compass-dummy.log 2>&1 &
+          launcher_pid=$!
+          trap 'kill -TERM "$launcher_pid" 2>/dev/null || true; wait "$launcher_pid" 2>/dev/null || true' EXIT
+          python - <<'PYTHON'
+          import time
+          import httpx
+          with httpx.Client(trust_env=False, timeout=1) as client:
+              deadline = time.monotonic() + 45
+              while time.monotonic() < deadline:
+                  try:
+                      health = client.get('http://127.0.0.1:5173/health')
+                      if health.status_code == 200 and health.json()['mode'] == 'diagnostic':
+                          break
+                  except (httpx.HTTPError, ValueError):
+                      pass
+                  time.sleep(0.25)
+              else:
+                  raise SystemExit('Diagnostic mode did not start')
+              response = client.post('http://127.0.0.1:5173/api/chat', json={
+                  'messages': [{'role': 'user', 'content': 'Synthetic test message'}],
+              })
+              assert response.status_code == 200
+              assert 'Gemini was not called' in response.json()['message']
+              assert response.json()['recommendations'] == []
+              dummy = client.get('http://127.0.0.1:5173/api/diagnostics/dummy')
+              assert dummy.status_code == 200
+              assert dummy.json()['message'] == response.json()['message']
+          print('Dummy chat and dummy endpoint passed through actual frontend proxy.')
+          PYTHON
       - name: Show startup diagnostics on failure
         if: failure()
-        run: cat /tmp/compass-startup.log 2>/dev/null || true
+        run: cat /tmp/compass-startup.log /tmp/compass-dummy.log 2>/dev/null || true
   graph:
     runs-on: ubuntu-latest
     services:

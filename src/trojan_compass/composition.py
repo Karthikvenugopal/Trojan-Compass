@@ -49,8 +49,8 @@ class RuntimeSettings:
     @classmethod
     def from_environment(cls) -> "RuntimeSettings":
         mode = os.getenv("COMPASS_MODE", "demo")
-        if mode not in ("demo", "campus", "production"):
-            raise ValueError("COMPASS_MODE must be demo, campus or production")
+        if mode not in ("demo", "diagnostic", "campus", "production"):
+            raise ValueError("COMPASS_MODE must be demo, diagnostic, campus or production")
         seed_path = os.getenv("COMPASS_SEED_PATH")
         return cls(
             mode=cast(AppMode, mode),
@@ -104,12 +104,12 @@ def create_configured_app(
     factory is closed here. Production never silently falls back to fake/seed data.
     """
     settings = settings or RuntimeSettings.from_environment()
-    if settings.mode == "demo":
+    if settings.mode in ("demo", "diagnostic"):
         if extractor is not None or graph is not None:
             raise ValueError(
                 "Choose campus or production mode for injected integration dependencies"
             )
-        return create_app()
+        return create_app(mode=settings.mode)
     extractor = extractor if extractor is not None else configured_extractor()
     lifespan = None
     if graph is None and settings.mode == "campus":

@@ -57,6 +57,7 @@ conversation to the same `/api/chat` route.
 | `COMPASS_MODE` | Extraction | Recommendations and graph |
 | --- | --- | --- |
 | `demo` (default) | Offline; extracts no student facts | Existing fixed course fixture, explicitly labeled |
+| `diagnostic` | No extraction | Labeled dummy chat responses; no provider or graph calls |
 | `campus` | OpenAI or Gemini, requires server credentials | Real engine over reviewed USC seed using Abishek's in-memory adapter |
 | `production` | OpenAI or Gemini, requires server credentials | Real engine over configured Neo4j; never falls back to fixtures |
 
@@ -167,6 +168,34 @@ Gemini retention and paid/unpaid data-use differences are documented separately
 in [provider setup](docs/PROVIDERS.md); its retention is not claimed to be disabled.
 No claim is made about the retention settings of the environment running this
 repository or external infrastructure.
+
+## Isolate app failures from Gemini
+
+Run `bash scripts/check-system.sh --gemini` to test a dummy application response
+in-process and make a small synthetic Gemini curl request with up to three
+attempts. It reads the ignored backend `.env`, sends the key over stdin rather
+than command arguments, and prints only status codes and token counts. DNS,
+connection/TLS, credentials, quota, model and provider-server errors are distinct.
+Retries apply to transient failures; authentication/configuration errors stop.
+No prompts, provider response content, credentials or student information are logged.
+This check exits nonzero if a requested probe fails.
+
+For a running server/proxy, add `--base-url http://127.0.0.1:5173`. The default
+in-process application check does **not** prove that a TCP listener is running.
+The app exposes `GET /api/diagnostics/dummy` for a static `ChatResponse` that
+never calls a provider or graph and has no request/conversation body.
+
+To use the ordinary chat UI with fixed responses, start
+`bash scripts/dev.sh --diagnostic`. Every validated `/api/chat` request then returns
+"Diagnostic response: Trojan Compass is responding. Gemini was not called."
+This mode needs no provider/database credentials and never silently activates as
+a fallback. Your saved `.env` is unchanged; Ctrl+C and restart the launcher without
+`--diagnostic` to return to Gemini. Local server ports still need to be permitted.
+
+If the page itself refuses connections, start the servers first. A dummy response
+proves the HTTP/UI path, not all retrieval or structured-extraction behavior.
+A successful basic Gemini probe establishes endpoint/key reachability; if normal
+chat still fails, investigate the structured extraction and graph stages next.
 
 ## Browser connectivity
 
