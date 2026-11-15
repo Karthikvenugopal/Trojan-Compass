@@ -25,6 +25,9 @@ if sys.version_info < (3, 11):
 for port in (8000, 5173):
     try:
         with socket.socket() as listener:
+            # Match Uvicorn's reuse policy so a clean restart is not rejected
+            # by sockets in TIME_WAIT. An active listener still fails this bind.
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             listener.bind(('127.0.0.1', port))
     except OSError as error:
         if error.errno in (errno.EPERM, errno.EACCES):
