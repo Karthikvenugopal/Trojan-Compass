@@ -7,6 +7,7 @@ All conversations are synthetic.
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from trojan_compass.api import create_app
@@ -87,6 +88,7 @@ async def test_not_sure_reply_gets_broad_options_instead_of_the_same_question() 
         ChatRequest(messages=[ChatMessage(role="user", content="Help me get started")])
     )
     assert first.suggested_replies, "the first turn asks one question"
+    assert first.recommendations == [], "a vague opening must not dump broad event/course cards"
 
     second = await service.chat(
         ChatRequest(
@@ -100,6 +102,29 @@ async def test_not_sure_reply_gets_broad_options_instead_of_the_same_question() 
     assert second.recommendations, "after 'not sure' the student still gets starting points"
     assert second.suggested_replies == []
     assert second.message == "Here are campus options with supporting sources below."
+
+    fresh = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content="Hello")]))
+    assert fresh.recommendations == [], "another request must not inherit discovery progress"
+    assert fresh.suggested_replies
+
+
+@pytest.mark.parametrize("opening", ["Hi", "Help me get started", "I have no idea what to do"])
+async def test_vague_opening_asks_before_showing_graph_events(opening: str) -> None:
+    service = ChatService(ContextExtractorStub(RetrievalContext()), engine())
+    response = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content=opening)]))
+    assert not response.recommendations
+    assert "enjoy" in response.message
+    assert len(response.suggested_replies) > 1
+    assert any("sure" in option for option in response.suggested_replies)
+    assert not response.limitations  # No notices referring to unshown broad cards.
+
+
+@pytest.mark.parametrize("query", ["Show me campus events", "Find introductory courses"])
+async def test_explicit_browsing_can_get_graph_results_immediately(query: str) -> None:
+    service = ChatService(ContextExtractorStub(RetrievalContext()), engine())
+    response = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content=query)]))
+    assert response.recommendations
+    assert all(resource.sources for resource in response.recommendations)
 
 
 async def test_skill_question_path_is_understood_by_ask_back_policy() -> None:

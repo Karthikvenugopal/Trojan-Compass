@@ -93,6 +93,13 @@ set it to `true`. No frontend environment file contains backend/provider credent
 The backend `.env.example` documents variables; it is not automatically loaded.
 Configure them in your server environment and restart both servers after changes.
 
+For greetings or vague openings without supported interests/background, chat shows
+the graph's discovery question and approachable choices before broad recommendation
+cards. An explicit course/event browsing request or supported interests/background
+can receive results immediately. After an unsure answer, broad starting points are
+allowed instead of repeating the same question. This progress is derived only from
+the conversation supplied with each request.
+
 Each extractor sends the full conversation as untrusted data in one typed
 request, validates the schema and user-quotation provenance, and retains no
 provider thread or previous-response state. OpenAI uses Chat Completions with
