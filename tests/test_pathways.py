@@ -295,3 +295,40 @@ async def test_chat_service_passes_graph_roadmap_and_follow_ups(graph: Knowledge
     assert response.graph is not None and response.roadmap is not None
     assert CHANGE_REPLY in response.suggested_replies
     assert len(response.recommendations) <= 4
+
+
+async def test_a_reply_to_our_question_is_never_asked_again() -> None:
+    """Extraction finds nothing in vague replies; the reply itself must still count."""
+
+    class Nothing:
+        async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
+            return RetrievalContext()
+
+    class Seen:
+        def __init__(self) -> None:
+            self.context: RetrievalContext | None = None
+
+        async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
+            self.context = request.context
+            return RecommendationResult()
+
+    seen = Seen()
+    service = ChatService(Nothing(), seen)
+    messages = [ChatMessage(role="user", content="hello there")]
+    first = await service.chat(ChatRequest(messages=messages))
+    assert first.message.startswith("What interests you")
+    messages += [
+        ChatMessage(role="assistant", content=first.message),
+        ChatMessage(role="user", content="something with data maybe"),
+    ]
+    second = await service.chat(ChatRequest(messages=messages))
+    assert second.message.startswith("What skills, projects or courses")
+    messages += [
+        ChatMessage(role="assistant", content=second.message),
+        ChatMessage(role="user", content="a bit of excel at my old job"),
+    ]
+    third = await service.chat(ChatRequest(messages=messages))
+    assert not third.message.startswith("What skills, projects or courses")
+    assert third.information.ready
+    assert seen.context is not None
+    assert [i.value for i in seen.context.interests] == ["something with data maybe"]

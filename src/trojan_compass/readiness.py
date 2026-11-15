@@ -396,6 +396,52 @@ class RequestInformation:
         )
 
 
+NON_ANSWERS = frozenset(
+    "hi hello hey again ok okay yes no thanks thank you sure hmm please help me there".split()
+)
+
+
+def accept_direct_reply(
+    information: "RequestInformation", messages: list[ChatMessage]
+) -> "RequestInformation":
+    """Never ask the same question twice.
+
+    Extraction re-reads the whole conversation on every turn and can miss a vague reply
+    ("something with data maybe"). When the student replied to one of our questions and
+    that field is still unanswered, their reply is the answer, in their own words. A bare
+    greeting is not an answer, and replies given before a later panel edit of that field
+    (for example "Change direction") no longer count.
+    """
+    context = information.context.model_copy(deep=True)
+    changed = False
+    for index in range(1, len(messages)):
+        asked, reply = messages[index - 1], messages[index]
+        if asked.role != "assistant" or reply.role != "user" or reply.edit is not None:
+            continue
+        field = question_field(asked.content)
+        if field not in ("direction", "direction_detail", "background"):
+            continue
+        if information.answer(field).status != "not_answered":
+            continue
+        related = {field, "direction"} if field == "direction_detail" else {field}
+        if any(m.edit and m.edit.field in related for m in messages[index + 1 :]):
+            continue
+        words = re.findall(r"[a-z0-9]+", reply.content.casefold())
+        if not any(len(word) > 1 and word not in NON_ANSWERS for word in words):
+            continue
+        text = " ".join(reply.content.split())
+        evidence = [StudentStatement(message_index=index, quote=reply.content)]
+        if field == "direction":
+            context.interests.append(SupportedText(value=text[:300], evidence=evidence))
+        else:
+            context.answers = [a for a in context.answers if a.field != field]
+            context.answers.append(
+                StudentAnswer(field=field, status="provided", value=text[:1000], evidence=evidence)
+            )
+        changed = True
+    return request_information(context, messages) if changed else information
+
+
 def request_information(
     context: RetrievalContext, messages: list[ChatMessage]
 ) -> RequestInformation:

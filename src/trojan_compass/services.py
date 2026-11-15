@@ -20,7 +20,12 @@ from trojan_compass.contracts import (
     Source,
 )
 from trojan_compass.extraction import validate_evidence
-from trojan_compass.readiness import CHECKLIST_HINT, request_information, starter_question
+from trojan_compass.readiness import (
+    CHECKLIST_HINT,
+    accept_direct_reply,
+    request_information,
+    starter_question,
+)
 
 if TYPE_CHECKING:
     from trojan_compass.assistant import CampusAssistant, RouteDecision
@@ -99,6 +104,7 @@ class ChatService:
                 context = RetrievalContext.model_validate((await extraction).model_dump())
                 validate_evidence(context, request.messages)
                 information = request_information(context, request.messages)
+                information = accept_direct_reply(information, request.messages)
                 context = information.context
                 opening_question = information.missing_question()
                 if opening_question is not None:
