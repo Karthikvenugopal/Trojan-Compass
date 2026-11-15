@@ -17,36 +17,55 @@ An assistant question alone never establishes an answer. An unconfirmed skill
 remains unanswered until the student acknowledges uncertainty or supplies a status.
 Completed courses never prove mastery.
 
-## Fixed checklist and changing requirements
+## Minimum questions before any recommendation search
 
-The chat encourages sharing **direction/interests** and **skills/experience**.
-These fixed checklist fields are always available in the optional editor. They
-are not a mandatory full questionnaire: a usable direction can be supplied in the
-first message, and no career target is universally required. An explicit absence
-of direction is also an answer and permits general exploration.
+There are two fixed information requirements, not a forced number of turns:
 
-Extra requirements change with the request: background for level-sensitive
-recommendations, availability when schedule fit is requested, format when it
-matters, and skill/target clarifications returned by the recommendation engine.
-The extractor must cite the student request that makes an extra requirement
-necessary. Graph questions determine which prerequisite or target distinction
-changes retrieval. An unanswered required field holds back all recommendation
-cards. Context discovery before retrieval uses no graph matches as student facts.
+| Requirement | Question | Complete when |
+| --- | --- | --- |
+| Area to explore | What interests you, or what would you like to explore? | A concrete area, or explicit unknown/none. |
+| Relevant background | What skills, projects or courses have you tried so far? | Supported experience/coursework/skill statements, or explicit unknown/none. |
 
-The sequence is validate conversation → extract supported facts and answer states
-→ apply explicit corrections → check minimum answers → ask one targeted question
-or retrieve → resolve any material graph clarification → compose sourced results.
-A prior unanswered question can be asked again; turn count is not readiness.
-Explicit unknown/none is acknowledged and is not asked repeatedly. If direction
-is unavailable, results say they are **general starting points, not personalized
-matches**. Other unavailable required details appear in limitations; no fit or
-eligibility is asserted for those details. If retrieval finds no supported matches,
-say so without claiming USC has no relevant opportunities.
+“Building things” is a useful broad preference, not yet a searchable domain. Ask
+“What kind of things would you enjoy building?” with choices such as programming
+(apps/websites), physical objects/design, or unknown. Record `direction_detail`
+separately; do not invent a software career or programming ability from a broad
+choice. A concrete answer resolves this refinement. Explicit inability to narrow
+it also counts as answered and permits labeled general starting points.
 
-Collecting an answer is not proof that every preference was verified. The current
-engine does not automatically match personal availability or event-format
-preferences; responses explicitly disclose those limits when applicable. Course
-prerequisites and course-format preferences still use the existing engine checks.
+Ask one concrete question at a time, skip answers already present, and collect
+background before calling RecommendationService. If both requirements are answered
+in the first message, search immediately. Never repeatedly say “not enough info.”
+Tell the student which question comes next instead.
+
+Request-specific dates or format are asked after the fixed minimum only when the
+request depends on them. Actual graph prerequisites/target distinctions can require
+one further clarification before cards are returned. A previous unanswered question
+is not an answer. Unknown/none is acknowledged and not repeatedly requested.
+
+The sequence is validate → extract → apply corrections → collect area/refinement
+and background → collect required request constraints → search → resolve any
+material graph clarification → compose sourced results. All values are request-local.
+
+## Grounded exploration and missing coverage
+
+An interest search can match a sourced skill relation even if the graph has no
+separate Topic node for it. Chat composition reuses the existing engine, feasibility,
+ranking and card builder, then names the actual skill relation in the evidence path.
+No graph edges, career goals, skill gaps or mastery are invented. Completed courses,
+known skills and recorded access constraints still apply. A bounded supplemental
+lookup examines up to 100 shared action records; primary engine queries are unchanged.
+
+If there is no verified match after collecting the minimum answers, explain that
+the **current data** lacks a match. Return a concise response and actionable sourced
+areas instead of treating it as missing student information. Supplemental options
+come from non-excluded records, with completed courses/known skill topics filtered.
+There is no duplicate “answer the question above” placeholder.
+
+Collecting answers is not proof every preference was verified. The current engine
+does not automatically match personal availability or event-format preferences;
+responses disclose those limits when applicable. Existing course prerequisite
+and format checks are reused. General suggestions remain labeled as such.
 
 ## Optional editor
 

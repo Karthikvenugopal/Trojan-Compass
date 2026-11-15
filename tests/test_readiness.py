@@ -49,7 +49,7 @@ async def test_no_context_never_calls_recommendations(text: str) -> None:
     response = await ChatService(FakeExtractor(), spy).chat(ChatRequest(messages=[user(text)]))
     assert spy.requests == []
     assert not response.recommendations
-    assert response.information.missing_fields == ["direction"]
+    assert response.information.missing_fields == ["direction", "background"]
     assert all(f.value is None and f.status == "not_answered" for f in response.information.fields)
 
 
@@ -65,7 +65,7 @@ async def test_a_previous_question_does_not_count_as_an_answer() -> None:
         )
     )
     assert spy.requests == []
-    assert response.information.missing_fields == ["direction"]
+    assert response.information.missing_fields == ["direction", "background"]
 
 
 @pytest.mark.parametrize("text", ["I don't know", "None"])
@@ -77,6 +77,19 @@ async def test_explicit_unavailability_is_answered_and_acknowledged(text: str) -
                 user("Hi"),
                 ChatMessage(role="assistant", content=DIRECTION_QUESTION),
                 user(text),
+            ]
+        )
+    )
+    assert spy.requests == []
+    assert response.information.missing_fields == ["background"]
+    response = await ChatService(FakeExtractor(), spy).chat(
+        ChatRequest(
+            messages=[
+                user("Hi"),
+                ChatMessage(role="assistant", content=DIRECTION_QUESTION),
+                user(text),
+                ChatMessage(role="assistant", content=response.message),
+                user("I have no experience"),
             ]
         )
     )
@@ -96,7 +109,7 @@ async def test_panel_reset_clears_old_facts_and_blocks_retrieval_again() -> None
     )
     spy = RetrievalSpy()
     messages = [
-        user("robotics"),
+        user("robotics. I have no experience."),
         ChatMessage(role="assistant", content="Synthetic reply"),
         user(
             "Update my direction: Not answered.",
@@ -123,7 +136,7 @@ async def test_saved_sentence_replaces_old_values_and_carries_latest_query() -> 
     spy = RetrievalSpy()
     edit = InformationEdit(field="direction", status="provided", value="I like music")
     messages = [
-        user("Find robotics events"),
+        user("Find robotics events. I have no experience."),
         ChatMessage(role="assistant", content="Synthetic reply"),
         user("Update my direction: I like music", edit),
     ]
@@ -137,7 +150,7 @@ async def test_saved_sentence_replaces_old_values_and_carries_latest_query() -> 
 
 
 async def test_request_specific_availability_blocks_until_answered() -> None:
-    text = "Find robotics events that fit my schedule"
+    text = "Find robotics events that fit my schedule. I have no experience."
     context = RetrievalContext(
         interests=[SupportedText(value="robotics", evidence=said("robotics"))],
         requested_context=[
@@ -164,7 +177,7 @@ async def test_request_specific_availability_blocks_until_answered() -> None:
 
 
 async def test_graph_prerequisite_question_holds_back_provisional_cards() -> None:
-    text = "I like robotics"
+    text = "I like robotics. I have no experience."
     context = RetrievalContext(
         interests=[SupportedText(value="robotics", evidence=said("robotics"))]
     )
@@ -256,13 +269,10 @@ def test_unconfirmed_skill_mastery_is_unanswered_until_explicitly_acknowledged()
     assert info.context.skill_status("Python") == "unknown"
 
 
-async def test_request_specific_background_requires_an_answer_but_zero_is_valid() -> None:
+async def test_background_is_required_before_search_and_zero_is_valid() -> None:
     text = "Find robotics courses for my experience level"
     context = RetrievalContext(
         interests=[SupportedText(value="robotics", evidence=said("robotics"))],
-        requested_context=[
-            ContextRequirement(field="background", evidence=said("my experience level"))
-        ],
     )
     spy = RetrievalSpy()
     service = ChatService(FakeExtractor(context), spy)
@@ -289,7 +299,7 @@ async def test_changing_request_changes_volatile_requirements() -> None:
         interests=[SupportedText(value="robotics", evidence=said("robotics"))],
         requested_context=[ContextRequirement(field="time_window", evidence=said("my schedule"))],
     )
-    messages = [user("Find robotics events that fit my schedule")]
+    messages = [user("Find robotics events that fit my schedule. I have no experience.")]
     first = await ChatService(FakeExtractor(first_context), RetrievalSpy()).chat(
         ChatRequest(messages=messages)
     )
@@ -315,7 +325,7 @@ async def test_provider_structured_output_preserves_explicit_absence(provider: s
     from trojan_compass.extraction import OpenAIContextExtractor
     from trojan_compass.gemini import GeminiContextExtractor
 
-    text = "I don't have any interests to share yet"
+    text = "I don't have any interests to share yet. I have no experience."
     context = RetrievalContext(
         answers=[StudentAnswer(field="direction", status="none", evidence=said(text))]
     )
@@ -387,9 +397,39 @@ async def test_collecting_a_schedule_does_not_claim_it_was_verified() -> None:
         ),
     )
     response = await ChatService(FakeExtractor(context), RetrievalSpy()).chat(
-        ChatRequest(messages=[user("Find robotics courses; I'm available Mondays")])
+        ChatRequest(
+            messages=[user("Find robotics courses; I'm available Mondays. I have no experience.")]
+        )
     )
     assert response.information.ready
     assert any(
         "automatic schedule matching is not supported" in note for note in response.limitations
     )
+
+
+@pytest.mark.parametrize(
+    "theme",
+    ["Building things", "I like building things", "Understanding people", "Solving problems"],
+)
+async def test_broad_theme_is_refined_before_any_recommendation_search(theme: str) -> None:
+    spy = RetrievalSpy()
+    context = RetrievalContext(interests=[SupportedText(value=theme, evidence=said(theme))])
+    response = await ChatService(FakeExtractor(context), spy).chat(
+        ChatRequest(messages=[user(theme)])
+    )
+    assert spy.requests == []
+    assert response.recommendations == []
+    assert response.information.missing_fields[0] == "direction_detail"
+    assert response.message.endswith("?")
+    assert len(response.suggested_replies) >= 2
+
+
+def test_no_experience_does_not_erase_a_skill_explicitly_stated_in_the_same_turn() -> None:
+    from trojan_compass.contracts import Skill
+
+    context = RetrievalContext(
+        skills=[Skill(name="Python", status="known", evidence=said("I know Python"))]
+    )
+    info = request_information(context, [user("I know Python. I have no experience.")])
+    assert info.context.skill_status("Python") == "known"
+    assert info.answer("background").status == "provided"

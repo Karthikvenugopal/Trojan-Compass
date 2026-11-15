@@ -99,7 +99,19 @@ async def test_not_sure_reply_gets_broad_options_instead_of_the_same_question() 
             ]
         )
     )
-    assert second.recommendations, "after 'not sure' the student still gets starting points"
+    assert second.information.missing_fields == ["background"]
+    second = await service.chat(
+        ChatRequest(
+            messages=[
+                ChatMessage(role="user", content="Help me get started"),
+                ChatMessage(role="assistant", content=first.message),
+                ChatMessage(role="user", content="I'm not sure"),
+                ChatMessage(role="assistant", content=second.message),
+                ChatMessage(role="user", content="I have no experience"),
+            ]
+        )
+    )
+    assert second.recommendations, "once both minimum answers are acknowledged, show options"
     assert second.suggested_replies == []
     assert "general campus starting points" in second.message
 
@@ -124,7 +136,7 @@ async def test_browsing_without_a_direction_still_requires_an_answer(query: str)
     service = ChatService(ContextExtractorStub(RetrievalContext()), engine())
     response = await service.chat(ChatRequest(messages=[ChatMessage(role="user", content=query)]))
     assert not response.recommendations
-    assert response.information.missing_fields == ["direction"]
+    assert response.information.missing_fields == ["direction", "background"]
 
 
 async def test_skill_question_path_is_understood_by_ask_back_policy() -> None:

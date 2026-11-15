@@ -15,7 +15,7 @@ interface AppProps {
   mockMode?: boolean;
 }
 
-const INTRO = 'Welcome to Trojan Compass. A direction and a little about your skills or experience help me find a useful fit. You can say you don’t know or have none. I’ll ask only the extra questions your request needs.';
+const INTRO = 'Welcome to Trojan Compass. We’ll first cover an area to explore and your experience, then search USC courses and events. “I don’t know” and “None” are valid answers. Extra questions depend on your request.';
 
 export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -168,9 +168,6 @@ export default function App({ api = chatApi, mockMode = isMockMode }: AppProps) 
             ))}
             {pendingText && <div className="pending-row"><div className="pending-user"><b>You</b><p>{pendingText}</p></div></div>}
             {loading && <div className="thinking" role="status"><span className="dot-loader" aria-hidden="true"><i /><i /><i /></span><span>Finding a helpful next step…</span></div>}
-            {!loading && !error && conversationStarted && messages.length > 0 && messages.at(-1)?.role === 'assistant' && messages.at(-1)?.recommendations?.length === 0 && (
-              <p className="empty-recommendations">No recommendations to show yet. Answer the question above or try a different direction.</p>
-            )}
           </div>
 
           {error && (

@@ -23,8 +23,18 @@ summarizes explicitly stated skills, experience and coursework. Values are short
 sentences in the student's terms. A field starts not_answered with value=null.
 Optional program and preferences answers summarize the program/major and other
 explicit constraints. They are not required merely because they are absent.
+Broad activities such as 'building things', 'understanding people' and 'solving
+problems' need direction_detail before a focused search: cite the activity in
+requested_context. Ask what kind, without inventing a career or skill. A concrete
+domain resolves that requirement; later narrowing replaces the broad search term.
+Preserve explicitly selected domain terms such as programming as interests.
+Choosing programming as an interest never proves programming skill or a career target.
 An explicit 'I don't know' or refusal is unknown; explicit absence/no preference
 is none. Those states have value=null and MUST cite the student's statement.
+"I'm not sure where to start" requests guidance; it does not answer what interests
+the student or what they have tried. Keep those fields not_answered. Having no
+career target also does not mean having no interests. A bare "I don't know" resolves
+only the question just asked, never unrelated fields or earlier provided facts.
 Do not mark an unanswered field unknown merely because an assistant asked it.
 An explicit zero-experience answer is none for background, not a claim about
 individual skill mastery. For a specific skill use field='skills.<casefolded name>'.

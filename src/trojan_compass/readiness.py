@@ -18,11 +18,12 @@ from trojan_compass.contracts import (
 
 DIRECTION_QUESTION = "What interests you, or what would you like to explore?"
 CHECKLIST_HINT = (
-    "A direction and a little about your skills or experience help me find a useful fit. "
-    "You can say you don't know or have none; I'll only ask extra questions when they matter."
+    "Before I search, we'll cover an area to explore and your experience. "
+    "'I don't know' and 'None' are valid answers."
 )
 LABELS = {
     "direction": "Interests or direction",
+    "direction_detail": "A more specific area to explore",
     "background": "Skills and experience",
     "program": "Program or major",
     "preferences": "Other preferences",
@@ -30,6 +31,55 @@ LABELS = {
     "modality": "In person or online",
     "target": "Career direction to focus on",
 }
+
+DETAIL_QUESTIONS = {
+    "building": (
+        "What kind of things would you enjoy building?",
+        ["Programming — apps or websites", "Physical objects or design", "I don't know"],
+    ),
+    "people": (
+        "What about people interests you most?",
+        ["How people think", "Helping or teaching", "I don't know"],
+    ),
+    "problems": (
+        "What kinds of problems would you enjoy working on?",
+        ["Programming problems", "Problems involving data", "I don't know"],
+    ),
+}
+
+
+def broad_theme(value: str) -> str | None:
+    """Recognize broad discovery choices without assigning a career or skill."""
+    text = re.sub(r"[^\w\s]", " ", value.casefold())
+    text = " ".join(text.split())
+    themes = {
+        "building": {
+            "building things",
+            "build things",
+            "making things",
+            "making stuff",
+            "creating things",
+        },
+        "people": {"understanding people", "helping people", "working with people"},
+        "problems": {"solving problems", "problem solving"},
+    }
+    frames = (
+        "",
+        "i like ",
+        "i enjoy ",
+        "i am interested in ",
+        "interested in ",
+        "likes ",
+        "enjoys ",
+    )
+    return next(
+        (
+            kind
+            for kind, phrases in themes.items()
+            if any(text == frame + phrase for frame in frames for phrase in phrases)
+        ),
+        None,
+    )
 
 
 def evidence_in(value: object) -> list[StudentStatement]:
@@ -91,6 +141,10 @@ def question_field(text: str) -> str | None:
     """Recognize our questions for short replies; arbitrary assistant text proves nothing."""
     if text.startswith((DIRECTION_QUESTION, "Which topic would you like to explore?")):
         return "direction"
+    if any(text.startswith(question) for question, _ in DETAIL_QUESTIONS.values()):
+        return "direction_detail"
+    if text.startswith("Can you give one example of what you'd like to explore?"):
+        return "direction_detail"
     if text.startswith("When would you be available?"):
         return "time_window"
     if text.startswith("Would you prefer in-person or online options?"):
@@ -114,6 +168,20 @@ def question_field(text: str) -> str | None:
 def explicit_short_answers(messages: list[ChatMessage]) -> list[StudentAnswer]:
     answers = []
     for index, message in enumerate(messages):
+        if message.role == "user":
+            zero = re.search(
+                r"(?:^|[.;!?]\s+)(I have no experience)(?=$|[.;!?])", message.content, re.I
+            )
+            if zero:
+                answers.append(
+                    StudentAnswer(
+                        field="background",
+                        status="none",
+                        evidence=[
+                            StudentStatement(message_index=index, quote=zero.group(1)),
+                        ],
+                    )
+                )
         if message.role != "user" or index == 0 or messages[index - 1].role != "assistant":
             continue
         field = question_field(messages[index - 1].content)
@@ -175,12 +243,14 @@ def prune_before_edit(context: RetrievalContext, field: str, boundary: int) -> N
         return max((e.message_index for e in evidence_in(value)), default=-1) >= boundary
 
     related = {field}
-    if field == "direction":
+    if field in ("direction", "direction_detail"):
         context.interests = [v for v in context.interests if current(v)]
         context.goals = [v for v in context.goals if current(v)]
         if context.target and not current(context.target):
             context.target = None
         related.add("target")
+        if field == "direction":
+            related.add("direction_detail")
     elif field == "background":
         context.skills = [v for v in context.skills if current(v)]
         context.experiences = [v for v in context.experiences if current(v)]
@@ -250,6 +320,23 @@ class RequestInformation:
         if not missing:
             return None
         field = missing[0]
+        if field == "direction_detail":
+            values = [v.value for v in self.context.interests + self.context.goals]
+            values += [self.answer("direction").value or ""]
+            theme = next((kind for value in values if (kind := broad_theme(value))), None)
+            text, options = DETAIL_QUESTIONS.get(
+                theme or "",
+                (
+                    "Can you give one example of what you'd like to explore?",
+                    ["Computer programming", "Career networking", "I don't know"],
+                ),
+            )
+            return Clarification(
+                text=text,
+                options=options,
+                requested_fields=[field],
+                reason="A broad activity is not yet a concrete area to search.",
+            )
         questions = {
             "background": (
                 "What skills, projects or courses have you tried so far?",
@@ -305,6 +392,16 @@ def request_information(
         old = answers.get(answer.field)
         if old is not None and latest(old) > latest(answer):
             continue
+        if (
+            answer.field == "background"
+            and answer.status in ("none", "unknown")
+            and old is not None
+            and old.status == "provided"
+            and latest(old) == latest(answer)
+        ):
+            # "No experience" can coexist with an explicitly stated skill/course
+            # in that turn. Preserve those facts. Typed resets already pruned them.
+            continue
         answers[answer.field] = answer
         if answer.status != "provided":
             clear_field(context, answer.field)
@@ -322,6 +419,9 @@ def request_information(
             supported = SupportedText(value=answer.value, evidence=answer.evidence)
             if answer.field == "direction":
                 context.interests = [supported]
+            elif answer.field == "direction_detail":
+                context.interests = [v for v in context.interests if not broad_theme(v.value)]
+                context.interests.append(supported)
             elif answer.field == "target" and context.target is None:
                 context.interests.append(supported)
                 answers["direction"] = StudentAnswer(
@@ -338,6 +438,52 @@ def request_information(
                 context.program = supported
             elif answer.field == "preferences":
                 context.constraints.additional_preferences = [supported]
+    required = ["direction"]
+    facts = context.interests + context.goals
+    specific = [fact for fact in facts if not broad_theme(fact.value)]
+    if context.target is None and not specific and answers["direction"].status == "provided":
+        if any(broad_theme(v.value) for v in facts) or broad_theme(
+            answers["direction"].value or ""
+        ):
+            required.append("direction_detail")
+    elif specific:
+        fact = max(specific, key=lambda v: max(e.message_index for e in v.evidence))
+        detail = StudentAnswer(
+            field="direction_detail",
+            status="provided",
+            value=fact.value[:1000],
+            evidence=fact.evidence,
+        )
+        if latest(detail) >= latest(
+            answers.get(
+                "direction_detail", StudentAnswer(field="direction_detail", status="not_answered")
+            )
+        ):
+            answers["direction_detail"] = detail
+    # Fixed minimum before recommendation search. A broad direction is refined
+    # first, then ask about background; explicit absence/uncertainty resolves both.
+    required.append("background")
+    required.extend(
+        r.field
+        for r in context.requested_context
+        if r.field != "direction_detail" or answers["direction"].status == "provided"
+    )
+    detail_answer = answers.get("direction_detail")
+    if (
+        detail_answer
+        and detail_answer.status == "provided"
+        and broad_theme(detail_answer.value or "")
+    ):
+        answers["direction_detail"] = StudentAnswer(
+            field="direction_detail",
+            status="not_answered",
+            evidence=detail_answer.evidence,
+        )
+    if "direction_detail" in required and answers.get("direction_detail") is not None:
+        if answers["direction_detail"].status in ("unknown", "none") and not specific:
+            # Keep the acknowledged broad theme in the view; search only general
+            # starting points rather than pretending it is a graph topic.
+            context.interests = []
+            context.goals = []
     context.answers = list(answers.values())
-    required = ["direction", *(r.field for r in context.requested_context)]
     return RequestInformation(context, answers, list(dict.fromkeys(required)))

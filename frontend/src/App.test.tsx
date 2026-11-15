@@ -217,3 +217,29 @@ it('carries panel corrections in history, retries them intact and clears on Star
   expect(storage).not.toHaveBeenCalled();
   storage.mockRestore();
 });
+
+it('collects an area and background through concrete follow-ups before showing cards', async () => {
+  const user = userEvent.setup();
+  const response = (message: string, choices: string[]): ChatResponse => ({
+    message, suggested_replies: choices, recommendations: [], limitations: [],
+  });
+  const send = vi.fn<ChatApi['send']>()
+    .mockResolvedValueOnce(response('What interests you?', ['Building things']))
+    .mockResolvedValueOnce(response('What kind of things would you enjoy building?', ['Programming — apps or websites']))
+    .mockResolvedValueOnce(response('What skills, projects or courses have you tried so far?', ['I have no experience']))
+    .mockResolvedValueOnce(result('Here is a sourced option.', [course]));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.click(screen.getByRole('button', { name: "I'm not sure where to start." }));
+  await user.click(await screen.findByRole('button', { name: 'Building things' }));
+  expect(await screen.findByText('What kind of things would you enjoy building?')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Intro example course' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Answer the question above/)).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Programming — apps or websites' }));
+  expect(await screen.findByText('What skills, projects or courses have you tried so far?')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Intro example course' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'I have no experience' }));
+  expect(await screen.findByRole('heading', { name: 'Intro example course' })).toBeInTheDocument();
+  expect(send.mock.calls[3]?.[0].messages.filter(m => m.role === 'user').map(m => m.content)).toEqual([
+    "I'm not sure where to start.", 'Building things', 'Programming — apps or websites', 'I have no experience',
+  ]);
+});

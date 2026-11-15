@@ -12,7 +12,10 @@ InformationKey = Annotated[
     str,
     Field(
         max_length=120,
-        pattern=r"^(direction|background|program|preferences|time_window|modality|target|skills\..{1,100})$",
+        pattern=(
+            r"^(direction|direction_detail|background|program|preferences|time_window|"
+            r"modality|target|skills\..{1,100})$"
+        ),
     ),
 ]
 AnswerStatus = Literal["not_answered", "unknown", "none", "provided"]
@@ -91,7 +94,7 @@ class StudentAnswer(InformationEdit):
 class ContextRequirement(Contract):
     """Additional information explicitly made material by the student's request."""
 
-    field: Literal["background", "time_window", "modality"]
+    field: Literal["direction_detail", "background", "time_window", "modality"]
     evidence: list[StudentStatement] = Field(min_length=1, max_length=8)
 
 
@@ -124,7 +127,7 @@ class RetrievalContext(Contract):
     target: Target | None = None
     constraints: Constraints = Field(default_factory=Constraints)
     answers: list[StudentAnswer] = Field(default_factory=list, max_length=32)
-    requested_context: list[ContextRequirement] = Field(default_factory=list, max_length=3)
+    requested_context: list[ContextRequirement] = Field(default_factory=list, max_length=4)
 
     def skill_status(self, name: str) -> SkillStatus:
         return next(
@@ -193,6 +196,7 @@ class RecommendationResult(Contract):
     recommendations: list[Recommendation] = Field(default_factory=list)
     clarification: Clarification | None = None
     limitations: list[Text] = Field(default_factory=list)
+    exploration_options: list[Text] = Field(default_factory=list, max_length=5)
 
 
 class RecommendationService(Protocol):

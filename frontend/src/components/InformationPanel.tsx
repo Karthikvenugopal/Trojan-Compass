@@ -4,7 +4,7 @@ import type { AnswerStatus, InformationEdit, InformationField, InformationSnapsh
 
 const initialFields: InformationField[] = [
   { field: 'direction', label: 'Interests or direction', category: 'fixed', required: true, status: 'not_answered', value: null },
-  { field: 'background', label: 'Skills and experience', category: 'fixed', required: false, status: 'not_answered', value: null },
+  { field: 'background', label: 'Skills and experience', category: 'fixed', required: true, status: 'not_answered', value: null },
 ];
 
 interface Props {
@@ -27,10 +27,10 @@ export function InformationPanel({ information, disabled, onSave }: Props) {
         <ChevronDown size={16} className={expanded ? 'chevron expanded' : 'chevron'} aria-hidden="true" />
       </button>
       <div id="information-content" className="information-content" hidden={!expanded}>
-        <p className="information-intro">A direction and your background make suggestions easier to tailor. Extra questions depend on your request. “I don’t know” and “None” count as answers.</p>
+        <p className="information-intro">Before searching: choose an area to explore and share your background. Extra questions depend on your request. “I don’t know” and “None” count as answers.</p>
         <div className={`readiness-note ${information?.ready ? 'ready' : ''}`}>
           {information?.ready ? <Check size={15} aria-hidden="true" /> : <CircleHelp size={15} aria-hidden="true" />}
-          <span>{information?.ready ? 'Enough information for this search. Some details may be unavailable.' : 'A little more information is needed before recommendations.'}</span>
+          <span>{information?.ready ? 'Minimum answers collected. Results depend on the available sourced data.' : 'Before searching, answer the items marked needed. Unknown or None are valid answers.'}</span>
         </div>
         <div className="information-fields">
           {fields.map(field => <AnswerEditor key={`${field.field}:${field.status}:${field.value ?? ''}`}
