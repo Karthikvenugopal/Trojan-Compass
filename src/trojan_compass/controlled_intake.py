@@ -4,6 +4,8 @@ This is production intake, not fixture data or a fallback recommendation generat
 No earlier free-form message, correction or constraint can be skipped to use it.
 """
 
+import re
+
 from trojan_compass.contracts import ChatMessage, RetrievalContext, StudentStatement, SupportedText
 from trojan_compass.readiness import DETAIL_QUESTIONS, question_field
 
@@ -101,6 +103,50 @@ class ControlledIntakeParser:
                 return None
             if normalized in UNCERTAIN:
                 continue  # Readiness scopes explicit unknown/none to the question.
+            if field == "program" and re.fullmatch(r"[A-Za-z][A-Za-z &/().-]{1,99}", text):
+                words = set(re.findall(r"[a-z]+", normalized))
+                if (
+                    not words
+                    & {
+                        "but",
+                        "only",
+                        "avoid",
+                        "without",
+                        "except",
+                        "must",
+                        "not",
+                        "no",
+                        "none",
+                        "correction",
+                        "actually",
+                        "instead",
+                        "how",
+                        "why",
+                        "what",
+                    }
+                    and text != "I haven't chosen a program"
+                ):
+                    # This records the literal answer to our program question, not
+                    # inferred skills, a career target or completed coursework.
+                    context.program = SupportedText(
+                        value=text, evidence=[StudentStatement(message_index=index, quote=text)]
+                    )
+                    continue
+            if field == "completed_courses":
+                courses = text.removeprefix("I have completed these courses: ").rstrip(".")
+                references = [part.strip() for part in courses.split(",")]
+                if references and all(
+                    re.fullmatch(r"[A-Za-z]{2,6}[ -]\d{3}[A-Za-z]{0,4}", part)
+                    for part in references
+                ):
+                    context.completed_courses = [
+                        SupportedText(
+                            value=re.sub(r"[ -]", " ", part.upper()),
+                            evidence=[StudentStatement(message_index=index, quote=text)],
+                        )
+                        for part in references
+                    ]
+                    continue  # Explicit completion answers do not establish skill mastery.
             allowed = (
                 field == "direction"
                 and text in DIRECTIONS

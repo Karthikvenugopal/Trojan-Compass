@@ -148,3 +148,16 @@ async def test_cancelled_parser_kills_and_awaits_the_worker(
     with pytest.raises(asyncio.CancelledError):
         await task
     assert worker.killed and worker.waited
+
+
+def test_full_background_does_not_overflow_search_query_or_replace_explicit_intent() -> None:
+    from trojan_compass.contracts import ChatMessage, RecommendationRequest, RetrievalContext
+    from trojan_compass.services import latest_search_query
+
+    background = ChatMessage(role="user", content="Use my resume as background.\n" + "x" * 20000)
+    query = latest_search_query([background])
+    request = RecommendationRequest(context=RetrievalContext(), user_query=query)
+    assert request.user_query == "Use my resume as background."
+    actual = ChatMessage(role="user", content="Find design courses")
+    assert latest_search_query([actual, background]) == actual.content
+    assert len(background.content) > 20000  # Nothing in the active conversation was truncated.

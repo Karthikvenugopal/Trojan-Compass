@@ -30,6 +30,7 @@ class RecordingRecommendations:
         return RecommendationResult()
 
 
+@pytest.mark.parametrize("program", ["CS", "Computer Science", "I haven't chosen a program"])
 @pytest.mark.parametrize(
     "direction,detail",
     [
@@ -39,7 +40,9 @@ class RecordingRecommendations:
         ("Arts or storytelling", "Film or storytelling"),
     ],
 )
-def test_guided_journey_has_no_provider_dependency(direction: str, detail: str) -> None:
+def test_guided_journey_has_no_provider_dependency(
+    direction: str, detail: str, program: str
+) -> None:
     recommendations = RecordingRecommendations()
     app = create_app(
         mode="campus",
@@ -54,7 +57,7 @@ def test_guided_journey_has_no_provider_dependency(direction: str, detail: str) 
             direction,
             detail,
             "Undergraduate",
-            "I haven't chosen a program",
+            program,
             "I have no experience",
             "None",
         ]:
@@ -166,3 +169,87 @@ def test_http_error_exposes_only_safe_provider_category() -> None:
         assert "server credentials" in response.json()["error"]["message"]
         assert "Synthetic private sentence" not in response.text
         assert response.headers["cache-control"] == "no-store"
+
+
+def test_literal_program_answer_preserves_compound_constraints_on_llm_path() -> None:
+    from trojan_compass.readiness import PROGRAM_QUESTION
+
+    messages = [
+        ChatMessage(role="user", content="Hi"),
+        ChatMessage(role="assistant", content=PROGRAM_QUESTION),
+        ChatMessage(role="user", content="CS, but only evening courses"),
+    ]
+    assert ControlledIntakeParser().parse(messages) is None
+
+
+def test_explicit_course_picker_confirmation_needs_no_llm_and_proves_no_mastery() -> None:
+    from trojan_compass.readiness import COURSES_QUESTION
+
+    messages = [
+        ChatMessage(role="user", content="Hi"),
+        ChatMessage(role="assistant", content=COURSES_QUESTION),
+        ChatMessage(role="user", content="I have completed these courses: CSCI 100, CSCI 102L."),
+    ]
+    context = ControlledIntakeParser().parse(messages)
+    assert context is not None
+    assert [course.value for course in context.completed_courses] == ["CSCI 100", "CSCI 102L"]
+    assert context.skills == []
+
+
+@pytest.mark.asyncio
+async def test_optional_router_timeout_is_cancelled_before_intake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+
+    from trojan_compass.assistant import CampusAssistant, RouteDecision
+    from trojan_compass.contracts import ChatRequest
+    from trojan_compass.services import ChatService
+
+    cancelled = asyncio.Event()
+
+    class SlowRouter(CampusAssistant):
+        def __init__(self) -> None:
+            pass
+
+        async def route(self, messages: list[ChatMessage]) -> RouteDecision:
+            try:
+                await asyncio.sleep(60)
+                raise AssertionError("Router should have been cancelled")
+            finally:
+                cancelled.set()
+
+    class EmptyExtractor:
+        async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
+            return RetrievalContext()
+
+    original = asyncio.timeout
+
+    def quick_route_timeout(delay: float | None) -> asyncio.Timeout:
+        return original(0.001 if delay == 3 else delay)
+
+    monkeypatch.setattr(asyncio, "timeout", quick_route_timeout)
+    service = ChatService(EmptyExtractor(), RecordingRecommendations(), assistant=SlowRouter())
+    response = await service.chat(
+        ChatRequest(messages=[ChatMessage(role="user", content="Help me explore")])
+    )
+    assert response.suggested_replies
+    assert cancelled.is_set()
+    assert not response.recommendations
+
+
+def test_provider_timeout_reports_safe_processing_stage() -> None:
+    class TimedOutExtractor:
+        async def extract(self, messages: list[ChatMessage]) -> RetrievalContext:
+            raise ExtractionFailure(FailureReason.TIMEOUT)
+
+    app = create_app(
+        mode="campus", extractor=TimedOutExtractor(), recommendations=RecordingRecommendations()
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/chat", json={"messages": [{"role": "user", "content": "Synthetic private words"}]}
+        )
+    assert response.status_code == 503
+    assert "interpreting your answer" in response.json()["error"]["message"]
+    assert "Synthetic private words" not in response.text

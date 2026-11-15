@@ -25,7 +25,7 @@ export function MessageComposer({ value, onChange, onSubmit, disabled }: Message
     <form className="composer" onSubmit={handleSubmit} aria-label="Send a message">
       <label htmlFor="message-input" className="visually-hidden">Your message</label>
       <textarea id="message-input" aria-label="Your message" value={value} onChange={(event) => onChange(event.target.value)} onKeyDown={handleKeyDown}
-        placeholder="Tell me what you’re curious about…" maxLength={4000} rows={1} disabled={disabled} />
+        placeholder="Send a message or LinkedIn profile link…" maxLength={4000} rows={1} disabled={disabled} />
       <button type="submit" className="send-button" aria-label="Send message" disabled={disabled || value.trim().length === 0}>
         {disabled ? <LoaderCircle size={18} className="spin" aria-hidden="true" /> : <ArrowUp size={19} aria-hidden="true" />}
       </button>

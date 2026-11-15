@@ -22,6 +22,23 @@ class FailureReason(StrEnum):
     INTERNAL = "service_failure"
 
 
+class ProcessingStage(StrEnum):
+    CAMPUS_ANSWER = "campus_answer"
+    EXTRACTION = "extraction"
+    COURSE_HISTORY = "course_history"
+    RETRIEVAL = "retrieval"
+    GUIDANCE = "guidance"
+
+
+STAGE_LABELS = {
+    ProcessingStage.CAMPUS_ANSWER: "answering a campus question",
+    ProcessingStage.EXTRACTION: "interpreting your answer",
+    ProcessingStage.COURSE_HISTORY: "finding course-history examples",
+    ProcessingStage.RETRIEVAL: "searching campus data",
+    ProcessingStage.GUIDANCE: "building the career guide",
+}
+
+
 def provider_reason(error: httpx.HTTPStatusError) -> FailureReason:
     status = error.response.status_code
     if status in (401, 403):

@@ -48,8 +48,9 @@ and USC arts/humanities research routes. No outreach messages are sent automatic
 ## Resume and LinkedIn inputs
 
 The expanded scope accepts resume PDF/DOCX, public LinkedIn URLs, PDF exports and
-pasted background. Uploading uses the document directly: there is no extracted-text
-preview or mandatory review step. The conversation shows a compact background-added
+pasted background in ordinary chat. The attachment button opens the native file picker
+directly. Sending a LinkedIn profile URL in the normal composer fetches public background.
+There is no separate import form, extracted-text preview or mandatory review step. The conversation shows a compact background-added
 message. Students can correct the resulting facts in the collapsed “What I’m using”
 section, or send a correction normally.
 
@@ -82,7 +83,7 @@ again. The imported-message cap is 20,400 characters including its short introdu
 ordinary messages remain capped at 4,000. The total 24,000-character / 65,536-byte
 conversation cap still applies. Oversized input is rejected explicitly without
 truncating earlier corrections or constraints. Ending/resetting chat or refreshing
-clears background; closing an in-progress import aborts it. No backend copy persists.
+clears background and aborts an in-progress import. No backend copy persists.
 
 Adding background sends its text with the active conversation to the configured AI
 provider. [External provider retention](PROVIDERS.md) remains separate; no claim is
@@ -131,3 +132,18 @@ identify structure, evidence, conflicts, truncation or refusal without student c
 The dev launcher watches backend source changes. An already-running server must be
 restarted once to enable this; later Python changes reload automatically. Environment
 configuration changes still require restarting the launcher.
+
+## Relevant course-history memory aids
+
+Short programs are preserved: CS resolves to USC's CSCI prefix for this public-data
+lookup, while official prefixes such as EE and HP remain usable. Full names match
+all meaningful words against official department metadata, not broad inferred topic
+tags. Study level filters the examples; duplicate course codes are removed. Missing,
+unknown or unmatched programs produce no examples, rather than globally low-numbered
+courses from unrelated departments. Examples remain unchecked until the student
+explicitly confirms completion; no skill mastery is inferred.
+
+Timeout messages identify the processing stage using static labels, without content
+logging. The intake path for the reported CS/undergraduate/no-experience/None journey
+requires no AI calls. More complex answers and document background still use the
+configured provider and can fail if that provider is slow or unavailable.

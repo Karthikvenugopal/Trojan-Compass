@@ -39,7 +39,11 @@ are configured. For invalid extraction output only, one additional call to the s
 provider re-extracts the complete indexed conversation with static validation feedback.
 No exception payload or prior invalid output is replayed. The second output must pass
 all checks; there is no provider failover. Authentication, quota, network failures and
-refusals are not retried. The chat request retains its overall 40-second deadline.
+refusals are not retried. The chat request has a 65-second overall deadline, enough for both bounded
+25-second extraction attempts plus retrieval. Optional intent routing is capped at
+3 seconds and falls back to intake. Simple program answers (including CS) and
+explicit course-picker confirmations are handled without a provider call; unsupported
+turns still send the entire conversation for extraction.
 A validation repair can increase provider usage and sends the conversation twice.
 
 ## Provider retention is separate from application persistence
