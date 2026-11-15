@@ -5,6 +5,7 @@ import re
 from typing import TYPE_CHECKING
 
 from trojan_compass.contracts import (
+    CareerGuidanceService,
     ChatMessage,
     ChatRequest,
     ChatResponse,
@@ -19,7 +20,9 @@ from trojan_compass.contracts import (
     RetrievalContext,
     Source,
 )
-from trojan_compass.extraction import validate_evidence
+from trojan_compass.controlled_intake import ControlledIntakeParser
+from trojan_compass.extraction import ExtractionFailure, validate_evidence
+from trojan_compass.failures import DecisionIssue, FailureReason, ProcessingStage
 from trojan_compass.readiness import (
     CHECKLIST_HINT,
     DEFAULT_FIXED_FIELDS,
@@ -35,7 +38,13 @@ def latest_search_query(messages: list[ChatMessage]) -> str:
         r"\b(courses?|classes|events?|workshops?|talks?)\b",
         re.I,
     )
+    background_prefixes = (
+        "Use my resume as background.\n",
+        "Use my LinkedIn profile as background.\n",
+    )
     for message in reversed(messages):
+        if message.role == "user" and message.content.startswith(background_prefixes):
+            continue  # Historical document wording is not a new search instruction.
         if message.edit and message.edit.field in (
             "direction",
             "direction_detail",
@@ -45,7 +54,10 @@ def latest_search_query(messages: list[ChatMessage]) -> str:
             return message.content
         if message.role == "user" and message.edit is None and search.search(message.content):
             return message.content
-    return messages[-1].content
+    latest = messages[-1].content
+    # Full background remains in context extraction, while retrieval gets its
+    # actual short instruction rather than a document exceeding the query contract.
+    return latest.split("\n", 1)[0] if latest.startswith(background_prefixes) else latest
 
 
 if TYPE_CHECKING:
@@ -54,6 +66,17 @@ if TYPE_CHECKING:
 
 class ChatUnavailable(Exception):
     """Sanitized failure without sensitive exception details."""
+
+    def __init__(
+        self,
+        reason: FailureReason = FailureReason.INTERNAL,
+        stage: ProcessingStage | None = None,
+        issue: DecisionIssue | None = None,
+    ) -> None:
+        super().__init__()
+        self.reason = reason
+        self.stage = stage
+        self.issue = issue
 
 
 class AskBackPolicy:
@@ -107,25 +130,32 @@ class ChatService:
         policy: AskBackPolicy | None = None,
         course_history: CourseHistoryService | None = None,
         assistant: "CampusAssistant | None" = None,
+        guidance: CareerGuidanceService | None = None,
+        local_intake: ControlledIntakeParser | None = None,
     ) -> None:
         self._extractor = extractor
         self._recommendations = recommendations
         self._policy = policy or AskBackPolicy()
         self._course_history = course_history
         self._assistant = assistant
+        self._guidance = guidance
+        self._local_intake = local_intake
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
+        stage = ProcessingStage.EXTRACTION
         try:
-            # One bounded lifecycle; no retries that silently replay private content.
-            async with asyncio.timeout(40):
-                # Route first: campus questions need no extraction. Keeping every
-                # provider call awaited here prevents orphan work on cancellation.
-                answer = await self._answer_question(request)
-                if answer is not None:
-                    return answer
-                context = RetrievalContext.model_validate(
-                    (await self._extractor.extract(request.messages)).model_dump()
-                )
+            # Includes the documented bounded extraction repair; no orphan provider work.
+            async with asyncio.timeout(65):
+                context = self._local_intake.parse(request.messages) if self._local_intake else None
+                if context is None:
+                    stage = ProcessingStage.CAMPUS_ANSWER
+                    answer = await self._answer_question(request)
+                    if answer is not None:
+                        return answer
+                    stage = ProcessingStage.EXTRACTION
+                    context = RetrievalContext.model_validate(
+                        (await self._extractor.extract(request.messages)).model_dump()
+                    )
                 validate_evidence(context, request.messages)
                 information = request_information(
                     context, request.messages, self._policy.fixed_fields
@@ -139,6 +169,7 @@ class ChatService:
                         and self._course_history
                     ):
                         try:
+                            stage = ProcessingStage.COURSE_HISTORY
                             courses = await self._course_history.suggest(context)
                         except Exception:
                             # Optional public course examples must not block free-text history.
@@ -162,6 +193,7 @@ class ChatService:
                     context=context,
                     user_query=latest_search_query(request.messages),
                 )
+                stage = ProcessingStage.RETRIEVAL
                 result = RecommendationResult.model_validate(
                     (await self._recommendations.recommend(retrieval_request)).model_dump(),
                 )
@@ -183,6 +215,20 @@ class ChatService:
                         information=information.snapshot(),
                     )
                 recommendations = result.recommendations[: retrieval_request.limit]
+                stage = ProcessingStage.GUIDANCE
+                guidance = (
+                    await self._guidance.guide(context, recommendations) if self._guidance else None
+                )
+                if guidance is not None:
+                    return ChatResponse(
+                        message=guidance.next_question.text
+                        if guidance.next_question
+                        else guidance.headline,
+                        guidance=guidance,
+                        recommendations=recommendations,
+                        information=information.snapshot(),
+                        limitations=result.limitations,
+                    )
                 if not recommendations:
                     return ChatResponse(
                         message=(
@@ -241,6 +287,10 @@ class ChatService:
                     limitations=limitations,
                     information=information.snapshot(),
                 )
+        except ExtractionFailure as error:
+            raise ChatUnavailable(error.reason, ProcessingStage.EXTRACTION) from None
+        except TimeoutError:
+            raise ChatUnavailable(FailureReason.TIMEOUT, stage) from None
         except Exception:
             raise ChatUnavailable() from None
 
@@ -253,6 +303,14 @@ class ChatService:
         if self._assistant is None or request.messages[-1].edit is not None:
             return None
         latest = request.messages[-1].content
+        if latest.startswith(
+            (
+                "I reviewed this text from my ",
+                "Use my resume as background.\n",
+                "Use my LinkedIn profile as background.\n",
+            )
+        ):
+            return None  # Confirmed background belongs to intake, not campus chit-chat.
         if re.search(
             r"\b(recommend|suggest)\b|what should I (take|study|learn|explore)", latest, re.I
         ):
@@ -266,7 +324,10 @@ class ChatService:
             # Ordinary answers to our own checklist stay in intake deterministically.
             return None
         try:
-            decision = await self._assistant.route(request.messages)
+            # Routing is optional: it must not consume an extraction-sized timeout
+            # before we even interpret an ordinary recommendation request.
+            async with asyncio.timeout(3):
+                decision = await self._assistant.route(request.messages)
         except Exception:
             return None
         if decision.intent == "recommendation":

@@ -56,7 +56,7 @@ async def test_full_conversation_corrections_schema_and_header_only_credentials(
         assert request.headers["x-goog-api-key"] == "synthetic-key"
         payload = json.loads(request.content)
         assert json.loads(payload["contents"][0]["parts"][0]["text"]) == [
-            m.model_dump() for m in messages
+            {**m.model_dump(), "message_index": i} for i, m in enumerate(messages)
         ]
         assert (
             payload["generationConfig"]["responseJsonSchema"]

@@ -62,3 +62,10 @@ it('accepts answer sources and rejects unsafe source links', () => {
   expect(() => decodeResponse({ ...(response() as object),
     sources: [{ ...source, url: 'javascript:alert(1)' }] })).toThrow('unreadable response');
 });
+
+it('rejects unsafe guidance action sources before rendering the roadmap', () => {
+  expect(() => decodeResponse({ message: 'Synthetic', suggested_replies: [], recommendations: [], limitations: [],
+    guidance: { mode: 'plan', goal: 'Synthetic', headline: 'Plan', suggested_paths: [], skills: [], steps: [], next_question: null, limitations: [], actions: [
+      { id: 'unsafe', kind: 'faculty', title: 'Synthetic', summary: 'Synthetic', why_relevant: 'Synthetic', skill_names: [], url: 'javascript:alert(1)', sources: [], availability: 'unknown', checks: [], term: null },
+    ] } })).toThrow('unreadable response');
+});

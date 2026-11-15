@@ -17,7 +17,7 @@ export function Welcome({ onStarter, disabled }: WelcomeProps) {
       <div className="welcome-icon"><Compass size={24} aria-hidden="true" /></div>
       <span className="eyebrow"><Sparkles size={13} aria-hidden="true" /> Your next step starts here</span>
       <h2 id="welcome-heading">Find your direction at USC.</h2>
-      <p>Explore a new interest or turn a clear goal into useful USC courses and events.</p>
+      <p>Explore possible careers or build a plan around your skills, courses, people and research.</p>
       <div className="starter-list" aria-label="Conversation starters">
         {starters.map((starter) => <button key={starter} type="button" disabled={disabled} onClick={() => onStarter(starter)}>{starter}</button>)}
       </div>

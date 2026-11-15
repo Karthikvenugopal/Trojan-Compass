@@ -46,11 +46,20 @@ class InformationEdit(Contract):
 
 class ChatMessage(Contract):
     role: Literal["user", "assistant"]
-    content: Text
+    content: Annotated[str, Field(min_length=1, max_length=20400, strict=True)]
     edit: InformationEdit | None = None
+    asked_field: InformationKey | None = None
 
     @model_validator(mode="after")
     def student_edit(self) -> Self:
+        if self.role == "user" and self.asked_field is not None:
+            raise ValueError("Only assistant questions can declare their asked field")
+        # Full background is kept in the active conversation, never a backend file/session.
+        imported = self.role == "user" and self.content.startswith(
+            ("Use my resume as background.\n", "Use my LinkedIn profile as background.\n")
+        )
+        if len(self.content) > 4000 and not imported:
+            raise ValueError("Ordinary messages are limited to 4000 characters")
         if self.role != "user" and self.edit is not None:
             raise ValueError("Only student messages can carry information edits")
         if self.edit is not None and self.edit.value is not None:
@@ -240,7 +249,67 @@ class InformationSnapshot(Contract):
     missing_fields: list[InformationKey] = Field(default_factory=list)
 
 
+class CareerOption(Contract):
+    id: Text
+    title: Text
+    why_consider: Text
+    select_message: Text
+    sources: list[Source] = Field(min_length=1)
+
+
+class CareerSkill(Contract):
+    name: Text
+    status: SkillStatus = "unknown"
+    category: Literal["skill", "knowledge"] = "skill"
+    basis: Text
+    student_evidence: list[StudentStatement] = Field(default_factory=list)
+    sources: list[Source] = Field(min_length=1)
+
+
+class GuidanceAction(Contract):
+    id: Text
+    kind: Literal["course", "event", "faculty", "research"]
+    title: Text
+    summary: Text
+    why_relevant: Text
+    skill_names: list[Text] = Field(default_factory=list)
+    url: HttpUrl
+    sources: list[Source] = Field(min_length=1)
+    availability: Literal["unknown", "snapshot"] = "unknown"
+    checks: list[Text] = Field(default_factory=list)
+    term: Text | None = None
+
+
+class PlanStep(Contract):
+    id: Text
+    title: Text
+    description: Text
+    skill_names: list[Text] = Field(default_factory=list)
+    action_ids: list[Text] = Field(default_factory=list)
+    depends_on: list[Text] = Field(default_factory=list)
+
+
+class CareerGuidance(Contract):
+    mode: Literal["explore", "plan", "coverage_gap"]
+    goal: Text | None = None
+    headline: Text
+    suggested_paths: list[CareerOption] = Field(default_factory=list, max_length=3)
+    skills: list[CareerSkill] = Field(default_factory=list, max_length=12)
+    actions: list[GuidanceAction] = Field(default_factory=list, max_length=12)
+    steps: list[PlanStep] = Field(default_factory=list, max_length=5)
+    next_question: Clarification | None = None
+    limitations: list[Text] = Field(default_factory=list)
+
+
+class CareerGuidanceService(Protocol):
+    async def guide(
+        self, context: RetrievalContext, recommendations: list[Recommendation]
+    ) -> CareerGuidance: ...
+
+
 class ChatResponse(Contract):
+    asked_field: InformationKey | None = None
+    guidance: CareerGuidance | None = None
     message: Text
     suggested_replies: list[Text] = Field(default_factory=list)
     recommendations: list[Recommendation] = Field(default_factory=list)

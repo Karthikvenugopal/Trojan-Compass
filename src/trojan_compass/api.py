@@ -13,16 +13,32 @@ from starlette.types import ASGIApp, Lifespan, Message, Receive, Scope, Send
 
 from trojan_compass.contracts import (
     MAX_BODY_BYTES,
+    CareerGuidanceService,
     ChatRequest,
     ChatResponse,
     ContextExtractor,
     CourseHistoryService,
     RecommendationService,
 )
+from trojan_compass.controlled_intake import ControlledIntakeParser
 from trojan_compass.cors import configured_origins, validate_origins
 from trojan_compass.diagnostics import dummy_response
+from trojan_compass.documents import (
+    MAX_DOCUMENT_BYTES,
+    DocumentFailure,
+    DocumentKind,
+    DocumentText,
+    MemoryDocumentParser,
+)
 from trojan_compass.extraction import DemoContextExtractor, OpenAIContextExtractor
+from trojan_compass.failures import FAILURE_MESSAGES, STAGE_LABELS
 from trojan_compass.gemini import GeminiContextExtractor
+from trojan_compass.linkedin import (
+    LinkedInRequest,
+    LinkedInText,
+    LinkedInUnavailable,
+    PublicLinkedInReader,
+)
 from trojan_compass.services import (
     AskBackPolicy,
     ChatService,
@@ -31,6 +47,7 @@ from trojan_compass.services import (
 )
 
 if TYPE_CHECKING:
+    from trojan_compass.ai_chat import AIChatService
     from trojan_compass.assistant import CampusAssistant
 
 AppMode = Literal["demo", "diagnostic", "campus", "production"]
@@ -58,6 +75,9 @@ class PrivateBoundary:
                 message = {**message, "headers": headers}
             await send(message)
 
+        body_limit = (
+            MAX_DOCUMENT_BYTES if scope.get("path") == "/api/import-document" else MAX_BODY_BYTES
+        )
         chunks: list[bytes] = []
         total = 0
         # Inspect the actual stream, not just spoofable/missing Content-Length.
@@ -67,13 +87,14 @@ class PrivateBoundary:
                 return
             chunk = message.get("body", b"")
             total += len(chunk)
-            if total > MAX_BODY_BYTES:
+            if total > body_limit:
                 response = JSONResponse(
                     status_code=413,
                     content={
                         "error": {
                             "code": "conversation_too_large",
-                            "message": "Request exceeds 65536 bytes; nothing was truncated.",
+                            "message": f"Request exceeds {body_limit} bytes. "
+                            "Nothing was truncated.",
                         }
                     },
                 )
@@ -129,6 +150,9 @@ def create_app(
     policy: AskBackPolicy | None = None,
     course_history: CourseHistoryService | None = None,
     assistant: "CampusAssistant | None" = None,
+    guidance: CareerGuidanceService | None = None,
+    local_intake: ControlledIntakeParser | None = None,
+    chat_service: "AIChatService | None" = None,
 ) -> FastAPI:
     """Inject Abishek→Peri service here; fail closed for missing production dependencies."""
     configure_private_logging()
@@ -140,6 +164,8 @@ def create_app(
         policy=policy,
         course_history=course_history,
         assistant=assistant,
+        guidance=guidance,
+        local_intake=local_intake,
     )
     app = FastAPI(title="Trojan Compass", version="0.2.0", debug=False, lifespan=lifespan)
     app.add_middleware(PrivateBoundary)
@@ -155,15 +181,73 @@ def create_app(
         max_age=0,
     )
 
+    @app.post("/api/import-document", response_model=DocumentText)
+    async def import_document(
+        request: Request, format: DocumentKind
+    ) -> DocumentText | JSONResponse:
+        try:
+            return await MemoryDocumentParser().parse(await request.body(), format)
+        except DocumentFailure:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "document_unreadable",
+                        "message": "Could not read this file. "
+                        "Use a text PDF (up to 20 pages) or DOCX, "
+                        "under 4 MB and 20,000 extracted characters. Encrypted/scanned files "
+                        "may not work. You can paste relevant text instead. Nothing was saved.",
+                    }
+                },
+            )
+
+    @app.post("/api/import-linkedin", response_model=LinkedInText)
+    async def import_linkedin(request: LinkedInRequest) -> LinkedInText | JSONResponse:
+        try:
+            return await PublicLinkedInReader().read(request)
+        except LinkedInUnavailable:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "linkedin_unavailable",
+                        "message": "LinkedIn did not provide readable public background. "
+                        "Upload your profile PDF export or paste the relevant text instead. "
+                        "No login or access restrictions were bypassed; nothing was saved.",
+                    }
+                },
+            )
+
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
         # FastAPI's default errors echo offending input; emit static details instead.
+        if request.url.path == "/api/import-linkedin":
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "invalid_linkedin_url",
+                        "message": "Use a public https://www.linkedin.com/in/profile-name URL.",
+                    }
+                },
+            )
+        if request.url.path == "/api/import-document":
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": {
+                        "code": "invalid_document_format",
+                        "message": "Use format=pdf or format=docx.",
+                    }
+                },
+            )
         return JSONResponse(
             status_code=422,
             content={
                 "error": {
                     "code": "invalid_conversation",
-                    "message": "Use 1–64 user/assistant messages, 1–4000 characters each, "
+                    "message": "Use 1–64 user/assistant messages, 1–4000 characters each "
+                    "(20,400 for imported background), "
                     "24000 characters total, starting and ending with user. "
                     "Nothing was truncated.",
                 }
@@ -176,8 +260,10 @@ def create_app(
             status_code=503,
             content={
                 "error": {
-                    "code": "chat_unavailable",
-                    "message": "Recommendations are temporarily unavailable. Please try again.",
+                    "code": exc.reason.value,
+                    "message": FAILURE_MESSAGES[exc.reason]
+                    + (" Step: " + STAGE_LABELS[exc.stage] + "." if exc.stage else "")
+                    + (" Check: " + exc.issue.value + "." if exc.issue else ""),
                 }
             },
         )
@@ -198,7 +284,7 @@ def create_app(
     async def chat(request: ChatRequest) -> ChatResponse:
         if mode == "diagnostic":
             return dummy_response()
-        return await service.chat(request)
+        return await (chat_service or service).chat(request)
 
     @app.get("/api/diagnostics/dummy", response_model=ChatResponse)
     async def diagnostic_dummy() -> ChatResponse:
@@ -222,6 +308,11 @@ def app_from_environment() -> FastAPI:
 def configured_extractor() -> ContextExtractor:
     """Select a server-only provider; invalid/missing configuration fails closed."""
     provider = os.environ.get("LLM_PROVIDER", "openai")
+    if provider == "ollama":
+        from trojan_compass.ollama import OllamaContextExtractor, configured_ollama
+
+        configured_ollama()  # Validate endpoint/model settings before accepting requests.
+        return OllamaContextExtractor()
     if provider == "gemini":
         key = os.environ.get("GEMINI_API_KEY", "")
         model = os.environ.get("GEMINI_MODEL", "")
@@ -229,7 +320,7 @@ def configured_extractor() -> ContextExtractor:
             raise ValueError("GEMINI_API_KEY and GEMINI_MODEL are required")
         return GeminiContextExtractor(key, model)
     if provider != "openai":
-        raise ValueError("LLM_PROVIDER must be openai or gemini")
+        raise ValueError("LLM_PROVIDER must be openai, gemini or ollama")
     key = os.environ.get("OPENAI_API_KEY", "")
     model = os.environ.get("OPENAI_MODEL", "")
     if not key or not model:

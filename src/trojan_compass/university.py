@@ -177,7 +177,17 @@ class UniversityGraphRepository:
         return await self._delegate.suggest_directions(interests, limit)
 
     async def requirements_for(self, destination_id: str) -> list[Requirement]:
-        return await self._delegate.requirements_for(destination_id)
+        # Public synonyms keep an already-stated ability from being asked again.
+        # These are aliases, not inferred mastery or new graph requirements.
+        aliases = {"computer programming": ["programming", "coding"], "mathematics": ["math"]}
+        result = []
+        for requirement in await self._delegate.requirements_for(destination_id):
+            extra = aliases.get(requirement.skill.name.casefold(), [])
+            skill = requirement.skill.model_copy(
+                update={"aliases": list(dict.fromkeys([*requirement.skill.aliases, *extra]))}
+            )
+            result.append(requirement.model_copy(update={"skill": skill}))
+        return result
 
     async def actions_for_skills(self, skill_ids: Sequence[str]) -> list[CampusAction]:
         actions = await self._delegate.actions_for_skills(skill_ids)
@@ -246,16 +256,58 @@ class AcademicCourseHistoryService:
         actions = await self._graph.browse_actions(30_000)
         candidates = [a for a in actions if a.course and a.sources]
         query = context.program.value if context.program else ""
-        terms = {
-            t.casefold()
-            for t in re.findall(r"[A-Za-z]{3,}", query)
-            if t.casefold() not in {"major", "program", "studying", "student", "science"}
+        words = re.findall(r"[a-z]+", query.casefold())
+        terms = set(words) - {
+            "i",
+            "am",
+            "a",
+            "an",
+            "in",
+            "my",
+            "is",
+            "the",
+            "at",
+            "usc",
+            "major",
+            "majoring",
+            "program",
+            "studying",
+            "study",
+            "student",
+            "undergraduate",
+            "graduate",
+            "considering",
+            "degree",
+            "of",
         }
-        if terms:
+        # Match official course prefixes, including two-letter departments. CS is
+        # common student shorthand for USC's CSCI prefix; it is not a new fact
+        # about the student or a claim that they completed any CSCI course.
+        aliases = {"cs": "csci"}
+        wanted = {aliases.get(word, word) for word in terms}
+        prefixes = {
+            match[1].casefold()
+            for action in candidates
+            if action.course and (match := re.match(r"^([A-Z]{2,6})\s", action.course.code))
+        }
+        selected = wanted & prefixes
+        if selected:
             candidates = [
                 a
                 for a in candidates
-                if any(t in " ".join([a.title, *a.topics]).casefold() for t in terms)
+                if a.course and a.course.code.split()[0].casefold() in selected
+            ]
+        else:
+            # Require all meaningful program words, using department metadata
+            # rather than broad inferred topic tags (e.g. Languages). Never fall
+            # back to the globally lowest course numbers for an unknown program.
+            if not terms:
+                return []
+            candidates = [
+                a
+                for a in candidates
+                if terms
+                <= set(re.findall(r"[a-z]+", (self._subjects.get(a.id) or a.title).casefold()))
             ]
         stage = context.study_stage.value.casefold() if context.study_stage else ""
         if "undergrad" in stage or "not started" in stage:
@@ -271,11 +323,16 @@ class AcademicCourseHistoryService:
                 a.title,
             )
         )
-        return [
-            CourseHistoryOption(code=a.course.code, title=a.title, sources=a.sources[:2])
-            for a in candidates[:limit]
-            if a.course
-        ]
+        result: dict[str, CourseHistoryOption] = {}
+        for action in candidates:
+            if action.course:
+                result.setdefault(
+                    normalized(action.course.code),
+                    CourseHistoryOption(
+                        code=action.course.code, title=action.title, sources=action.sources[:2]
+                    ),
+                )
+        return list(result.values())[: max(0, limit)]
 
 
 def course_number(code: str) -> int:

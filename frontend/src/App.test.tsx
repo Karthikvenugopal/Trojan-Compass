@@ -243,3 +243,85 @@ it('collects an area and background through concrete follow-ups before showing c
     "I'm not sure where to start.", 'Building things', 'Programming (apps or websites)', 'I have no experience',
   ]);
 });
+
+it('keeps full imported background across turns while showing a compact message', async () => {
+  const user = userEvent.setup();
+  const background = 'Synthetic arts coursework. '.repeat(200);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: background }), { status: 200 })));
+  const send = vi.fn<ChatApi['send']>().mockResolvedValue(result('What would you like to explore next?', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.upload(screen.getByLabelText('Upload background document'), new File(['synthetic'], 'resume.pdf', { type: 'application/pdf' }));
+  expect(await screen.findByText('Resume added as background')).toBeInTheDocument();
+  expect(screen.queryByText(background.trim())).not.toBeInTheDocument();
+  const firstContent = send.mock.calls[0][0].messages[0].content;
+  expect(firstContent).toBe(`Use my resume as background.\n${background.trim()}`);
+  await user.click(screen.getByRole('button', { name: 'Change direction' }));
+  expect(send.mock.calls[1][0].messages[0].content).toBe(firstContent);
+});
+
+it('accepts a LinkedIn URL through Enter without showing a parser form', async () => {
+  const user = userEvent.setup();
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: 'Synthetic theatre background' }), { status: 200 }));
+  vi.stubGlobal('fetch', fetch);
+  const send = vi.fn<ChatApi['send']>().mockResolvedValue(result('What program are you studying?', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'https://www.linkedin.com/in/synthetic{Enter}');
+  expect(await screen.findByText('LinkedIn profile added as background')).toBeInTheDocument();
+  expect(send.mock.calls[0][0].messages[0].content).toBe('Use my LinkedIn profile as background.\nSynthetic theatre background');
+  expect(fetch.mock.calls[0][0]).toMatch(/\/api\/import-linkedin$/);
+  expect(screen.queryByRole('textbox', { name: 'Background text' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Synthetic theatre background')).not.toBeInTheDocument();
+});
+
+it('keeps a blocked LinkedIn URL for retry without inventing background', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { message: 'LinkedIn blocked access. Attach a profile PDF instead.' } }), { status: 422 })));
+  const send = vi.fn<ChatApi['send']>();
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'https://www.linkedin.com/in/synthetic{Enter}');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Attach a profile PDF');
+  expect(send).not.toHaveBeenCalled();
+  expect(screen.getByRole('textbox', { name: 'Your message' })).toHaveValue('https://www.linkedin.com/in/synthetic');
+});
+
+it('keeps failed attachment background private and retries without re-uploading', async () => {
+  const user = userEvent.setup();
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: 'Synthetic private resume text' }), { status: 200 }));
+  vi.stubGlobal('fetch', fetch);
+  const send = vi.fn<ChatApi['send']>().mockRejectedValueOnce(new ChatApiError('Synthetic provider unavailable', 503)).mockResolvedValue(result('What next?', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.upload(screen.getByLabelText('Upload background document'), new File(['synthetic'], 'resume.pdf', { type: 'application/pdf' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Synthetic provider unavailable');
+  expect(screen.getByRole('textbox', { name: 'Your message' })).toHaveValue('Resume attached');
+  expect(screen.queryByText('Synthetic private resume text')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Resume added as background')).toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[1][0]).toEqual(send.mock.calls[0][0]);
+});
+
+it('cancels a pending attachment on reset without sending late background', async () => {
+  const user = userEvent.setup(); const pending = deferred<Response>();
+  const fetch = vi.fn().mockReturnValue(pending.promise); vi.stubGlobal('fetch', fetch);
+  const send = vi.fn<ChatApi['send']>();
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.upload(screen.getByLabelText('Upload background document'), new File(['synthetic'], 'resume.pdf', { type: 'application/pdf' }));
+  await user.click(screen.getByRole('button', { name: 'Start over' }));
+  expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+  pending.resolve(new Response(JSON.stringify({ text: 'Late synthetic text' }), { status: 200 }));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(send).not.toHaveBeenCalled();
+  expect(screen.queryByText('Late synthetic text')).not.toBeInTheDocument();
+});
+
+it('keeps the AI-declared question field with conversation turns for a scoped reply', async () => {
+  const user = userEvent.setup();
+  const send = vi.fn<ChatApi['send']>().mockResolvedValueOnce({ ...result('Any related research work?', []), asked_field: 'work_experience' }).mockResolvedValue(result('That answer is recorded.', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'Help me plan{Enter}');
+  expect(await screen.findByText('Any related research work?')).toBeInTheDocument();
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'No{Enter}');
+  expect(await screen.findByText('That answer is recorded.')).toBeInTheDocument();
+  expect(send.mock.calls[1][0].messages[1]).toEqual({ role: 'assistant', content: 'Any related research work?', asked_field: 'work_experience' });
+  expect(send.mock.calls[1][0].messages[2]).toEqual({ role: 'user', content: 'No' });
+});

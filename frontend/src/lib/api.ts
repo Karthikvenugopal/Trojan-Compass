@@ -70,3 +70,39 @@ export const isMockMode = chatApi === mockChatApi;
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
+
+export async function importDocument(file: File, format: 'pdf' | 'docx', signal: AbortSignal): Promise<{ text: string }> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/import-document?format=${format}`, {
+      method: 'POST', headers: { 'Content-Type': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }, body: file, signal,
+    });
+  } catch (error) {
+    if (signal.aborted) throw error;
+    throw new ChatApiError('Could not reach Compass. Paste relevant text instead.', 0);
+  }
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) throw new ChatApiError(response.status === 413 ? 'Document exceeds 4 MB. Nothing was saved.' : 'Could not read this file. Use an unencrypted text PDF (up to 20 pages) or DOCX, or paste text. Nothing was saved.', response.status);
+  if (!isRecord(body) || typeof body.text !== 'string' || !body.text.trim() || body.text.length > 20000) throw new ChatApiError('Could not read this document.', 502);
+  return { text: body.text };
+}
+
+/** Profile URLs travel in a private POST body, never an application access-log URL. */
+export async function importLinkedIn(url: string, signal: AbortSignal): Promise<{ text: string }> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/import-linkedin`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }), signal,
+    });
+  } catch (error) {
+    if (signal.aborted) throw error;
+    throw new ChatApiError('Could not reach Compass. Upload a profile PDF or paste text instead.', 0);
+  }
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const nested = isRecord(body) && isRecord(body.error) ? body.error : {};
+    throw new ChatApiError(typeof nested.message === 'string' ? nested.message : 'Could not read a public LinkedIn profile. Upload a profile PDF or paste text instead.', response.status);
+  }
+  if (!isRecord(body) || typeof body.text !== 'string' || !body.text.trim() || Array.from(body.text).length > 20000) throw new ChatApiError('Could not read this background.', 502);
+  return { text: body.text };
+}

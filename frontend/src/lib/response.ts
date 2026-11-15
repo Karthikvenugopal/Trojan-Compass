@@ -6,12 +6,14 @@ export function decodeResponse(value: unknown): ChatResponse {
   if (!record(value) || !text(value.message) || !strings(value.suggested_replies)
       || !strings(value.limitations) || !Array.isArray(value.recommendations)
       || !value.recommendations.every(recommendation)
+      || (value.asked_field !== undefined && value.asked_field !== null && !fieldKey(value.asked_field))
       || (value.course_history_options !== undefined && (!Array.isArray(value.course_history_options)
         || value.course_history_options.length > 8 || !value.course_history_options.every(option =>
           record(option) && text(option.code) && text(option.title) && Array.isArray(option.sources)
           && option.sources.length > 0 && option.sources.every(item => record(item) && url(item.url) && text(item.title) && nullableText(item.checked_at)))))
       || (value.information !== undefined && !information(value.information))
-      || (value.sources !== undefined && !sources(value.sources))) {
+      || (value.sources !== undefined && !sources(value.sources))
+      || (value.guidance !== undefined && value.guidance !== null && !guidance(value.guidance))) {
     throw new ChatApiError('The server returned an unreadable response. Your message is still here; please retry.', 502);
   }
   return value as unknown as ChatResponse;
@@ -71,4 +73,23 @@ function strings(value: unknown): value is string[] { return Array.isArray(value
 function url(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+}
+
+
+function evidenceSources(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0 && value.length <= 24 && value.every(source => record(source) && url(source.url) && text(source.title) && nullableText(source.checked_at ?? null));
+}
+function guidance(value: unknown): boolean {
+  if (!record(value) || !['explore', 'plan', 'coverage_gap'].includes(String(value.mode))
+      || !nullableText(value.goal) || !text(value.headline) || !strings(value.limitations)
+      || !Array.isArray(value.suggested_paths) || value.suggested_paths.length > 3
+      || !Array.isArray(value.skills) || value.skills.length > 12
+      || !Array.isArray(value.actions) || value.actions.length > 12
+      || !Array.isArray(value.steps) || value.steps.length > 5) return false;
+  if (!value.suggested_paths.every(p => record(p) && text(p.id) && text(p.title) && text(p.why_consider) && text(p.select_message) && evidenceSources(p.sources))) return false;
+  if (!value.skills.every(s => record(s) && text(s.name) && ['known', 'learning', 'not_yet_learned', 'unknown'].includes(String(s.status)) && ['skill', 'knowledge'].includes(String(s.category)) && text(s.basis) && evidenceSources(s.sources) && Array.isArray(s.student_evidence) && s.student_evidence.every(e => record(e) && Number.isInteger(e.message_index) && Number(e.message_index) >= 0 && text(e.quote)))) return false;
+  if (!value.actions.every(a => record(a) && text(a.id) && ['course', 'event', 'faculty', 'research'].includes(String(a.kind)) && text(a.title) && text(a.summary) && text(a.why_relevant) && url(a.url) && evidenceSources(a.sources) && strings(a.skill_names) && strings(a.checks) && nullableText(a.term) && ['unknown', 'snapshot'].includes(String(a.availability)))) return false;
+  if (!value.steps.every(s => record(s) && text(s.id) && text(s.title) && text(s.description) && strings(s.skill_names) && strings(s.action_ids) && strings(s.depends_on))) return false;
+  const q = value.next_question;
+  return q === null || (record(q) && text(q.text) && text(q.reason) && strings(q.options) && Array.isArray(q.requested_fields) && q.requested_fields.length === 1 && q.requested_fields.every(fieldKey));
 }

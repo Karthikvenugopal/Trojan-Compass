@@ -402,3 +402,69 @@ def test_real_campus_default_journey_collects_history_then_finds_intro_psycholog
         assert any(r.title.startswith("PSYC 100") for r in body.recommendations)
         assert all(r.sources for r in body.recommendations)
         assert not any("CSCI" in r.title for r in body.recommendations)
+
+
+@pytest.mark.parametrize("program", ["CS", "CSCI", "Computer Science", "I am studying CS"])
+async def test_cs_course_history_never_falls_back_to_unrelated_departments(program: str) -> None:
+    from trojan_compass.university import public_snapshot
+
+    batch = public_snapshot()
+    assert batch is not None
+    graph = UniversityGraphRepository(FakeGraphRepository(), batch)
+    context = RetrievalContext(
+        program=SupportedText(
+            value=program, evidence=[StudentStatement(message_index=0, quote=program)]
+        ),
+        study_stage=SupportedText(
+            value="Undergraduate",
+            evidence=[StudentStatement(message_index=0, quote="Undergraduate")],
+        ),
+    )
+    choices = await AcademicCourseHistoryService(graph).suggest(context)
+    assert choices
+    assert all(choice.code.startswith("CSCI ") for choice in choices)
+    assert len({choice.code for choice in choices}) == len(choices)
+    assert all(choice.sources for choice in choices)
+    assert not context.completed_courses and not context.skills
+
+
+@pytest.mark.parametrize("program", [None, "", "XY", "Unmatched program", "program"])
+async def test_unresolved_program_has_no_random_course_memory_aids(program: str | None) -> None:
+    context = RetrievalContext(
+        program=SupportedText(
+            value=program, evidence=[StudentStatement(message_index=0, quote=program)]
+        )
+        if program
+        else None
+    )
+    assert await AcademicCourseHistoryService(public_batch()).suggest(context) == []
+
+
+async def test_short_official_department_and_study_level_are_respected() -> None:
+    builder = UniversityBatchBuilder(date(2026, 11, 14))
+    for prefix, number, subject in [
+        ("EE", "101", "Electrical and Computer Engineering"),
+        ("EE", "501", "Electrical and Computer Engineering"),
+        ("ITAL", "012", "Italian"),
+    ]:
+        builder.course(
+            dict(
+                prefix=prefix,
+                classNumber=number,
+                name=f"{subject} example",
+                fullCourseName=f"{prefix} {number}",
+            ),
+            dict(prefix=prefix, name="Synthetic school"),
+            dict(name=subject),
+            "20263",
+        )
+    graph = UniversityGraphRepository(FakeGraphRepository(), decode(builder.batch()))
+    context = RetrievalContext(
+        program=SupportedText(value="EE", evidence=[StudentStatement(message_index=0, quote="EE")]),
+        study_stage=SupportedText(
+            value="Undergraduate",
+            evidence=[StudentStatement(message_index=0, quote="Undergraduate")],
+        ),
+    )
+    choices = await AcademicCourseHistoryService(graph).suggest(context)
+    assert [c.code for c in choices] == ["EE 101"]

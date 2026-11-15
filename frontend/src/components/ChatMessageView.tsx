@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Compass, ExternalLink, UserRound } from 'lucide-react';
-import type { DisplayMessage } from '../types';
+import { CareerGuide } from './CareerGuide';
+import type { DisplayMessage, InformationEdit } from '../types';
 import { RecommendationCard } from './RecommendationCard';
 
 interface ChatMessageViewProps {
   message: DisplayMessage;
   onSuggestedReply: (reply: string) => void;
   isBusy: boolean;
+  isLatest?: boolean;
+  onInformationEdit?: (edit: InformationEdit, label: string) => void;
 }
 
-export function ChatMessageView({ message, onSuggestedReply, isBusy }: ChatMessageViewProps) {
+export function ChatMessageView({ message, onSuggestedReply, isBusy, isLatest = true, onInformationEdit }: ChatMessageViewProps) {
   const [showAll, setShowAll] = useState(false);
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const isAssistant = message.role === 'assistant';
@@ -23,7 +26,7 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy }: ChatMessa
       </div>
       <div className="message-content">
         <div className="message-label">{isAssistant ? 'Trojan Compass' : 'You'}</div>
-        <div className={`bubble ${message.role}`}>{message.content}</div>
+        <div className={`bubble ${message.role}`}>{!isAssistant && /^Use my (resume|LinkedIn profile) as background\.\n/.test(message.content) ? (message.content.startsWith('Use my resume') ? 'Resume added as background' : 'LinkedIn profile added as background') : message.content}</div>
         {isAssistant && message.limitations && message.limitations.length > 0 && (
           <ul className="limitations">{message.limitations.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
         )}
@@ -35,12 +38,16 @@ export function ChatMessageView({ message, onSuggestedReply, isBusy }: ChatMessa
             ))}
           </div>
         )}
-        {visibleRecommendations.length > 0 && (
+        {isAssistant && message.guidance && onInformationEdit && (isLatest
+          ? <CareerGuide guidance={message.guidance} disabled={isBusy} onEdit={onInformationEdit} />
+          : <details className="earlier-plan"><summary>Earlier plan: {message.guidance.goal ?? 'Exploring directions'}</summary><CareerGuide guidance={message.guidance} disabled onEdit={onInformationEdit} /></details>)}
+        {visibleRecommendations.length > 0 && !message.guidance && (
           <div className="recommendation-list" aria-label="Recommendations">
             {visibleRecommendations.map((recommendation) => <RecommendationCard key={recommendation.id} recommendation={recommendation} />)}
           </div>
         )}
-        {recommendations.length > 3 && !showAll && (
+        {!!recommendations.length && message.guidance && <details className="other-campus-options"><summary>Other campus options from your search</summary><div className="recommendation-list">{recommendations.map(rec => <RecommendationCard key={rec.id} recommendation={rec} />)}</div></details>}
+        {recommendations.length > 3 && !showAll && !message.guidance && (
           <button type="button" className="text-button" onClick={() => setShowAll(true)}>Show {recommendations.length - 3} more recommendations</button>
         )}
         {isAssistant && !!message.course_history_options?.length && (

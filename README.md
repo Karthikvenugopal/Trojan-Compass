@@ -1,12 +1,23 @@
 # Trojan Compass
 
+Live chat is now **AI-led**: the model interprets every turn, chooses ask-backs and
+searches, selects sourced opportunities and writes the career plan. Local Ollama,
+OpenAI and Gemini are selectable providers. See [AI workflow and local setup](docs/AI_WORKFLOW.md)
+for current behavior, privacy and limits. Demo/diagnostic modes remain labeled fixtures.
+
+
 Trojan Compass connects student goals to USC courses and events through a shared
-knowledge graph. This branch implements the **stateless chat backend**.
+knowledge graph. It provides a **stateless career guide** with skill checks, a working roadmap, courses,
+faculty teaching connections and research pathways.
 
 `POST /api/chat` accepts the active conversation and returns a grounded message,
 suggested replies, recommendations and limitations. It never requires a session
 identifier or returns a student profile. The frontend owns the conversation in
 memory; each request re-derives temporary retrieval context from that conversation.
+
+See [career guidance and background imports](docs/CAREER_GUIDANCE.md) for the student
+journey, evidence limits, setup and privacy. The roadmap is rebuilt from each supplied
+conversation. Unknown skills are never reported as missing skills.
 
 ## Run
 
@@ -35,7 +46,9 @@ curl http://127.0.0.1:8000/api/chat \
 OpenAPI is at `/docs`. Shared Pydantic models are in
 `src/trojan_compass/contracts`; JSON examples and schemas are in `docs/examples`.
 Examples use synthetic student statements. `GET /health` reports the configured
-mode. There are no session, resume or LinkedIn ingestion endpoints.
+mode. There are no session/profile endpoints. Optional resume PDF/DOCX and LinkedIn
+URLs/text/PDF imports add background directly, with corrections available in “What I’m using.”
+Public URL access may be blocked by LinkedIn; PDF/text remains available. Uploads are not stored.
 
 ## Local test launcher
 
@@ -58,14 +71,14 @@ conversation to the same `/api/chat` route.
 | --- | --- | --- |
 | `demo` (default) | Offline; extracts no student facts | Existing fixed course fixture, explicitly labeled |
 | `diagnostic` | No extraction | Labeled dummy chat responses; no provider or graph calls |
-| `campus` | OpenAI or Gemini, requires server credentials | Real engine over reviewed USC seed using Abishek's in-memory adapter |
-| `production` | OpenAI or Gemini, requires server credentials | Real engine over configured Neo4j; never falls back to fixtures |
+| `campus` | AI-led; local Ollama or configured OpenAI/Gemini | Real engine over reviewed USC seed using Abishek's in-memory adapter |
+| `production` | AI-led; local Ollama or configured OpenAI/Gemini | Real engine over configured Neo4j; never falls back to fixtures |
 
-For the integrated USC seed journey, set `COMPASS_MODE=campus` and provider
-credentials in your server environment. OpenAI is the default (`OPENAI_API_KEY`,
-`OPENAI_MODEL`). For Gemini, set `LLM_PROVIDER=gemini`, `GEMINI_API_KEY` and
-`GEMINI_MODEL`. Choose a model supporting the provider’s structured-output API,
-then start the same backend command above. See [provider setup and retention](docs/PROVIDERS.md). The reviewed seed
+For the integrated USC seed journey, set `COMPASS_MODE=campus`. For local inference
+set `LLM_PROVIDER=ollama` and `OLLAMA_MODEL=qwen3:4b` with Ollama running. No cloud API
+key is required. OpenAI/Gemini remain selectable using their server credentials.
+Choose a model supporting structured JSON. See [AI workflow/local setup](docs/AI_WORKFLOW.md)
+and [provider setup and retention](docs/PROVIDERS.md). The reviewed seed
 ships inside the wheel and loads at startup only. Optional `COMPASS_SEED_PATH`
 selects a server-owned public graph import file; it is never a student upload.
 No database is needed for campus mode. This is a snapshot, not live campus data.
@@ -153,11 +166,11 @@ and explicit event requests remain respected. Seats are as of the fetch time. Re
 
 ## Campus questions
 
-In `campus` mode a router (same configured LLM) runs before extraction. Questions
-such as "Is any library open now?", "Who teaches CSCI 572 in Spring?" or "When is the
-last day to drop a class?" are answered directly instead of entering the course
-search. Recommendation requests and replies to onboarding questions keep the existing
-flow; if routing fails, the turn falls back to that flow.
+The AI decision recognizes direct factual questions such as library hours, course
+instructors and academic deadlines, then uses the source-constrained campus answer
+path. Career intake does not block a factual question. The model interprets all other
+turns and chooses their next question or search; provider failure never substitutes
+the old scripted flow.
 
 Answers use only evidence gathered for that request, and cite it under the reply:
 
@@ -176,7 +189,8 @@ closest official page. Page snapshots go stale; re-run the script to refresh.
 
 ## Behavior and limits
 
-- Requests allow 1–64 messages, 1–4000 characters each, 24000 characters total,
+- Requests allow 1–64 messages, 1–4000 characters each (20,400 for imported
+  background), 24000 characters total,
   and 65536 raw UTF-8 body bytes. First and last messages must be from the user.
   Roles are user/assistant only; no extra fields. Excess bytes return 413;
   invalid/oversized structured conversations return 422. Nothing is truncated.
@@ -189,16 +203,16 @@ closest official page. Page snapshots go stale; re-run the script to refresh.
   interpretation, including subtle corrections/negations, still depends on the
   model. Offline tests cannot establish live-model accuracy. Evaluate this with
   synthetic conversations against the chosen model before real deployment.
-- Retrieval runs without requiring a career target or questionnaire. Peri's
-  graph-informed service can return one material clarification, with or without
-  provisional recommendations. The policy removes questions whose requested
-  field is already answered, unsupported fields, and previously asked identical
-  questions. “I'm not sure” is always offered. Peri should return broad options
-  when the student cannot narrow their interests; do not repeatedly gate results.
-- Recommendations require sources and evidence paths. Composition is deterministic
-  and makes no campus claims beyond the returned records. Missing results are
-  acknowledged; retrieval, extraction, refusal, schema or timeout failures yield
-  a static 503 error. Provider calls time out at 25 seconds; orchestration at 40.
+- The AI chooses question order and wording. Career search waits for the fixed minimum
+  (direction, stage, program, experience and completed courses), including explicit
+  unknown/none answers. Rich messages/documents can answer several fields at once;
+  a career target is optional. Graph clarification is presented only when material
+  and genuinely unanswered.
+- The AI selects sourced candidates and composes the response and plan. Code checks
+  evidence/IDs, eligibility and step references. It cannot mechanically prove all
+  semantic claims; source links and model evaluation remain necessary. Cloud requests
+  have a 75-second lifecycle; local requests 180 seconds. Failures return a safe 503,
+  never scripted personalized advice. See the workflow document for repair-call limits.
 - The service is stateless, with no retry/replay queue or cross-request context.
   A malformed dependency result fails closed. It caps results to the requested
   limit and forwards unknowns and limitations.
@@ -315,3 +329,7 @@ Imports merge on stable identifiers and can be repeated to update shared records
 [`docs/DATA_IMPORT.md`](docs/DATA_IMPORT.md) for templates, required fields, source refresh
 limits, and database query-log privacy settings. See
 [`docs/GRAPH_INTEGRATION.md`](docs/GRAPH_INTEGRATION.md) for the graph/recommendation contract.
+
+The development launcher reloads backend Python source changes automatically. Restart
+an older running launcher once with `bash scripts/dev.sh` to enable this. Changes to
+`.env` still require a restart.

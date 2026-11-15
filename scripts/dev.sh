@@ -48,7 +48,7 @@ compass_python="$compass_root/.venv/bin/python"
 if ! "$compass_python" - <<'PY'
 import importlib.util
 import sys
-required = ('fastapi', 'pydantic', 'httpx', 'uvicorn', 'dotenv')
+required = ('fastapi', 'pydantic', 'httpx', 'uvicorn', 'dotenv', 'pypdf', 'defusedxml')
 sys.exit(any(importlib.util.find_spec(name) is None for name in required))
 PY
 then
@@ -99,7 +99,8 @@ PYTHON
 
 PYTHONPATH="$compass_root/src${PYTHONPATH:+:$PYTHONPATH}" \
   "$compass_python" -m uvicorn trojan_compass.api:app_from_environment \
-  --factory --env-file "$compass_root/.env" --host 127.0.0.1 --port 8000 --no-access-log &
+  --factory --env-file "$compass_root/.env" --host 127.0.0.1 --port 8000 --no-access-log \
+  --reload --reload-dir "$compass_root/src" &
 compass_backend_pid=$!
 compass_wait_ready backend http://127.0.0.1:8000/health
 

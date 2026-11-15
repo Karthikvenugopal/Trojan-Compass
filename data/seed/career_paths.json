@@ -1,0 +1,797 @@
+{
+  "roles": [
+    {
+      "id": "data-scientist",
+      "title": "Data scientist",
+      "aliases": [
+        "data scientist",
+        "data science",
+        "data analytics"
+      ],
+      "topics": [
+        "Data science",
+        "Mathematics",
+        "Statistics"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/15-2051.00",
+        "title": "O*NET occupation summary: Data scientist",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Mathematics",
+          "category": "knowledge",
+          "search_terms": [
+            "statistics",
+            "mathematics"
+          ],
+          "aliases": [
+            "math"
+          ]
+        },
+        {
+          "name": "Programming",
+          "category": "skill",
+          "search_terms": [
+            "programming",
+            "coding"
+          ],
+          "aliases": [
+            "computer programming",
+            "coding"
+          ]
+        },
+        {
+          "name": "Critical Thinking",
+          "category": "skill",
+          "search_terms": [
+            "critical thinking"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "market-research",
+      "title": "Market research analyst",
+      "aliases": [
+        "market research analyst",
+        "marketing analyst",
+        "market research"
+      ],
+      "topics": [
+        "Business",
+        "Marketing",
+        "Communication"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/13-1161.00",
+        "title": "O*NET occupation summary: Market research analyst",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Sales and Marketing",
+          "category": "knowledge",
+          "search_terms": [
+            "marketing",
+            "market research"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Mathematics",
+          "category": "skill",
+          "search_terms": [
+            "statistics",
+            "mathematics"
+          ],
+          "aliases": [
+            "math"
+          ]
+        },
+        {
+          "name": "Writing",
+          "category": "skill",
+          "search_terms": [
+            "writing"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "mechanical-engineer",
+      "title": "Mechanical engineer",
+      "aliases": [
+        "mechanical engineer",
+        "mechanical engineering"
+      ],
+      "topics": [
+        "Engineering",
+        "Mechanical engineering",
+        "Robotics"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/17-2141.00",
+        "title": "O*NET occupation summary: Mechanical engineer",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Design",
+          "category": "knowledge",
+          "search_terms": [
+            "mechanical design",
+            "engineering design"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Physics",
+          "category": "knowledge",
+          "search_terms": [
+            "physics"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Mathematics",
+          "category": "knowledge",
+          "search_terms": [
+            "mathematics",
+            "calculus"
+          ],
+          "aliases": [
+            "math"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "graphic-designer",
+      "title": "Graphic designer",
+      "aliases": [
+        "graphic designer",
+        "graphic design",
+        "visual designer"
+      ],
+      "topics": [
+        "Art",
+        "Design",
+        "Architecture"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/27-1024.00",
+        "title": "O*NET occupation summary: Graphic designer",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Design",
+          "category": "knowledge",
+          "search_terms": [
+            "graphic design",
+            "visual design"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Fine Arts",
+          "category": "knowledge",
+          "search_terms": [
+            "fine arts",
+            "visual arts"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Communications and Media",
+          "category": "knowledge",
+          "search_terms": [
+            "communication",
+            "media"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "environmental-scientist",
+      "title": "Environmental scientist",
+      "aliases": [
+        "environmental scientist",
+        "environmental science",
+        "environmental specialist"
+      ],
+      "topics": [
+        "Environment",
+        "Biology",
+        "Chemistry"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/19-2041.00",
+        "title": "O*NET occupation summary: Environmental scientist",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Biology",
+          "category": "knowledge",
+          "search_terms": [
+            "biology",
+            "ecology"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Chemistry",
+          "category": "knowledge",
+          "search_terms": [
+            "chemistry"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Mathematics",
+          "category": "knowledge",
+          "search_terms": [
+            "statistics",
+            "mathematics"
+          ],
+          "aliases": [
+            "math"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "social-research",
+      "title": "Social science research assistant",
+      "aliases": [
+        "social science research assistant",
+        "social science researcher"
+      ],
+      "topics": [
+        "Psychology",
+        "Sociology",
+        "Education",
+        "Social work",
+        "Public policy"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/19-4061.00",
+        "title": "O*NET occupation summary: Social science research assistant",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Science",
+          "category": "skill",
+          "search_terms": [
+            "research methods",
+            "research design"
+          ],
+          "aliases": [
+            "research methods",
+            "scientific methods"
+          ]
+        },
+        {
+          "name": "Mathematics",
+          "category": "knowledge",
+          "search_terms": [
+            "statistics",
+            "mathematics"
+          ],
+          "aliases": [
+            "math"
+          ]
+        },
+        {
+          "name": "Writing",
+          "category": "skill",
+          "search_terms": [
+            "academic writing",
+            "writing"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "film-editor",
+      "title": "Film and video editor",
+      "aliases": [
+        "film editor",
+        "video editor",
+        "film and video editor",
+        "film editing"
+      ],
+      "topics": [
+        "Film",
+        "Cinema",
+        "Media"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/27-4032.00",
+        "title": "O*NET occupation summary: Film and video editor",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Communications and Media",
+          "category": "knowledge",
+          "search_terms": [
+            "film editing",
+            "media production"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Fine Arts",
+          "category": "knowledge",
+          "search_terms": [
+            "film",
+            "cinema"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Design",
+          "category": "knowledge",
+          "search_terms": [
+            "visual design",
+            "design"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "journalist",
+      "title": "Journalist",
+      "aliases": [
+        "journalist",
+        "reporter",
+        "news reporter",
+        "journalism"
+      ],
+      "topics": [
+        "Journalism",
+        "Communication",
+        "Public policy"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/27-3023.00",
+        "title": "O*NET occupation summary: Journalist",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Writing",
+          "category": "skill",
+          "search_terms": [
+            "journalism",
+            "news writing"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Active Listening",
+          "category": "skill",
+          "search_terms": [
+            "interviewing",
+            "listening"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Communications and Media",
+          "category": "knowledge",
+          "search_terms": [
+            "journalism",
+            "communication"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "architect",
+      "title": "Architect",
+      "aliases": [
+        "architect",
+        "architectural designer",
+        "architecture"
+      ],
+      "topics": [
+        "Architecture",
+        "Design",
+        "Engineering"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/17-1011.00",
+        "title": "O*NET occupation summary: Architect",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Design",
+          "category": "knowledge",
+          "search_terms": [
+            "architectural design",
+            "design"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Building and Construction",
+          "category": "knowledge",
+          "search_terms": [
+            "building construction",
+            "construction"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Engineering and Technology",
+          "category": "knowledge",
+          "search_terms": [
+            "engineering",
+            "building systems"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "biochemist",
+      "title": "Biochemist",
+      "aliases": [
+        "biochemist",
+        "biochemistry",
+        "biophysicist"
+      ],
+      "topics": [
+        "Biology",
+        "Chemistry",
+        "Medicine",
+        "Pharmacy"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/19-1021.00",
+        "title": "O*NET occupation summary: Biochemist",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Biology",
+          "category": "knowledge",
+          "search_terms": [
+            "biology",
+            "biochemistry"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Chemistry",
+          "category": "knowledge",
+          "search_terms": [
+            "chemistry"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Science",
+          "category": "skill",
+          "search_terms": [
+            "research methods",
+            "experimental methods"
+          ],
+          "aliases": [
+            "research methods",
+            "scientific methods"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "musician",
+      "title": "Musician",
+      "aliases": [
+        "musician",
+        "singer",
+        "vocalist",
+        "instrumentalist"
+      ],
+      "topics": [
+        "Music",
+        "Performance",
+        "Art"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/27-2042.00",
+        "title": "O*NET occupation summary: Musician",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Fine Arts",
+          "category": "knowledge",
+          "search_terms": [
+            "music",
+            "performance"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Coordination",
+          "category": "skill",
+          "search_terms": [
+            "ensemble",
+            "performance"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Social Perceptiveness",
+          "category": "skill",
+          "search_terms": [
+            "music performance"
+          ],
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "financial-analyst",
+      "title": "Financial analyst",
+      "aliases": [
+        "financial analyst",
+        "financial analysis",
+        "investment analyst"
+      ],
+      "topics": [
+        "Finance",
+        "Business",
+        "Economics"
+      ],
+      "source": {
+        "url": "https://www.bls.gov/ooh/business-and-financial/financial-analysts.htm",
+        "title": "BLS Occupational Outlook Handbook: Financial Analysts",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Analytical skills",
+          "category": "skill",
+          "search_terms": [
+            "financial modeling",
+            "statistical analysis"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Communication skills",
+          "category": "skill",
+          "search_terms": [
+            "business communication",
+            "financial communication"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Mathematics",
+          "category": "skill",
+          "search_terms": [
+            "financial mathematics",
+            "mathematics"
+          ],
+          "aliases": [
+            "math"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "software-developer",
+      "title": "Software developer",
+      "aliases": [
+        "software developer",
+        "software engineer",
+        "software engineering",
+        "application developer",
+        "software development engineer"
+      ],
+      "topics": [
+        "Computer programming",
+        "Computer science",
+        "Data science"
+      ],
+      "source": {
+        "url": "https://www.onetonline.org/link/summary/15-1252.00",
+        "title": "O*NET occupation summary: Software Developers",
+        "checked_at": "2026-11-15T00:00:00Z"
+      },
+      "skills": [
+        {
+          "name": "Programming",
+          "category": "skill",
+          "search_terms": [
+            "programming",
+            "software development"
+          ],
+          "aliases": [
+            "computer programming",
+            "coding"
+          ]
+        },
+        {
+          "name": "Systems Analysis",
+          "category": "skill",
+          "search_terms": [
+            "systems analysis",
+            "software architecture"
+          ],
+          "aliases": []
+        },
+        {
+          "name": "Critical Thinking",
+          "category": "skill",
+          "search_terms": [
+            "critical thinking",
+            "problem solving"
+          ],
+          "aliases": []
+        }
+      ]
+    }
+  ],
+  "research": [
+    {
+      "id": "usc-student-research",
+      "title": "USC student research pathways",
+      "topics": [],
+      "levels": [
+        "undergraduate",
+        "graduate",
+        "unknown"
+      ],
+      "summary": "Explore USC research and funding pathways across disciplines.",
+      "checks": [
+        "Confirm program eligibility, current dates and mentor availability on the official page."
+      ],
+      "source": {
+        "url": "https://www.usc.edu/research-creativity/research-innovation/student-research/",
+        "title": "USC student research pathways",
+        "checked_at": "2026-11-15T00:00:00Z"
+      }
+    },
+    {
+      "id": "dornsife-soar",
+      "title": "Dornsife SOAR faculty research",
+      "topics": [
+        "Psychology",
+        "Sociology",
+        "Biology",
+        "Chemistry",
+        "Environment",
+        "Public policy",
+        "Humanities"
+      ],
+      "levels": [
+        "undergraduate",
+        "unknown"
+      ],
+      "summary": "A faculty-led research funding pathway for Dornsife undergraduates.",
+      "checks": [
+        "Dornsife undergraduate eligibility and a Dornsife faculty project are required; confirm current rules.",
+        "Funding and open placements are not verified."
+      ],
+      "source": {
+        "url": "https://dornsife.usc.edu/css/soar/",
+        "title": "Dornsife SOAR faculty research",
+        "checked_at": "2026-11-15T00:00:00Z"
+      }
+    },
+    {
+      "id": "annenberg-ug-research",
+      "title": "Annenberg undergraduate research",
+      "topics": [
+        "Communication",
+        "Journalism",
+        "Marketing",
+        "Business",
+        "Film"
+      ],
+      "levels": [
+        "undergraduate",
+        "unknown"
+      ],
+      "summary": "Explore faculty research connections in communication and journalism.",
+      "checks": [
+        "Confirm school/program eligibility and whether a project is accepting students."
+      ],
+      "source": {
+        "url": "https://annenberg.usc.edu/undergraduate-student-research-opportunities",
+        "title": "Annenberg undergraduate research",
+        "checked_at": "2026-11-15T00:00:00Z"
+      }
+    },
+    {
+      "id": "annenberg-masters-research",
+      "title": "Annenberg research for master\u2019s students",
+      "topics": [
+        "Communication",
+        "Journalism",
+        "Marketing",
+        "Business",
+        "Film"
+      ],
+      "levels": [
+        "graduate",
+        "unknown"
+      ],
+      "summary": "Explore Annenberg research centers and ask about student work opportunities.",
+      "checks": [
+        "Confirm degree eligibility, project requirements and current openings with the research center."
+      ],
+      "source": {
+        "url": "https://annenberg.usc.edu/research/masters-students",
+        "title": "Annenberg research for master\u2019s students",
+        "checked_at": "2026-11-15T00:00:00Z"
+      }
+    },
+    {
+      "id": "curve",
+      "title": "Viterbi CURVE for first-time researchers",
+      "topics": [
+        "Engineering",
+        "Mechanical engineering",
+        "Robotics",
+        "Data science"
+      ],
+      "levels": [
+        "undergraduate",
+        "unknown"
+      ],
+      "summary": "Explore the CURVE first-time researcher pathway at Viterbi.",
+      "checks": [
+        "This pathway is for Viterbi undergraduates with no prior formal USC research or CURVE fellowship; confirm current eligibility.",
+        "Application dates and available mentors are not verified."
+      ],
+      "source": {
+        "url": "https://viterbiundergrad.usc.edu/research/curve/apply/first-time-researchers/",
+        "title": "Viterbi CURVE for first-time researchers",
+        "checked_at": "2026-11-15T00:00:00Z"
+      }
+    },
+    {
+      "id": "humanities-research",
+      "title": "USC arts and humanities research pathways",
+      "topics": [
+        "Art",
+        "Design",
+        "Film",
+        "Cinema",
+        "Humanities",
+        "Journalism"
+      ],
+      "levels": [
+        "undergraduate",
+        "unknown"
+      ],
+      "summary": "Review USC undergraduate research pathways, including humanities funding routes.",
+      "checks": [
+        "Confirm the current program, eligible majors, faculty sponsorship and application window."
+      ],
+      "source": {
+        "url": "https://admission.usc.edu/research/",
+        "title": "USC arts and humanities research pathways",
+        "checked_at": "2026-11-15T00:00:00Z"
+      }
+    }
+  ]
+}
