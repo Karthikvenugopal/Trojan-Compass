@@ -40,7 +40,13 @@ from trojan_compass.extraction import (
 )
 from trojan_compass.failures import DecisionIssue, FailureReason, ProcessingStage
 from trojan_compass.llm import LLMFailure, StructuredLLM
-from trojan_compass.planner_wire import PLANNER_PROMPT, PlannerOutput
+from trojan_compass.planner_wire import (
+    PLANNER_PROMPT,
+    QUESTION_REVIEW_PROMPT,
+    PlannerOutput,
+    QuestionReview,
+    apply_question_review,
+)
 from trojan_compass.readiness import DEFAULT_FIXED_FIELDS, RequestInformation, request_information
 from trojan_compass.services import AskBackPolicy, ChatUnavailable
 
@@ -132,7 +138,7 @@ walls, and do not announce 'no match' if other supplied evidence supports a plan
 
 
 class AIChatService:
-    """Stateless orchestrator. Two model calls on a search turn, one on an ask turn."""
+    """Stateless AI planning/review/composition; no coded semantic interpretations."""
 
     def __init__(
         self,
@@ -171,6 +177,7 @@ class AIChatService:
                         examples = await self._course_history.suggest(information.context)
                     return ChatResponse(
                         message=decision.question.text,
+                        asked_field=decision.question.requested_fields[0],
                         suggested_replies=decision.question.options,
                         information=information.snapshot(),
                         course_history_options=examples,
@@ -199,12 +206,23 @@ class AIChatService:
     async def _decide(
         self, request: ChatRequest
     ) -> tuple[ConversationDecision, RequestInformation]:
-        payload = {
+        payload: dict[str, object] = {
             "conversation": [
                 {**m.model_dump(), "message_index": i} for i, m in enumerate(request.messages)
             ],
             "occupations": {r.id: r.title for r in self._library.roles},
         }
+        payload["question_answer_turns"] = [
+            {
+                "question_index": i - 1,
+                "question": request.messages[i - 1].content,
+                "asked_field": request.messages[i - 1].asked_field,
+                "reply_index": i,
+                "reply": message.content,
+            }
+            for i, message in enumerate(request.messages)
+            if i > 0 and message.role == "user" and request.messages[i - 1].role == "assistant"
+        ]
         feedback = ""
         for attempt in range(2):
             information: RequestInformation | None = None
@@ -214,6 +232,10 @@ class AIChatService:
                     json.dumps(payload),
                     PlannerOutput,
                 )
+                if wire.intent == "ask":
+                    # The reviewer interprets the original replies independently.
+                    # No text/abbreviation/yes-no classification happens in code.
+                    wire = await self._review_question(wire, payload, feedback, request)
                 question = wire.clarification()
                 extra = (
                     [question.requested_fields[0]]
@@ -235,7 +257,7 @@ class AIChatService:
                     campus_route=wire.route(),
                 )
                 context = grounded_context(decision.context.model_dump_json(), request.messages)
-                information = request_information(context, request.messages)
+                information = request_information(context, request.messages, ai_owned=True)
                 # The AI selects additional fields/order. Existing UI bookkeeping
                 # may reconcile explicit edits; its scripted question selector is never called.
                 information.required = list(
@@ -302,6 +324,32 @@ class AIChatService:
                 )
         raise ExtractionFailure()
 
+    async def _review_question(
+        self,
+        wire: PlannerOutput,
+        payload: dict[str, object],
+        feedback: str,
+        request: ChatRequest,
+    ) -> PlannerOutput:
+        context = grounded_context(
+            wire.context(request.messages).model_dump_json(), request.messages
+        )
+        answer_state = request_information(context, request.messages, ai_owned=True).snapshot()
+        evidence = {
+            **payload,
+            "candidate_facts": [
+                {"fact_index": i, **fact.model_dump()} for i, fact in enumerate(wire.facts)
+            ],
+            "answer_state": answer_state.model_dump(),
+            "proposed_question": wire.question.model_dump() if wire.question else None,
+        }
+        review = await self._llm.complete(
+            QUESTION_REVIEW_PROMPT + feedback,
+            json.dumps(evidence),
+            QuestionReview,
+        )
+        return apply_question_review(wire, review)
+
     @staticmethod
     def _validate_question(question: Clarification | None, information: RequestInformation) -> None:
         if question is None:
@@ -356,8 +404,9 @@ class AIChatService:
             "context": context.model_dump(),
             "information": information.snapshot().model_dump(),
             "tool_clarification": result.clarification.model_dump()
-            if material_field and result.clarification
+            if result.clarification
             else None,
+            "tool_clarification_unanswered": material_field is not None,
             "tool_limitations": result.limitations,
             "recommendations": [r.model_dump(mode="json") for r in recommendations.values()],
             "occupations": [r.model_dump(mode="json") for r in occupations.values()],
@@ -374,6 +423,7 @@ class AIChatService:
             assert answer.question is not None
             return ChatResponse(
                 message=answer.question.text,
+                asked_field=answer.question.requested_fields[0],
                 suggested_replies=answer.question.options,
                 information=information.snapshot(),
                 limitations=[self._data_notice],
@@ -419,6 +469,7 @@ class AIChatService:
             message += "\n\n" + answer.question.text
         return ChatResponse(
             message=message,
+            asked_field=answer.question.requested_fields[0] if answer.question else None,
             suggested_replies=answer.question.options
             if answer.question
             else answer.suggested_replies,

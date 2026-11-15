@@ -52,8 +52,10 @@ steps and fallback suggestions are not published by AIChatService.
 
 An invalid planning decision may get one same-provider validation repair using the
 original conversation and static feedback. Auth/quota/connection/timeouts are not
-retried or sent to another provider. Normal ask/search turns use one/two model calls;
-a planning repair adds one. Cloud requests are bounded by a 75-second lifecycle;
+retried or sent to another provider. Normal ask turns use planning plus an independent semantic-review call; search
+turns use planning plus composition. A review that resolves the last missing fact
+can proceed to retrieval/composition in that turn. Bounded validation retries may
+add calls; the overall request deadline still applies. Cloud requests are bounded by a 75-second lifecycle;
 local Ollama requests have a 180-second lifecycle to allow local inference. A provider
 or validation failure returns a safe error, never a scripted imitation of AI advice.
 
@@ -131,3 +133,26 @@ rule and unanswered field names, not just 'invalid schema'. No student values or
 model output appear in errors/logs. Provenance is checked before applying ordered
 fact corrections, so output ordering or a repairable index mistake cannot reinstate
 an old program value.
+
+## Preventing repeated ask-backs with AI semantic review
+
+Before an ask-back is returned, a separate focused LLM call reviews the proposed
+question against the entire student conversation. It can identify additional facts
+in a combined answer, interpret abbreviations and scoped short replies, remove
+unsupported proposal facts and choose a different question or proceed to search.
+Python applies explicit model edits and validates their evidence; it contains no
+new abbreviation map or yes/no-to-profile decision rules. This extra AI call is a
+reliability/latency tradeoff, not a claim that a small model cannot make mistakes.
+
+AI-declared asked_field metadata accompanies assistant questions in the active
+frontend conversation. Question/reply pairs are rebuilt for each request; metadata
+is context, never evidence of student facts. Only actual user quotes support facts.
+An extracted typed career target now resolves the target answered-state as well as
+broad direction, fixing a bookkeeping omission that permitted repeated goal questions.
+
+Run `bash scripts/check-system.sh --ollama` in the host terminal for an opt-in real
+local-model semantic check. It uses a synthetic dialogue (combined academic answer,
+career abbreviation, prior volunteering and a scoped negative work reply) and prints
+only boolean checks, safe error codes and elapsed time. No student conversation or
+raw model reply is printed/saved. Mocked CI tests verify the checks and wiring;
+they do not prove that the installed local model passes this semantic evaluation.

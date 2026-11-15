@@ -38,7 +38,7 @@ from trojan_compass.contracts import (
 )
 from trojan_compass.failures import FailureReason
 from trojan_compass.llm import LLMFailure, Model, StructuredLLM
-from trojan_compass.planner_wire import PlannerOutput
+from trojan_compass.planner_wire import PlannerOutput, QuestionReview
 from trojan_compass.services import ChatUnavailable
 from trojan_compass.university import (
     AcademicCourseHistoryService,
@@ -130,6 +130,17 @@ class FakeReasoner:
         self.schemas.append(schema.__name__)
         payload = json.loads(user)
         self.payloads.append(payload)
+        if schema is QuestionReview and (
+            not self.replies or not isinstance(self.replies[0], QuestionReview)
+        ):
+            # Existing orchestration fixtures explicitly model a confirming second
+            # AI. Semantic-review behavior has dedicated patch fixtures below.
+            return schema.model_validate(
+                {
+                    "next_step": "ask",
+                    "question": payload["proposed_question"],
+                }
+            )
         reply = self.replies.pop(0)
         if isinstance(reply, LLMFailure):
             raise reply
@@ -279,7 +290,7 @@ async def test_first_turn_uses_ai_question_instead_of_a_canned_script() -> None:
         ChatRequest(messages=[ChatMessage(role="user", content="I'm not sure where to start.")])
     )
     assert response.message.startswith("What are you studying or considering?")
-    assert llm.schemas == ["PlannerOutput"]
+    assert llm.schemas == ["PlannerOutput", "QuestionReview"]
     assert not spy.calls and not response.recommendations
     assert all(field.value is None for field in response.information.fields)
     assert not response.information.ready
@@ -472,7 +483,7 @@ async def test_request_isolation_rederives_context_for_a_fresh_student() -> None
     assert not fresh.information.ready and not fresh.guidance
     assert len(spy.calls) == 1
     assert llm.payloads[-1]["conversation"] == [
-        {"role": "user", "content": "Hi", "edit": None, "message_index": 0}
+        {"role": "user", "content": "Hi", "edit": None, "asked_field": None, "message_index": 0}
     ]
     assert "context" not in llm.payloads[-1]
 
@@ -514,7 +525,7 @@ def test_default_live_factory_uses_ai_even_for_welcome_buttons(
             "/api/chat",
             json={"messages": [{"role": "user", "content": "I'm not sure where to start."}]},
         )
-    assert response.status_code == 200 and llm.schemas == ["PlannerOutput"]
+    assert response.status_code == 200 and llm.schemas == ["PlannerOutput", "QuestionReview"]
     assert response.json()["message"].startswith("What would you enjoy trying")
 
 
@@ -814,3 +825,134 @@ async def test_semantic_next_step_failure_is_not_reported_as_invalid_json_struct
     assert llm.payloads[1]["validation_feedback"]["issue"] == "minimum_not_answered"
     assert "program" in llm.payloads[1]["validation_feedback"]["unanswered_fields"]
     assert not spy.calls
+
+
+@pytest.mark.asyncio
+async def test_llm_review_finds_second_fact_in_a_combined_answer_without_code_aliases() -> None:
+    from trojan_compass.planner_wire import PlannerQuestion, StudentFact
+
+    # A synthetic EE example, not an abbreviation table in application code.
+    messages = [
+        ChatMessage(role="user", content="Help me plan"),
+        ChatMessage(
+            role="assistant", content="What academic level are you at?", asked_field="study_stage"
+        ),
+        ChatMessage(role="user", content="UG EE at USC"),
+    ]
+    missed = ask("program", "What is your program?")
+    missed.context.study_stage = fact("Undergraduate", "UG", 2)
+    reviewed = QuestionReview(
+        next_step="ask",
+        add_facts=[
+            StudentFact(
+                field="program",
+                status="provided",
+                value="Electrical Engineering",
+                message_index=2,
+                quote="EE",
+            )
+        ],
+        question=PlannerQuestion(
+            field="work_experience",
+            text=(
+                "You’re an undergraduate in electrical engineering. "
+                "What work or project experience would you like me to consider?"
+            ),
+            options=["A project", "None yet", "I’m not sure"],
+            reason="Understand preparation.",
+        ),
+    )
+    llm = FakeReasoner([missed, reviewed])
+    spy = RetrievalSpy()
+    response = await make_service(llm, spy).chat(ChatRequest(messages=messages))
+    assert llm.schemas == ["PlannerOutput", "QuestionReview"]
+    assert response.asked_field == "work_experience"
+    fields = {field.field: field for field in response.information.fields}
+    assert fields["program"].value == "Electrical Engineering"
+    assert fields["study_stage"].status == "provided"
+    assert not spy.calls
+    assert llm.payloads[1]["question_answer_turns"][0]["reply"] == "UG EE at USC"
+
+
+@pytest.mark.asyncio
+async def test_llm_review_resolves_goal_abbreviation_and_scoped_no_then_searches() -> None:
+    from trojan_compass.planner_wire import StudentFact
+
+    messages = [
+        ChatMessage(role="user", content="Undergraduate in Physics. I completed PHYS 151."),
+        ChatMessage(
+            role="assistant",
+            content="Which career would you like to explore?",
+            asked_field="target",
+        ),
+        ChatMessage(role="user", content="swe"),
+        ChatMessage(
+            role="assistant",
+            content="Any related software work experience?",
+            asked_field="work_experience",
+        ),
+        ChatMessage(role="user", content="No"),
+    ]
+    missed = ask("target", "What is your career goal?")
+    missed.context = RetrievalContext(
+        program=fact("Physics", index=0),
+        study_stage=fact("Undergraduate", index=0),
+        completed_courses=[fact("PHYS 151", index=0)],
+    )
+    reviewed = QuestionReview(
+        next_step="search",
+        search_query="software development",
+        occupation_ids=["software-developer"],
+        add_facts=[
+            StudentFact(
+                field="target.role",
+                status="provided",
+                value="Software engineer",
+                message_index=2,
+                quote="swe",
+            ),
+            StudentFact(
+                field="experience",
+                status="provided",
+                value="No related software work experience",
+                message_index=4,
+                quote="No",
+            ),
+        ],
+    )
+    llm = FakeReasoner(
+        [
+            missed,
+            reviewed,
+            GuidedAnswer(
+                message=(
+                    "Your software goal is clear. We can explore a first project "
+                    "without assuming skill mastery."
+                ),
+                headline="A software starting point",
+                mode="plan",
+            ),
+        ]
+    )
+    spy = RetrievalSpy()
+    response = await make_service(llm, spy).chat(ChatRequest(messages=messages))
+    assert llm.schemas == ["PlannerOutput", "QuestionReview", "GuidedAnswer"]
+    assert response.information.ready and response.asked_field is None
+    assert len(spy.calls) == 1
+    assert spy.calls[0].context.target and spy.calls[0].context.target.name == "Software engineer"
+    assert spy.calls[0].context.skills == []
+    assert "related software" in spy.calls[0].context.experiences[0].value
+
+
+def test_ai_extracted_target_counts_as_answered_without_reinterpreting_its_text() -> None:
+    from trojan_compass.contracts import Target
+    from trojan_compass.readiness import request_information
+
+    ctx = RetrievalContext(
+        target=Target(
+            kind="role", name="Synthetic research role", evidence=quote("Synthetic research role")
+        )
+    )
+    info = request_information(ctx, [ChatMessage(role="user", content="Synthetic research role")])
+    assert info.answer("target").status == "provided"
+    assert info.answer("direction").status == "provided"

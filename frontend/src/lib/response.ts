@@ -6,6 +6,7 @@ export function decodeResponse(value: unknown): ChatResponse {
   if (!record(value) || !text(value.message) || !strings(value.suggested_replies)
       || !strings(value.limitations) || !Array.isArray(value.recommendations)
       || !value.recommendations.every(recommendation)
+      || (value.asked_field !== undefined && value.asked_field !== null && !fieldKey(value.asked_field))
       || (value.course_history_options !== undefined && (!Array.isArray(value.course_history_options)
         || value.course_history_options.length > 8 || !value.course_history_options.every(option =>
           record(option) && text(option.code) && text(option.title) && Array.isArray(option.sources)

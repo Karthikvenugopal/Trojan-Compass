@@ -1,6 +1,7 @@
-"""Opt-in synthetic probes. Only status codes and token counts may leave this module."""
+"""Opt-in synthetic probes. Only safe check codes, counts and timings leave this module."""
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -8,12 +9,15 @@ import subprocess
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import httpx
 from pydantic import BaseModel, Field
 
 from trojan_compass.contracts import ChatResponse
+
+if TYPE_CHECKING:
+    from trojan_compass.llm import StructuredLLM
 
 DUMMY_MESSAGE = "Diagnostic response: Trojan Compass is responding. Gemini was not called."
 
@@ -247,12 +251,122 @@ def dummy_probe(base_url: str | None = None) -> dict[str, object]:
         }
 
 
+async def local_semantic_probe(llm: "StructuredLLM") -> dict[str, object]:
+    """Opt-in real local inference on synthetic dialogue; return booleans/timing only."""
+    from trojan_compass.contracts import ChatMessage
+    from trojan_compass.extraction import ExtractionFailure, grounded_context
+    from trojan_compass.llm import LLMFailure
+    from trojan_compass.planner_wire import (
+        QUESTION_REVIEW_PROMPT,
+        PlannerOutput,
+        QuestionReview,
+        apply_question_review,
+    )
+    from trojan_compass.readiness import request_information
+
+    started = time.monotonic()
+    messages = [
+        ChatMessage(role="user", content="I volunteer at a theatre."),
+        ChatMessage(
+            role="assistant", content="What academic level and major?", asked_field="study_stage"
+        ),
+        ChatMessage(role="user", content="UG EE at USC"),
+        ChatMessage(
+            role="assistant",
+            content="Which courses have you completed?",
+            asked_field="completed_courses",
+        ),
+        ChatMessage(role="user", content="I completed EE 109."),
+        ChatMessage(
+            role="assistant",
+            content="Which career would you like to explore?",
+            asked_field="target",
+        ),
+        ChatMessage(role="user", content="swe"),
+        ChatMessage(
+            role="assistant",
+            content="Any related software work experience?",
+            asked_field="work_experience",
+        ),
+        ChatMessage(role="user", content="No"),
+    ]
+    payload = {
+        "conversation": [{**m.model_dump(), "message_index": i} for i, m in enumerate(messages)],
+        "candidate_facts": [],
+        "proposed_question": {"field": "target", "text": "What is your career goal?"},
+        "occupations": {"software-developer": "Software developer"},
+        "question_answer_turns": [
+            {
+                "question": messages[i - 1].content,
+                "asked_field": messages[i - 1].asked_field,
+                "reply": message.content,
+                "reply_index": i,
+            }
+            for i, message in enumerate(messages)
+            if i > 0 and message.role == "user"
+        ],
+    }
+    try:
+        review = await llm.complete(QUESTION_REVIEW_PROMPT, json.dumps(payload), QuestionReview)
+        wire = apply_question_review(PlannerOutput(intent="ask"), review)
+        context = grounded_context(wire.context(messages).model_dump_json(), messages)
+        info = request_information(context, messages, ai_owned=True)
+        checks = {
+            "combined_stage": bool(
+                context.study_stage and "undergrad" in context.study_stage.value.casefold()
+            ),
+            "combined_program": bool(
+                context.program and "electrical" in context.program.value.casefold()
+            ),
+            "goal_interpreted": bool(
+                context.target and "software" in context.target.name.casefold()
+            ),
+            "unrelated_experience_preserved": any(
+                "theatre" in item.value.casefold() for item in context.experiences
+            ),
+            "negative_reply_scoped": any(
+                f.message_index == 8 and f.field in {"experience", "work_experience"}
+                for f in wire.facts
+            ),
+            "course_preserved": any(
+                "EE109" in re.sub(r"[^A-Z0-9]", "", item.value.upper())
+                for item in context.completed_courses
+            ),
+            "no_inferred_skill_mastery": not context.skills,
+            "no_repeated_question": review.next_step == "search"
+            and review.question is None
+            and info.snapshot().ready,
+        }
+        return {
+            "passed": all(checks.values()),
+            "checks": checks,
+            "elapsed_seconds": round(time.monotonic() - started, 2),
+        }
+    except (LLMFailure, ExtractionFailure) as error:
+        return {
+            "passed": False,
+            "error_code": error.reason.value,
+            "elapsed_seconds": round(time.monotonic() - started, 2),
+        }
+    except Exception:
+        return {
+            "passed": False,
+            "error_code": "semantic_probe_failed",
+            "elapsed_seconds": round(time.monotonic() - started, 2),
+        }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Synthetic app/Gemini checks; no content or secrets printed"
+        description="Synthetic application/provider checks; no content or secrets printed"
     )
     parser.add_argument(
         "--gemini", action="store_true", help="Opt in to a small Gemini request (may consume quota)"
+    )
+    parser.add_argument(
+        "--ollama",
+        action="store_true",
+        help="Opt in to a synthetic local semantic test; prints no conversation/model output",
     )
     parser.add_argument("--attempts", type=int, default=3, choices=range(1, 4))
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
@@ -276,6 +390,29 @@ def main() -> None:
         report = GeminiCurlProbe().check(key, model, arguments.attempts)
         output["gemini"] = report.model_dump()
         passed = passed and report.successful
+    if arguments.ollama:
+        from dotenv import dotenv_values
+
+        from trojan_compass.ollama import OllamaStructuredLLM
+
+        values = dotenv_values(arguments.env_file)
+        try:
+            local = OllamaStructuredLLM(
+                os.getenv("OLLAMA_MODEL") or values.get("OLLAMA_MODEL") or "qwen3:4b",
+                os.getenv("OLLAMA_BASE_URL")
+                or values.get("OLLAMA_BASE_URL")
+                or "http://127.0.0.1:11434",
+                context_length=int(
+                    os.getenv("OLLAMA_CONTEXT_LENGTH")
+                    or values.get("OLLAMA_CONTEXT_LENGTH")
+                    or "32768"
+                ),
+            )
+            semantic = asyncio.run(local_semantic_probe(local))
+        except Exception:
+            semantic = {"passed": False, "error_code": "local_configuration"}
+        output["ollama_semantics"] = semantic
+        passed = passed and semantic["passed"] is True
     print(json.dumps(output, indent=2))
     if not passed:
         raise SystemExit(1)

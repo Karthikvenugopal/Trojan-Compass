@@ -38,6 +38,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   edit?: InformationEdit;
+  asked_field?: string | null;
 }
 
 export type AnswerStatus = 'not_answered' | 'unknown' | 'none' | 'provided';
@@ -72,6 +73,7 @@ export interface CourseHistoryOption {
 }
 
 export interface ChatResponse {
+  asked_field?: string | null;
   guidance?: CareerGuidance | null;
   course_history_options?: CourseHistoryOption[];
   message: string;

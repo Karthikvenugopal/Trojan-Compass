@@ -182,3 +182,47 @@ def test_curl_key_stays_out_of_process_arguments(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(subprocess, "run", run)
     report: ProviderReport = GeminiCurlProbe(CurlProcess()).check("synthetic-key", "gemini-test")
     assert report.successful
+
+
+@pytest.mark.asyncio
+async def test_local_semantic_probe_checks_real_semantic_outputs_without_printing_content() -> None:
+    from pydantic import BaseModel
+
+    from trojan_compass.diagnostics import local_semantic_probe
+    from trojan_compass.llm import Model
+    from trojan_compass.planner_wire import QuestionReview, StudentFact
+
+    class SemanticModel:
+        async def complete(self, system: str, user: str, schema: type[Model]) -> Model:
+            assert schema is QuestionReview
+            facts = [
+                ("study_stage", "Undergraduate", 2, "UG"),
+                ("program", "Electrical Engineering", 2, "EE"),
+                ("completed_course", "EE 109", 4, "I completed EE 109."),
+                ("target.role", "Software engineer", 6, "swe"),
+                ("experience", "Theatre volunteering", 0, "I volunteer at a theatre."),
+                ("experience", "No related software work experience", 8, "No"),
+            ]
+            answer: BaseModel = QuestionReview(
+                next_step="search",
+                search_query="software development",
+                occupation_ids=["software-developer"],
+                add_facts=[
+                    StudentFact(
+                        field=field,
+                        status="provided",
+                        value=value,
+                        message_index=index,
+                        quote=quote,
+                    )
+                    for field, value, index, quote in facts
+                ],
+            )
+            return schema.model_validate(answer.model_dump())
+
+    report = await local_semantic_probe(SemanticModel())
+    assert report["passed"] is True
+    encoded = json.dumps(report)
+    assert "elapsed_seconds" in encoded
+    assert "volunteer at a theatre" not in encoded and "swe" not in encoded
+    assert "conversation" not in report and "response" not in report

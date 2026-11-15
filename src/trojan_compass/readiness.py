@@ -182,6 +182,9 @@ def derived_answers(context: RetrievalContext, compact: bool = False) -> dict[st
         context.completed_courses,
     )
     groups["program"] = ([context.program.value] if context.program else [], context.program)
+    # A typed, student-supported target resolves BOTH the broad direction and
+    # the target field. Omitting this allowed the same goal to be asked again.
+    groups["target"] = ([context.target.name] if context.target else [], context.target)
     preferences = context.constraints.additional_preferences
     groups["preferences"] = ([item.value for item in preferences], preferences)
     answers = {}
@@ -401,7 +404,7 @@ class RequestInformation:
         # Keep optional fields out of the checklist until supplied or material.
         supplied_constraints = [
             key
-            for key in ("time_window", "modality", "program", "preferences")
+            for key in ("time_window", "modality", "program", "preferences", "target")
             if self.answer(key).status != "not_answered"
         ]
         keys = list(dict.fromkeys([*FIXED_FIELDS, *self.required, *supplied_constraints]))
@@ -486,6 +489,8 @@ def request_information(
     context: RetrievalContext,
     messages: list[ChatMessage],
     fixed_fields: tuple[str, ...] = DEFAULT_FIXED_FIELDS,
+    *,
+    ai_owned: bool = False,
 ) -> RequestInformation:
     """Rebuild answers from evidence and explicit edits, including clearing old facts."""
     context = context.model_copy(deep=True)
@@ -528,7 +533,12 @@ def request_information(
             )
     compact = fixed_fields == COMPACT_FIXED_FIELDS
     answers = derived_answers(context, compact=compact)
-    explicit = [*context.answers, *explicit_short_answers(messages, compact=compact)]
+    # Live AI owns ambiguous language/short-answer interpretation. The older
+    # literal-question helper remains only for explicitly injected legacy flows.
+    explicit = [
+        *context.answers,
+        *(explicit_short_answers(messages, compact=compact) if not ai_owned else []),
+    ]
     for index, message in enumerate(messages):
         if message.edit:
             explicit.append(
@@ -594,6 +604,9 @@ def request_information(
                 context.program = supported
             elif answer.field == "preferences":
                 context.constraints.additional_preferences = [supported]
+    if ai_owned:
+        context.answers = list(answers.values())
+        return RequestInformation(context, answers, list(fixed_fields))
     required = ["direction"]
     facts = context.interests + context.goals
     specific = [fact for fact in facts if not broad_theme(fact.value)]

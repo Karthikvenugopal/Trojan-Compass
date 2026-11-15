@@ -48,9 +48,12 @@ class ChatMessage(Contract):
     role: Literal["user", "assistant"]
     content: Annotated[str, Field(min_length=1, max_length=20400, strict=True)]
     edit: InformationEdit | None = None
+    asked_field: InformationKey | None = None
 
     @model_validator(mode="after")
     def student_edit(self) -> Self:
+        if self.role == "user" and self.asked_field is not None:
+            raise ValueError("Only assistant questions can declare their asked field")
         # Full background is kept in the active conversation, never a backend file/session.
         imported = self.role == "user" and self.content.startswith(
             ("Use my resume as background.\n", "Use my LinkedIn profile as background.\n")
@@ -305,6 +308,7 @@ class CareerGuidanceService(Protocol):
 
 
 class ChatResponse(Contract):
+    asked_field: InformationKey | None = None
     guidance: CareerGuidance | None = None
     message: Text
     suggested_replies: list[Text] = Field(default_factory=list)

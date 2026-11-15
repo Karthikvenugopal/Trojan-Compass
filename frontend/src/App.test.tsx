@@ -313,3 +313,15 @@ it('cancels a pending attachment on reset without sending late background', asyn
   expect(send).not.toHaveBeenCalled();
   expect(screen.queryByText('Late synthetic text')).not.toBeInTheDocument();
 });
+
+it('keeps the AI-declared question field with conversation turns for a scoped reply', async () => {
+  const user = userEvent.setup();
+  const send = vi.fn<ChatApi['send']>().mockResolvedValueOnce({ ...result('Any related research work?', []), asked_field: 'work_experience' }).mockResolvedValue(result('That answer is recorded.', []));
+  render(<App api={apiWith(send)} mockMode={false} />);
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'Help me plan{Enter}');
+  expect(await screen.findByText('Any related research work?')).toBeInTheDocument();
+  await user.type(screen.getByRole('textbox', { name: 'Your message' }), 'No{Enter}');
+  expect(await screen.findByText('That answer is recorded.')).toBeInTheDocument();
+  expect(send.mock.calls[1][0].messages[1]).toEqual({ role: 'assistant', content: 'Any related research work?', asked_field: 'work_experience' });
+  expect(send.mock.calls[1][0].messages[2]).toEqual({ role: 'user', content: 'No' });
+});

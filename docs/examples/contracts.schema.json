@@ -28,6 +28,20 @@
               }
             ],
             "default": null
+          },
+          "asked_field": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Asked Field"
           }
         },
         "required": [
@@ -2024,6 +2038,20 @@
     },
     "additionalProperties": false,
     "properties": {
+      "asked_field": {
+        "anyOf": [
+          {
+            "maxLength": 120,
+            "pattern": "^(direction|direction_detail|background|study_stage|work_experience|completed_courses|program|preferences|time_window|modality|target|skills\\..{1,100})$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asked Field"
+      },
       "guidance": {
         "anyOf": [
           {
